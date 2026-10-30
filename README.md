@@ -6,6 +6,8 @@
 
 ## Installation
 
+Go to butterfly/ls6_env_install.sh for lonestar 6 specific installation directions.
+
 ```
 conda create -n viunit_env python=3.10
 conda activate viunit_env

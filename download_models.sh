@@ -4,7 +4,7 @@
 #!/bin/bash
 
 # change this to your preferred download location
-PRETRAINED_MODELS_PATH=./pretrained_models
+PRETRAINED_MODELS_PATH=/work/11808/shumera/ls6/butterfly_shared_resources/models
 
 # # GLIP model
 # mkdir -p $PRETRAINED_MODELS_PATH/GLIP/checkpoints
@@ -18,7 +18,7 @@ gdown "https://drive.google.com/u/0/uc?id=1bv6_pZOsXW53EhlwU0ZgSk03uzFI61pN" -O 
 
 # TCL model
 mkdir -p $PRETRAINED_MODELS_PATH/TCL
-gdown "https://drive.google.com/uc?id=1Cb1azBdcdbm0pRMFs-tupKxILTCXlB4O" -O $PRETRAINED_MODELS_PATH/TCL/TCL_4M.pth
+wget https://github.com/kakaobrain/tcl/releases/download/v1.0.0/tcl.pth -O $PRETRAINED_MODELS_PATH/TCL/TCL_4M.pth
 
 # InSPyReNet model
 mkdir -p $PRETRAINED_MODELS_PATH/saliency_inspyrenet_plus_ultra
