@@ -284,3 +284,61 @@ This release is for research purposes only in support of an academic paper. Our 
 
 ## Acknowledgements
 API code adapted from [ViperGPT](https://github.com/cvlab-columbia/viper)
+
+## Image transformations
+
+`image_transforms/` applies transformations to Pillow images using NumPy. Each function
+returns a new image.
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install -r requirements-transforms.txt
+python -m unittest discover -s tests -v
+```
+
+```python
+from PIL import Image
+from image_transforms import hsv
+
+with Image.open('input.png') as source:
+    result = hsv(source, delta_h=30, delta_s=-0.2, delta_v=0.1)
+result.save('adjusted.png')
+```
+
+CLI usage:
+
+```bash
+python -m image_transforms input.png flipped.png flip left
+python -m image_transforms input.png rotated.png rotate -30
+python -m image_transforms input.png sepia.png color sepia
+python -m image_transforms input.png blurred.png blur 2
+python -m image_transforms input.png noisy.png noise 0.05 --seed 42
+python -m image_transforms input.png adjusted.png hsv --delta-h 30 --delta-s -0.2 --delta-v 0.1
+```
+
+| Transform | Input and conventions |
+| --- | --- |
+| `flip` | `up` reflects top/bottom; `left` reflects left/right. |
+| `rotate` | Signed degrees, positive counterclockwise. Expands canvas by default; CLI `--no-expand` keeps original dimensions. New areas are black for RGB, transparent for RGBA. |
+| `color_filter` / CLI `color` | `grayscale`, `sepia`, `invert`, `warm`, `cool`. Warm adds `(20, 0, -20)` to RGB; cool adds `(-20, 0, 20)`; values clip to byte range. |
+| `blur` | Nonnegative Gaussian radius in pixels. |
+| `noise` | Gaussian standard deviation in `[0, 1]` relative to the full RGB range; optional nonnegative integer seed. Noise is independent per pixel/channel, then clipped. |
+| `hsv` | Additive hue delta in degrees, saturation/value deltas in `[-1, 1]`. Hue wraps; saturation/value clamp to `[0, 1]`. Brightness uses HSV value. |
+
+Color operations convert to RGB or RGBA and preserve alpha unchanged. Flips and
+rotations transform alpha with the image. Grayscale and other non-RGB modes are
+converted to RGB; palette transparency is converted to RGBA. RGB results round
+to 8-bit values. Zero blur/noise/HSV deltas preserve RGB/RGBA pixels exactly.
+The CLI applies EXIF orientation before filtering, rejects the same input/output
+path, and uses the output extension to select the encoder. Use PNG for lossless
+output and transparency; existing output files are overwritten.
+
+Preview all transforms on the same source:
+
+```bash
+python -m scripts.preview_transforms 'assets/ViUnit Demo.png' outputs/transform_preview.png
+```
+
+The preview downsizes the source before filtering, so its pixel-based blur radius
+is measured at preview resolution.
