@@ -4,7 +4,7 @@ from pathlib import Path
 
 from PIL import Image, ImageOps
 
-from . import COLOR_PRESETS, blur, color_filter, flip, hsv, noise, rotate
+from . import GroundedSAM, mask_objects, COLOR_PRESETS, blur, color_filter, flip, hsv, noise, rotate
 
 
 def main(argv=None):
@@ -24,6 +24,10 @@ def main(argv=None):
     hsv_parser = commands.add_parser('hsv')
     for channel in ('h', 's', 'v'):
         hsv_parser.add_argument(f'--delta-{channel}', type=float, default=0)
+    masking = commands.add_parser('mask')
+    masking.add_argument('word')
+    masking.add_argument('--fill', choices=('white', 'black'), default='white')
+    masking.add_argument('--device', default=None)
     args = parser.parse_args(argv)
     if args.input.resolve() == args.output.resolve():
         parser.error('input and output must be different files')
@@ -40,6 +44,9 @@ def main(argv=None):
                 result = blur(image, args.radius)
             elif args.transform == 'noise':
                 result = noise(image, args.amount, seed=args.seed)
+            elif args.transform == 'mask':
+                segmenter = GroundedSAM(device=args.device)
+                result = mask_objects(image, args.word, args.fill, segmenter=segmenter)
             else:
                 result = hsv(image, args.delta_h, args.delta_s, args.delta_v)
         result.save(args.output)

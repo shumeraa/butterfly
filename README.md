@@ -342,3 +342,38 @@ python -m scripts.preview_transforms 'assets/ViUnit Demo.png' outputs/transform_
 
 The preview downsizes the source before filtering, so its pixel-based blur radius
 is measured at preview resolution.
+
+### Mask objects by word
+
+Install `requirements-masking.txt` to enable Grounding DINO + SAM:
+
+```python
+from image_transforms import mask_objects
+
+result = mask_objects(image, 'person')  # Fill matching objects with white.
+result.save('whitened.png')
+```
+
+Use `fill='black'` for a black fill. All matching objects are masked; no matches
+return an unchanged copy. Alpha and other pixels are preserved. Models load on
+first use and are reused. To set thresholds or device, pass a reusable backend:
+
+```python
+from image_transforms import GroundedSAM, mask_objects
+
+segmenter = GroundedSAM(device='cuda', box_threshold=0.35, text_threshold=0.25)
+result = mask_objects(image, 'red car', segmenter=segmenter)
+```
+
+The CLI also supports masking:
+
+```bash
+python -m image_transforms input.png whitened.png mask person --device cuda
+```
+
+To bundle the package and dependencies for Colab, run
+`python -m scripts.export_colab_bundle`. The ZIP is written to
+`outputs/butterfly-transforms-colab.zip`.
+
+Local tests cover mask filling. Actual model inference and segmentation quality
+still need verification on a GPU.
