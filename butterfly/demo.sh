@@ -1,13 +1,11 @@
 #!/bin/bash
 #SBATCH -J viunit-demo
-#SBATCH -p gpu-a100-small
+#SBATCH -p gpu-a100-dev
 #SBATCH -N 1
 #SBATCH -n 1
-#SBATCH -t 02:00:00
+#SBATCH -t 00:50:00
 #SBATCH -o viunit-demo.%j.out
 #SBATCH -e viunit-demo.%j.err
-
-set -euo pipefail
 
 PROJECT=/work/11808/shumera/ls6/projects/butterfly
 cd "$PROJECT"
