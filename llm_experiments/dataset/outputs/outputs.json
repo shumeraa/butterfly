@@ -1,0 +1,1452 @@
+[
+  {
+    "record_index": 0,
+    "image_id": "image_0000",
+    "image": "images/image_0000.jpg",
+    "question": "Is it overcast?",
+    "answer": "no",
+    "status": "success",
+    "decision": {
+      "transformation": "none",
+      "parameters": {},
+      "target_object": null,
+      "preserve": [],
+      "reason": null,
+      "confidence": 0.09,
+      "probabilities": [
+        {
+          "transformation": "brightness",
+          "probability": 0.16
+        },
+        {
+          "transformation": "contrast",
+          "probability": 0.04
+        },
+        {
+          "transformation": "gaussian_noise",
+          "probability": 0.13
+        },
+        {
+          "transformation": "horizontal_flip",
+          "probability": 0.11
+        },
+        {
+          "transformation": "rotation",
+          "probability": 0.08
+        },
+        {
+          "transformation": "background_blur",
+          "probability": 0.08
+        },
+        {
+          "transformation": "color_filter",
+          "probability": 0.08
+        },
+        {
+          "transformation": "background_color",
+          "probability": 0.1
+        },
+        {
+          "transformation": "object_removal",
+          "probability": 0.04
+        },
+        {
+          "transformation": "none",
+          "probability": 0.18
+        }
+      ]
+    }
+  },
+  {
+    "record_index": 1,
+    "image_id": "image_0001",
+    "image": "images/image_0001.jpg",
+    "question": "Who is wearing the dress?",
+    "answer": "women",
+    "status": "success",
+    "decision": {
+      "transformation": "background_blur",
+      "parameters": {},
+      "target_object": null,
+      "preserve": [],
+      "reason": null,
+      "confidence": 0.18,
+      "probabilities": [
+        {
+          "transformation": "brightness",
+          "probability": 0.2
+        },
+        {
+          "transformation": "contrast",
+          "probability": 0.06
+        },
+        {
+          "transformation": "gaussian_noise",
+          "probability": 0.06
+        },
+        {
+          "transformation": "horizontal_flip",
+          "probability": 0.08
+        },
+        {
+          "transformation": "rotation",
+          "probability": 0.09
+        },
+        {
+          "transformation": "background_blur",
+          "probability": 0.26
+        },
+        {
+          "transformation": "color_filter",
+          "probability": 0.06
+        },
+        {
+          "transformation": "background_color",
+          "probability": 0.09
+        },
+        {
+          "transformation": "object_removal",
+          "probability": 0.03
+        },
+        {
+          "transformation": "none",
+          "probability": 0.07
+        }
+      ]
+    }
+  },
+  {
+    "record_index": 2,
+    "image_id": "image_0002",
+    "image": "images/image_0002.jpg",
+    "question": "Does the utensil on top of the table look clean and black?",
+    "answer": "no",
+    "status": "success",
+    "decision": {
+      "transformation": "none",
+      "parameters": {},
+      "target_object": null,
+      "preserve": [],
+      "reason": null,
+      "confidence": 0.18,
+      "probabilities": [
+        {
+          "transformation": "brightness",
+          "probability": 0.22
+        },
+        {
+          "transformation": "contrast",
+          "probability": 0.03
+        },
+        {
+          "transformation": "gaussian_noise",
+          "probability": 0.07
+        },
+        {
+          "transformation": "horizontal_flip",
+          "probability": 0.07
+        },
+        {
+          "transformation": "rotation",
+          "probability": 0.07
+        },
+        {
+          "transformation": "background_blur",
+          "probability": 0.06
+        },
+        {
+          "transformation": "color_filter",
+          "probability": 0.07
+        },
+        {
+          "transformation": "background_color",
+          "probability": 0.1
+        },
+        {
+          "transformation": "object_removal",
+          "probability": 0.05
+        },
+        {
+          "transformation": "none",
+          "probability": 0.26
+        }
+      ]
+    }
+  },
+  {
+    "record_index": 3,
+    "image_id": "image_0003",
+    "image": "images/image_0003.jpg",
+    "question": "Is the surfer that looks wet wearing a wetsuit?",
+    "answer": "yes",
+    "status": "success",
+    "decision": {
+      "transformation": "background_blur",
+      "parameters": {},
+      "target_object": null,
+      "preserve": [],
+      "reason": null,
+      "confidence": 0.23,
+      "probabilities": [
+        {
+          "transformation": "brightness",
+          "probability": 0.11
+        },
+        {
+          "transformation": "contrast",
+          "probability": 0.03
+        },
+        {
+          "transformation": "gaussian_noise",
+          "probability": 0.08
+        },
+        {
+          "transformation": "horizontal_flip",
+          "probability": 0.09
+        },
+        {
+          "transformation": "rotation",
+          "probability": 0.09
+        },
+        {
+          "transformation": "background_blur",
+          "probability": 0.31
+        },
+        {
+          "transformation": "color_filter",
+          "probability": 0.08
+        },
+        {
+          "transformation": "background_color",
+          "probability": 0.07
+        },
+        {
+          "transformation": "object_removal",
+          "probability": 0.03
+        },
+        {
+          "transformation": "none",
+          "probability": 0.11
+        }
+      ]
+    }
+  },
+  {
+    "record_index": 4,
+    "image_id": "image_0004",
+    "image": "images/image_0004.jpg",
+    "question": "How tall is the chair in the bottom of the photo?",
+    "answer": "short",
+    "status": "success",
+    "decision": {
+      "transformation": "none",
+      "parameters": {},
+      "target_object": null,
+      "preserve": [],
+      "reason": null,
+      "confidence": 0.14,
+      "probabilities": [
+        {
+          "transformation": "brightness",
+          "probability": 0.13
+        },
+        {
+          "transformation": "contrast",
+          "probability": 0.03
+        },
+        {
+          "transformation": "gaussian_noise",
+          "probability": 0.07
+        },
+        {
+          "transformation": "horizontal_flip",
+          "probability": 0.09
+        },
+        {
+          "transformation": "rotation",
+          "probability": 0.07
+        },
+        {
+          "transformation": "background_blur",
+          "probability": 0.09
+        },
+        {
+          "transformation": "color_filter",
+          "probability": 0.09
+        },
+        {
+          "transformation": "background_color",
+          "probability": 0.12
+        },
+        {
+          "transformation": "object_removal",
+          "probability": 0.08
+        },
+        {
+          "transformation": "none",
+          "probability": 0.23
+        }
+      ]
+    }
+  },
+  {
+    "record_index": 5,
+    "image_id": "image_0005",
+    "image": "images/image_0005.jpg",
+    "question": "What kind of device is on top of the desk?",
+    "answer": "keyboard",
+    "status": "success",
+    "decision": {
+      "transformation": "background_blur",
+      "parameters": {},
+      "target_object": null,
+      "preserve": [],
+      "reason": null,
+      "confidence": 0.43,
+      "probabilities": [
+        {
+          "transformation": "brightness",
+          "probability": 0.19
+        },
+        {
+          "transformation": "contrast",
+          "probability": 0.03
+        },
+        {
+          "transformation": "gaussian_noise",
+          "probability": 0.04
+        },
+        {
+          "transformation": "horizontal_flip",
+          "probability": 0.03
+        },
+        {
+          "transformation": "rotation",
+          "probability": 0.04
+        },
+        {
+          "transformation": "background_blur",
+          "probability": 0.49
+        },
+        {
+          "transformation": "color_filter",
+          "probability": 0.05
+        },
+        {
+          "transformation": "background_color",
+          "probability": 0.06
+        },
+        {
+          "transformation": "object_removal",
+          "probability": 0.03
+        },
+        {
+          "transformation": "none",
+          "probability": 0.04
+        }
+      ]
+    }
+  },
+  {
+    "record_index": 6,
+    "image_id": "image_0006",
+    "image": "images/image_0006.jpg",
+    "question": "What is the airplane flying above?",
+    "answer": "ocean",
+    "status": "success",
+    "decision": {
+      "transformation": "none",
+      "parameters": {},
+      "target_object": null,
+      "preserve": [],
+      "reason": null,
+      "confidence": 0.03,
+      "probabilities": [
+        {
+          "transformation": "brightness",
+          "probability": 0.1
+        },
+        {
+          "transformation": "contrast",
+          "probability": 0.04
+        },
+        {
+          "transformation": "gaussian_noise",
+          "probability": 0.09
+        },
+        {
+          "transformation": "horizontal_flip",
+          "probability": 0.11
+        },
+        {
+          "transformation": "rotation",
+          "probability": 0.1
+        },
+        {
+          "transformation": "background_blur",
+          "probability": 0.13
+        },
+        {
+          "transformation": "color_filter",
+          "probability": 0.1
+        },
+        {
+          "transformation": "background_color",
+          "probability": 0.13
+        },
+        {
+          "transformation": "object_removal",
+          "probability": 0.07
+        },
+        {
+          "transformation": "none",
+          "probability": 0.13
+        }
+      ]
+    }
+  },
+  {
+    "record_index": 7,
+    "image_id": "image_0007",
+    "image": "images/image_0007.jpg",
+    "question": "What color are the pants?",
+    "answer": "red",
+    "status": "success",
+    "decision": {
+      "transformation": "none",
+      "parameters": {},
+      "target_object": null,
+      "preserve": [],
+      "reason": null,
+      "confidence": 0.16,
+      "probabilities": [
+        {
+          "transformation": "brightness",
+          "probability": 0.1
+        },
+        {
+          "transformation": "contrast",
+          "probability": 0.05
+        },
+        {
+          "transformation": "gaussian_noise",
+          "probability": 0.07
+        },
+        {
+          "transformation": "horizontal_flip",
+          "probability": 0.09
+        },
+        {
+          "transformation": "rotation",
+          "probability": 0.09
+        },
+        {
+          "transformation": "background_blur",
+          "probability": 0.08
+        },
+        {
+          "transformation": "color_filter",
+          "probability": 0.09
+        },
+        {
+          "transformation": "background_color",
+          "probability": 0.12
+        },
+        {
+          "transformation": "object_removal",
+          "probability": 0.07
+        },
+        {
+          "transformation": "none",
+          "probability": 0.24
+        }
+      ]
+    }
+  },
+  {
+    "record_index": 8,
+    "image_id": "image_0008",
+    "image": "images/image_0008.jpg",
+    "question": "Is the ground blue or brown?",
+    "answer": "brown",
+    "status": "success",
+    "decision": {
+      "transformation": "background_color",
+      "parameters": {},
+      "target_object": null,
+      "preserve": [],
+      "reason": null,
+      "confidence": 0.14,
+      "probabilities": [
+        {
+          "transformation": "brightness",
+          "probability": 0.22
+        },
+        {
+          "transformation": "contrast",
+          "probability": 0.04
+        },
+        {
+          "transformation": "gaussian_noise",
+          "probability": 0.05
+        },
+        {
+          "transformation": "horizontal_flip",
+          "probability": 0.05
+        },
+        {
+          "transformation": "rotation",
+          "probability": 0.05
+        },
+        {
+          "transformation": "background_blur",
+          "probability": 0.15
+        },
+        {
+          "transformation": "color_filter",
+          "probability": 0.08
+        },
+        {
+          "transformation": "background_color",
+          "probability": 0.23
+        },
+        {
+          "transformation": "object_removal",
+          "probability": 0.06
+        },
+        {
+          "transformation": "none",
+          "probability": 0.07
+        }
+      ]
+    }
+  },
+  {
+    "record_index": 9,
+    "image_id": "image_0009",
+    "image": "images/image_0009.jpg",
+    "question": "What is around the open window?",
+    "answer": "drapes",
+    "status": "success",
+    "decision": {
+      "transformation": "background_blur",
+      "parameters": {},
+      "target_object": null,
+      "preserve": [],
+      "reason": null,
+      "confidence": 0.14,
+      "probabilities": [
+        {
+          "transformation": "brightness",
+          "probability": 0.12
+        },
+        {
+          "transformation": "contrast",
+          "probability": 0.04
+        },
+        {
+          "transformation": "gaussian_noise",
+          "probability": 0.08
+        },
+        {
+          "transformation": "horizontal_flip",
+          "probability": 0.11
+        },
+        {
+          "transformation": "rotation",
+          "probability": 0.09
+        },
+        {
+          "transformation": "background_blur",
+          "probability": 0.23
+        },
+        {
+          "transformation": "color_filter",
+          "probability": 0.11
+        },
+        {
+          "transformation": "background_color",
+          "probability": 0.11
+        },
+        {
+          "transformation": "object_removal",
+          "probability": 0.06
+        },
+        {
+          "transformation": "none",
+          "probability": 0.05
+        }
+      ]
+    }
+  },
+  {
+    "record_index": 10,
+    "image_id": "image_0010",
+    "image": "images/image_0010.jpg",
+    "question": "What's around the window?",
+    "answer": "drapes",
+    "status": "success",
+    "decision": {
+      "transformation": "background_blur",
+      "parameters": {},
+      "target_object": null,
+      "preserve": [],
+      "reason": null,
+      "confidence": 0.13,
+      "probabilities": [
+        {
+          "transformation": "brightness",
+          "probability": 0.21
+        },
+        {
+          "transformation": "contrast",
+          "probability": 0.04
+        },
+        {
+          "transformation": "gaussian_noise",
+          "probability": 0.06
+        },
+        {
+          "transformation": "horizontal_flip",
+          "probability": 0.06
+        },
+        {
+          "transformation": "rotation",
+          "probability": 0.06
+        },
+        {
+          "transformation": "background_blur",
+          "probability": 0.22
+        },
+        {
+          "transformation": "color_filter",
+          "probability": 0.1
+        },
+        {
+          "transformation": "background_color",
+          "probability": 0.1
+        },
+        {
+          "transformation": "object_removal",
+          "probability": 0.07
+        },
+        {
+          "transformation": "none",
+          "probability": 0.08
+        }
+      ]
+    }
+  },
+  {
+    "record_index": 11,
+    "image_id": "image_0011",
+    "image": "images/image_0011.jpg",
+    "question": "Who is standing at the table?",
+    "answer": "woman",
+    "status": "success",
+    "decision": {
+      "transformation": "background_blur",
+      "parameters": {},
+      "target_object": null,
+      "preserve": [],
+      "reason": null,
+      "confidence": 0.29,
+      "probabilities": [
+        {
+          "transformation": "brightness",
+          "probability": 0.15
+        },
+        {
+          "transformation": "contrast",
+          "probability": 0.04
+        },
+        {
+          "transformation": "gaussian_noise",
+          "probability": 0.05
+        },
+        {
+          "transformation": "horizontal_flip",
+          "probability": 0.04
+        },
+        {
+          "transformation": "rotation",
+          "probability": 0.06
+        },
+        {
+          "transformation": "background_blur",
+          "probability": 0.36
+        },
+        {
+          "transformation": "color_filter",
+          "probability": 0.07
+        },
+        {
+          "transformation": "background_color",
+          "probability": 0.09
+        },
+        {
+          "transformation": "object_removal",
+          "probability": 0.05
+        },
+        {
+          "transformation": "none",
+          "probability": 0.09
+        }
+      ]
+    }
+  },
+  {
+    "record_index": 12,
+    "image_id": "image_0012",
+    "image": "images/image_0012.jpg",
+    "question": "Are there drapes to the right of the bed?",
+    "answer": "yes",
+    "status": "success",
+    "decision": {
+      "transformation": "background_blur",
+      "parameters": {},
+      "target_object": null,
+      "preserve": [],
+      "reason": null,
+      "confidence": 0.46,
+      "probabilities": [
+        {
+          "transformation": "brightness",
+          "probability": 0.15
+        },
+        {
+          "transformation": "contrast",
+          "probability": 0.02
+        },
+        {
+          "transformation": "gaussian_noise",
+          "probability": 0.04
+        },
+        {
+          "transformation": "horizontal_flip",
+          "probability": 0.03
+        },
+        {
+          "transformation": "rotation",
+          "probability": 0.04
+        },
+        {
+          "transformation": "background_blur",
+          "probability": 0.51
+        },
+        {
+          "transformation": "color_filter",
+          "probability": 0.04
+        },
+        {
+          "transformation": "background_color",
+          "probability": 0.07
+        },
+        {
+          "transformation": "object_removal",
+          "probability": 0.03
+        },
+        {
+          "transformation": "none",
+          "probability": 0.07
+        }
+      ]
+    }
+  },
+  {
+    "record_index": 13,
+    "image_id": "image_0013",
+    "image": "images/image_0013.jpg",
+    "question": "What is hanging above the chalkboard?",
+    "answer": "picture",
+    "status": "success",
+    "decision": {
+      "transformation": "brightness",
+      "parameters": {},
+      "target_object": null,
+      "preserve": [],
+      "reason": null,
+      "confidence": 0.08,
+      "probabilities": [
+        {
+          "transformation": "brightness",
+          "probability": 0.17
+        },
+        {
+          "transformation": "contrast",
+          "probability": 0.06
+        },
+        {
+          "transformation": "gaussian_noise",
+          "probability": 0.1
+        },
+        {
+          "transformation": "horizontal_flip",
+          "probability": 0.11
+        },
+        {
+          "transformation": "rotation",
+          "probability": 0.1
+        },
+        {
+          "transformation": "background_blur",
+          "probability": 0.11
+        },
+        {
+          "transformation": "color_filter",
+          "probability": 0.11
+        },
+        {
+          "transformation": "background_color",
+          "probability": 0.11
+        },
+        {
+          "transformation": "object_removal",
+          "probability": 0.05
+        },
+        {
+          "transformation": "none",
+          "probability": 0.08
+        }
+      ]
+    }
+  },
+  {
+    "record_index": 14,
+    "image_id": "image_0014",
+    "image": "images/image_0014.jpg",
+    "question": "Is the cake on a platter?",
+    "answer": "no",
+    "status": "success",
+    "decision": {
+      "transformation": "brightness",
+      "parameters": {},
+      "target_object": null,
+      "preserve": [],
+      "reason": null,
+      "confidence": 0.12,
+      "probabilities": [
+        {
+          "transformation": "brightness",
+          "probability": 0.21
+        },
+        {
+          "transformation": "contrast",
+          "probability": 0.03
+        },
+        {
+          "transformation": "gaussian_noise",
+          "probability": 0.05
+        },
+        {
+          "transformation": "horizontal_flip",
+          "probability": 0.05
+        },
+        {
+          "transformation": "rotation",
+          "probability": 0.05
+        },
+        {
+          "transformation": "background_blur",
+          "probability": 0.18
+        },
+        {
+          "transformation": "color_filter",
+          "probability": 0.08
+        },
+        {
+          "transformation": "background_color",
+          "probability": 0.11
+        },
+        {
+          "transformation": "object_removal",
+          "probability": 0.06
+        },
+        {
+          "transformation": "none",
+          "probability": 0.18
+        }
+      ]
+    }
+  },
+  {
+    "record_index": 15,
+    "image_id": "image_0015",
+    "image": "images/image_0015.jpg",
+    "question": "Is the person to the right of the cup wearing jeans?",
+    "answer": "yes",
+    "status": "success",
+    "decision": {
+      "transformation": "none",
+      "parameters": {},
+      "target_object": null,
+      "preserve": [],
+      "reason": null,
+      "confidence": 0.34,
+      "probabilities": [
+        {
+          "transformation": "brightness",
+          "probability": 0.24
+        },
+        {
+          "transformation": "contrast",
+          "probability": 0.03
+        },
+        {
+          "transformation": "gaussian_noise",
+          "probability": 0.07
+        },
+        {
+          "transformation": "horizontal_flip",
+          "probability": 0.04
+        },
+        {
+          "transformation": "rotation",
+          "probability": 0.04
+        },
+        {
+          "transformation": "background_blur",
+          "probability": 0.03
+        },
+        {
+          "transformation": "color_filter",
+          "probability": 0.03
+        },
+        {
+          "transformation": "background_color",
+          "probability": 0.07
+        },
+        {
+          "transformation": "object_removal",
+          "probability": 0.04
+        },
+        {
+          "transformation": "none",
+          "probability": 0.41
+        }
+      ]
+    }
+  },
+  {
+    "record_index": 16,
+    "image_id": "image_0016",
+    "image": "images/image_0016.jpg",
+    "question": "What device is sitting next to the mouse pad?",
+    "answer": "keyboard",
+    "status": "success",
+    "decision": {
+      "transformation": "none",
+      "parameters": {},
+      "target_object": null,
+      "preserve": [],
+      "reason": null,
+      "confidence": 0.16,
+      "probabilities": [
+        {
+          "transformation": "brightness",
+          "probability": 0.19
+        },
+        {
+          "transformation": "contrast",
+          "probability": 0.04
+        },
+        {
+          "transformation": "gaussian_noise",
+          "probability": 0.09
+        },
+        {
+          "transformation": "horizontal_flip",
+          "probability": 0.06
+        },
+        {
+          "transformation": "rotation",
+          "probability": 0.06
+        },
+        {
+          "transformation": "background_blur",
+          "probability": 0.07
+        },
+        {
+          "transformation": "color_filter",
+          "probability": 0.07
+        },
+        {
+          "transformation": "background_color",
+          "probability": 0.13
+        },
+        {
+          "transformation": "object_removal",
+          "probability": 0.05
+        },
+        {
+          "transformation": "none",
+          "probability": 0.24
+        }
+      ]
+    }
+  },
+  {
+    "record_index": 17,
+    "image_id": "image_0017",
+    "image": "images/image_0017.jpg",
+    "question": "Does the sweater look open and blue?",
+    "answer": "yes",
+    "status": "success",
+    "decision": {
+      "transformation": "none",
+      "parameters": {},
+      "target_object": null,
+      "preserve": [],
+      "reason": null,
+      "confidence": 0.08,
+      "probabilities": [
+        {
+          "transformation": "brightness",
+          "probability": 0.15
+        },
+        {
+          "transformation": "contrast",
+          "probability": 0.04
+        },
+        {
+          "transformation": "gaussian_noise",
+          "probability": 0.1
+        },
+        {
+          "transformation": "horizontal_flip",
+          "probability": 0.13
+        },
+        {
+          "transformation": "rotation",
+          "probability": 0.09
+        },
+        {
+          "transformation": "background_blur",
+          "probability": 0.09
+        },
+        {
+          "transformation": "color_filter",
+          "probability": 0.07
+        },
+        {
+          "transformation": "background_color",
+          "probability": 0.11
+        },
+        {
+          "transformation": "object_removal",
+          "probability": 0.05
+        },
+        {
+          "transformation": "none",
+          "probability": 0.17
+        }
+      ]
+    }
+  },
+  {
+    "record_index": 18,
+    "image_id": "image_0018",
+    "image": "images/image_0018.jpg",
+    "question": "Is the jacket long sleeved and black?",
+    "answer": "yes",
+    "status": "success",
+    "decision": {
+      "transformation": "background_blur",
+      "parameters": {},
+      "target_object": null,
+      "preserve": [],
+      "reason": null,
+      "confidence": 0.22,
+      "probabilities": [
+        {
+          "transformation": "brightness",
+          "probability": 0.25
+        },
+        {
+          "transformation": "contrast",
+          "probability": 0.02
+        },
+        {
+          "transformation": "gaussian_noise",
+          "probability": 0.04
+        },
+        {
+          "transformation": "horizontal_flip",
+          "probability": 0.04
+        },
+        {
+          "transformation": "rotation",
+          "probability": 0.03
+        },
+        {
+          "transformation": "background_blur",
+          "probability": 0.3
+        },
+        {
+          "transformation": "color_filter",
+          "probability": 0.05
+        },
+        {
+          "transformation": "background_color",
+          "probability": 0.13
+        },
+        {
+          "transformation": "object_removal",
+          "probability": 0.03
+        },
+        {
+          "transformation": "none",
+          "probability": 0.11
+        }
+      ]
+    }
+  },
+  {
+    "record_index": 19,
+    "image_id": "image_0019",
+    "image": "images/image_0019.jpg",
+    "question": "Are there beds next to the small outlet?",
+    "answer": "yes",
+    "status": "success",
+    "decision": {
+      "transformation": "background_blur",
+      "parameters": {},
+      "target_object": null,
+      "preserve": [],
+      "reason": null,
+      "confidence": 0.26,
+      "probabilities": [
+        {
+          "transformation": "brightness",
+          "probability": 0.18
+        },
+        {
+          "transformation": "contrast",
+          "probability": 0.02
+        },
+        {
+          "transformation": "gaussian_noise",
+          "probability": 0.04
+        },
+        {
+          "transformation": "horizontal_flip",
+          "probability": 0.04
+        },
+        {
+          "transformation": "rotation",
+          "probability": 0.03
+        },
+        {
+          "transformation": "background_blur",
+          "probability": 0.33
+        },
+        {
+          "transformation": "color_filter",
+          "probability": 0.04
+        },
+        {
+          "transformation": "background_color",
+          "probability": 0.1
+        },
+        {
+          "transformation": "object_removal",
+          "probability": 0.05
+        },
+        {
+          "transformation": "none",
+          "probability": 0.17
+        }
+      ]
+    }
+  },
+  {
+    "record_index": 20,
+    "image_id": "image_0020",
+    "image": "images/image_0020.jpg",
+    "question": "On which side of the picture is the leather bag?",
+    "answer": "right",
+    "status": "success",
+    "decision": {
+      "transformation": "background_blur",
+      "parameters": {},
+      "target_object": null,
+      "preserve": [],
+      "reason": null,
+      "confidence": 0.27,
+      "probabilities": [
+        {
+          "transformation": "brightness",
+          "probability": 0.18
+        },
+        {
+          "transformation": "contrast",
+          "probability": 0.03
+        },
+        {
+          "transformation": "gaussian_noise",
+          "probability": 0.04
+        },
+        {
+          "transformation": "horizontal_flip",
+          "probability": 0.07
+        },
+        {
+          "transformation": "rotation",
+          "probability": 0.05
+        },
+        {
+          "transformation": "background_blur",
+          "probability": 0.34
+        },
+        {
+          "transformation": "color_filter",
+          "probability": 0.06
+        },
+        {
+          "transformation": "background_color",
+          "probability": 0.1
+        },
+        {
+          "transformation": "object_removal",
+          "probability": 0.04
+        },
+        {
+          "transformation": "none",
+          "probability": 0.09
+        }
+      ]
+    }
+  },
+  {
+    "record_index": 21,
+    "image_id": "image_0021",
+    "image": "images/image_0021.jpg",
+    "question": "Is the blue pillow square and large?",
+    "answer": "no",
+    "status": "success",
+    "decision": {
+      "transformation": "none",
+      "parameters": {},
+      "target_object": null,
+      "preserve": [],
+      "reason": null,
+      "confidence": 0.43,
+      "probabilities": [
+        {
+          "transformation": "brightness",
+          "probability": 0.19
+        },
+        {
+          "transformation": "contrast",
+          "probability": 0.02
+        },
+        {
+          "transformation": "gaussian_noise",
+          "probability": 0.04
+        },
+        {
+          "transformation": "horizontal_flip",
+          "probability": 0.04
+        },
+        {
+          "transformation": "rotation",
+          "probability": 0.05
+        },
+        {
+          "transformation": "background_blur",
+          "probability": 0.03
+        },
+        {
+          "transformation": "color_filter",
+          "probability": 0.04
+        },
+        {
+          "transformation": "background_color",
+          "probability": 0.07
+        },
+        {
+          "transformation": "object_removal",
+          "probability": 0.03
+        },
+        {
+          "transformation": "none",
+          "probability": 0.49
+        }
+      ]
+    }
+  },
+  {
+    "record_index": 22,
+    "image_id": "image_0022",
+    "image": "images/image_0022.jpg",
+    "question": "Which color is the cake?",
+    "answer": "white",
+    "status": "success",
+    "decision": {
+      "transformation": "background_color",
+      "parameters": {},
+      "target_object": null,
+      "preserve": [],
+      "reason": null,
+      "confidence": 0.06,
+      "probabilities": [
+        {
+          "transformation": "brightness",
+          "probability": 0.13
+        },
+        {
+          "transformation": "contrast",
+          "probability": 0.04
+        },
+        {
+          "transformation": "gaussian_noise",
+          "probability": 0.08
+        },
+        {
+          "transformation": "horizontal_flip",
+          "probability": 0.1
+        },
+        {
+          "transformation": "rotation",
+          "probability": 0.09
+        },
+        {
+          "transformation": "background_blur",
+          "probability": 0.11
+        },
+        {
+          "transformation": "color_filter",
+          "probability": 0.1
+        },
+        {
+          "transformation": "background_color",
+          "probability": 0.15
+        },
+        {
+          "transformation": "object_removal",
+          "probability": 0.07
+        },
+        {
+          "transformation": "none",
+          "probability": 0.13
+        }
+      ]
+    }
+  },
+  {
+    "record_index": 23,
+    "image_id": "image_0023",
+    "image": "images/image_0023.jpg",
+    "question": "What is the name of the cooking utensil that is hang from the hook?",
+    "answer": "pan",
+    "status": "success",
+    "decision": {
+      "transformation": "background_blur",
+      "parameters": {},
+      "target_object": null,
+      "preserve": [],
+      "reason": null,
+      "confidence": 0.39,
+      "probabilities": [
+        {
+          "transformation": "brightness",
+          "probability": 0.17
+        },
+        {
+          "transformation": "contrast",
+          "probability": 0.02
+        },
+        {
+          "transformation": "gaussian_noise",
+          "probability": 0.03
+        },
+        {
+          "transformation": "horizontal_flip",
+          "probability": 0.03
+        },
+        {
+          "transformation": "rotation",
+          "probability": 0.05
+        },
+        {
+          "transformation": "background_blur",
+          "probability": 0.45
+        },
+        {
+          "transformation": "color_filter",
+          "probability": 0.06
+        },
+        {
+          "transformation": "background_color",
+          "probability": 0.1
+        },
+        {
+          "transformation": "object_removal",
+          "probability": 0.05
+        },
+        {
+          "transformation": "none",
+          "probability": 0.04
+        }
+      ]
+    }
+  },
+  {
+    "record_index": 24,
+    "image_id": "image_0024",
+    "image": "images/image_0024.jpg",
+    "question": "Where is the skinny person standing?",
+    "answer": "table",
+    "status": "success",
+    "decision": {
+      "transformation": "background_blur",
+      "parameters": {},
+      "target_object": null,
+      "preserve": [],
+      "reason": null,
+      "confidence": 0.28,
+      "probabilities": [
+        {
+          "transformation": "brightness",
+          "probability": 0.11
+        },
+        {
+          "transformation": "contrast",
+          "probability": 0.03
+        },
+        {
+          "transformation": "gaussian_noise",
+          "probability": 0.06
+        },
+        {
+          "transformation": "horizontal_flip",
+          "probability": 0.08
+        },
+        {
+          "transformation": "rotation",
+          "probability": 0.08
+        },
+        {
+          "transformation": "background_blur",
+          "probability": 0.35
+        },
+        {
+          "transformation": "color_filter",
+          "probability": 0.08
+        },
+        {
+          "transformation": "background_color",
+          "probability": 0.09
+        },
+        {
+          "transformation": "object_removal",
+          "probability": 0.05
+        },
+        {
+          "transformation": "none",
+          "probability": 0.07
+        }
+      ]
+    }
+  }
+]
