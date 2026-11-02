@@ -15,7 +15,12 @@ export CUDA_HOME=$CONDA_PREFIX
 export LD_LIBRARY_PATH=$CONDA_PREFIX/lib
 alias ld="ld -L $LD_LIBRARY_PATH"
 
-conda install pytorch torchvision torchaudio pytorch-cuda=12.1 -c pytorch -c nvidia
+conda install \
+  -c pytorch -c nvidia \
+  "pytorch::pytorch=2.5.1" \
+  "pytorch::torchvision=0.20.1" \
+  "pytorch::torchaudio=2.5.1" \
+  "pytorch-cuda=12.1"
 
 conda install pip
 unset PYTHONPATH
@@ -24,6 +29,8 @@ unset PYTHONPATH
 python -m pip install -r butterfly/req_base.txt
 
 python -m pip install vllm==0.6.4.post1
+
+python -m pip install astunparse
 
 # Need a GPU
 python -m pip install flash-attn --no-build-isolation

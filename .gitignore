@@ -5,8 +5,11 @@
 # gitignore template for Jupyter Notebooks
 # website: http://jupyter.org/
 
+*.out
+*.err
 .ipynb_checkpoints
 */.ipynb_checkpoints/*
+plots/
 
 # IPython
 profile_default/
