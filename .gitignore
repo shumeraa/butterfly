@@ -225,3 +225,7 @@ output/
 flagged/
 base_models/
 my_datasets/annotation_files/GQA/balanced_train_annotation.json
+
+llm_experiments/.env
+llm_experiments/images
+llm_experiments/outputs
