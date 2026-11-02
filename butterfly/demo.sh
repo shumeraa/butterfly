@@ -7,6 +7,8 @@
 #SBATCH -o viunit-demo.%j.out
 #SBATCH -e viunit-demo.%j.err
 
+source ~/.bashrc
+
 PROJECT=/work/11808/shumera/ls6/projects/butterfly
 cd "$PROJECT"
 
@@ -17,15 +19,6 @@ echo "=== Environment ==="
 which python
 python --version
 nvidia-smi
-
-# Install flash-attn if missing
-if ! python -c "import flash_attn" 2>/dev/null; then
-    echo "=== Installing flash-attn ==="
-
-    MAX_JOBS=4 python -m pip install \
-        flash-attn \
-        --no-build-isolation
-fi
 
 # Verify installation
 python -c "import flash_attn; print('flash-attn installed')"

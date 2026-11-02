@@ -7,6 +7,8 @@
 #SBATCH -o viunit-demo-simple.%j.out
 #SBATCH -e viunit-demo-simple.%j.err
 
+source ~/.bashrc
+
 PROJECT=/work/11808/shumera/ls6/projects/butterfly
 cd "$PROJECT"
 
@@ -18,15 +20,6 @@ which python
 python --version
 nvidia-smi
 
-# Install flash-attn if missing
-if ! python -c "import flash_attn" 2>/dev/null; then
-    echo "=== Installing flash-attn ==="
-
-    MAX_JOBS=4 python -m pip install \
-        flash-attn \
-        --no-build-isolation
-fi
-
 # Verify installation
 python -c "import flash_attn; print('flash-attn installed')"
 
@@ -34,8 +27,9 @@ python -c "import flash_attn; print('flash-attn installed')"
 python -c "import torch; assert torch.cuda.is_available(), 'CUDA unavailable'; print(torch.cuda.get_device_name(0))"
 
 echo "=== Running ViUniT demo ==="
-python -u "$PROJECT/butterfly/demo_simple.py" \
-    --image /work/11808/shumera/ls6/butterfly_shared_resources/datasets/coco/val2017/000000482319.jpg \
-    --question "How many people are in the image?"
+python /work/11808/shumera/ls6/projects/butterfly/butterfly/demo_simple.py \
+  --num-tests 2 \
+  --steps 25 \
+  --output-dir plots/simple_unit_tests
 
 echo "=== Finished ==="
