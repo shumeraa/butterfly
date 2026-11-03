@@ -9,6 +9,7 @@ import os
 from pathlib import Path
 import random
 import re
+import shutil
 from datetime import datetime, timezone
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -98,6 +99,27 @@ def parse_prediction(raw):
         return None, str(exc)
 
 
+def parse_for_review(raw, allow_json_wrapper=False):
+    """Optionally accept a single JSON object after prose or inside a code fence."""
+    parsed, strict_error = parse_prediction(raw)
+    if parsed is not None or not allow_json_wrapper or not isinstance(raw, str):
+        return parsed, strict_error, ''
+    start = raw.find('{')
+    if start < 0:
+        return None, strict_error, ''
+    try:
+        _, end = json.JSONDecoder(object_pairs_hook=unique_object).raw_decode(raw[start:])
+    except ValueError:
+        return None, strict_error, ''
+    # Do not choose between multiple objects or discard trailing commentary.
+    if raw[start + end:].strip() not in ('', '```'):
+        return None, strict_error, ''
+    parsed, error = parse_prediction(raw[start:start + end])
+    if parsed is None:
+        return None, error, ''
+    return parsed, '', f'JSON wrapper accepted explicitly; strict parser error: {strict_error}'
+
+
 def expected_answer(answer, relation):
     if relation == 'unsafe':
         return '', ''
@@ -139,22 +161,31 @@ def write_csv(path, rows, fields):
         writer.writerows(rows)
 
 
-def export_review(output, records, responses):
+def export_review(output, records, responses, *, allow_json_wrapper=False, exported_images=None):
     from PIL import Image
     rows = []
     sections = []
     (output / 'images').mkdir()
     for index, (record, response) in enumerate(zip(records, responses)):
-        parsed, error = parse_prediction(response['raw_response'])
+        parsed, error, format_warning = parse_for_review(response['raw_response'], allow_json_wrapper)
         response.update(parsed=parsed, prediction_error=error)
+        if allow_json_wrapper:
+            response.update(strict_prediction_error=parse_prediction(response['raw_response'])[1],
+                            format_warning=format_warning)
         original_path = f'images/{index:03d}_original.png'
-        with Image.open(record['source_image']) as source:
-            original = source.convert('RGB')
-        original.save(output / original_path)
-        transformed = transform_images(original, record['noise_seed'])
+        if exported_images is not None:
+            shutil.copyfile(exported_images / Path(original_path).name, output / original_path)
+        else:
+            with Image.open(record['source_image']) as source:
+                original = source.convert('RGB')
+            original.save(output / original_path)
+            transformed = transform_images(original, record['noise_seed'])
         for name in TRANSFORMS:
             transformed_path = f'images/{index:03d}_{name}.png'
-            transformed[name].save(output / transformed_path)
+            if exported_images is not None:
+                shutil.copyfile(exported_images / Path(transformed_path).name, output / transformed_path)
+            else:
+                transformed[name].save(output / transformed_path)
             entry = parsed[name] if parsed else {'relation': '', 'reason': ''}
             expected, mapping_error = expected_answer(record['answer'], entry['relation'])
             prediction_error = error or mapping_error
@@ -167,6 +198,8 @@ def export_review(output, records, responses):
                        status='incorrect' if prediction_error else ('uncertain' if abstain else ''),
                        review_note=('Abstention: model returned unsafe.' if abstain else
                                     ('Invalid prediction: ' + prediction_error if prediction_error else '')))
+            if format_warning:
+                row['review_note'] = (row['review_note'] + ' ' + format_warning).strip()
             rows.append(row)
             e = lambda v: html.escape(str(v), quote=True)
             sections.append(f'<section><h2>Row {len(rows)}: {e(record["image_id"])} / {e(name)}</h2>'
@@ -174,6 +207,7 @@ def export_review(output, records, responses):
                             f'<p>GQA answer: {e(record["answer"])} | Relation: {e(entry["relation"])}'
                             f' | Expected transformed answer: {e(expected)}</p>'
                             f'<p>Reason: {e(entry["reason"])} | Error: {e(prediction_error)}</p>'
+                            f'<p>{e(format_warning)}</p>'
                             f'<figure><img loading="lazy" src="{original_path}"><figcaption>Original</figcaption></figure>'
                             f'<figure><img loading="lazy" src="{transformed_path}"><figcaption>{e(name)}</figcaption></figure></section>')
     write_csv(output / 'review.csv', rows, FIELDS)
@@ -190,7 +224,43 @@ def export_review(output, records, responses):
     write_json(output / 'predictions.json', responses)
 
 
-def predict(args):
+def rebuild_review(args):
+    """Re-export saved responses into a fresh folder without making model calls."""
+    if args.output.exists():
+        raise ValueError(f'Output already exists; choose a fresh directory: {args.output}')
+    records = json.loads((args.input / 'sampled_records.json').read_text(encoding='utf-8'))
+    responses = json.loads((args.input / 'predictions.json').read_text(encoding='utf-8'))
+    if not records or len(records) != len(responses):
+        raise ValueError('Saved records and responses must be nonempty and have matching lengths')
+    exported_images = args.input / 'images'
+    reuse_images = all((exported_images / f'{i:03d}_{name}.png').is_file()
+                       for i in range(len(records)) for name in ('original', *TRANSFORMS))
+    for record, response in zip(records, responses):
+        if any(record[k] != response[k] for k in ('image_id', 'question_id')):
+            raise ValueError('Saved response IDs do not match sampled records')
+        if not reuse_images and not Path(record['source_image']).is_file():
+            raise ValueError(f'Missing selected image: {record["source_image"]}; '
+                             'provide the complete exported images folder or rebuild where the dataset is available')
+    settings = json.loads((args.input / 'settings.json').read_text(encoding='utf-8'))
+    settings['review_rebuild'] = dict(source=str(args.input.resolve()),
+                                    rebuilt_at=datetime.now(timezone.utc).isoformat(),
+                                    allow_json_wrapper=args.allow_json_wrapper,
+                                    reused_exported_images=reuse_images,
+                                    note='Fresh review labels; original run and raw responses preserved.')
+    args.output.mkdir(parents=True)
+    write_json(args.output / 'sampled_records.json', records)
+    write_json(args.output / 'settings.json', settings)
+    if (args.input / 'prompts.json').is_file():
+        write_json(args.output / 'prompts.json', json.loads(
+            (args.input / 'prompts.json').read_text(encoding='utf-8')))
+    export_review(args.output, records, responses, allow_json_wrapper=args.allow_json_wrapper,
+                  exported_images=exported_images if reuse_images else None)
+    recovered = sum(bool(r.get('format_warning')) for r in responses)
+    print(f'Rebuilt {len(records) * 6} review rows in {args.output}; '
+          f'accepted wrappers in {recovered}/{len(responses)} responses. Review labels start fresh.')
+
+
+def prepare_records(args):
     if args.images is None:
         raise ValueError('Set GQA_IMAGE_PATH (source butterfly/start_env.sh) or pass --images')
     annotations = json.loads(args.annotations.read_text(encoding='utf-8'))
@@ -204,6 +274,11 @@ def predict(args):
         record['source_image'] = str(source.resolve())
     if args.output.exists():
         raise ValueError(f'Output already exists; choose a fresh directory: {args.output}')
+    return records
+
+
+def predict(args):
+    records = prepare_records(args)
     import torch
     if not torch.cuda.is_available():
         raise RuntimeError('predict requires a GPU compute node; do not run models on a laptop/login node')
@@ -256,6 +331,12 @@ def main():
     p.add_argument('--seed', type=int, default=42)
     p.add_argument('--max-tokens', type=int, default=1024)
     p.set_defaults(func=predict)
+    p = commands.add_parser('rebuild-review', help='Re-export saved predictions without running a model')
+    p.add_argument('--input', type=Path, required=True)
+    p.add_argument('--output', type=Path, required=True)
+    p.add_argument('--allow-json-wrapper', action='store_true',
+                   help='Explicitly accept a single JSON object after introductory prose or in a code fence')
+    p.set_defaults(func=rebuild_review)
     args = parser.parse_args()
     try:
         args.func(args)
