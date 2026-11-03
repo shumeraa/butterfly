@@ -343,6 +343,60 @@ python -m scripts.preview_transforms 'assets/ViUnit Demo.png' outputs/transform_
 The preview downsizes the source before filtering, so its pixel-based blur radius
 is measured at preview resolution.
 
+### High-level filters for the reliability prompt
+
+`image_transforms.high_level` wraps the low-level functions with the exact six
+keys and fixed strengths in `PROMPT` in
+`origin/llm_reliability_experiment:butterfly/gqa_transform_pilot/gqa_transform_pilot.py`
+(commit `fdcab4c`). Python modules are the primary interface:
+
+```python
+from image_transforms import HIGH_LEVEL_TRANSFORMS, apply_transform, transform_images
+
+# One operation, using an exact prompt key.
+blurred = apply_transform(image, 'blur')
+noisy = apply_transform(image, 'noise', seed=42)
+
+# All six variants independently start from image, not from the previous variant.
+variants = transform_images(image, seed=42)
+flipped = variants['horizontal_flip']
+```
+
+| Key | Low-level operation |
+| --- | --- |
+| `horizontal_flip` | `flip(image, 'left')` |
+| `vertical_flip` | `flip(image, 'up')` |
+| `rotate_180` | `rotate(image, 180)` |
+| `grayscale` | `color_filter(image, 'grayscale')` (luminance grayscale) |
+| `blur` | `blur(image, 2)` (radius in pixels) |
+| `noise` | `noise(image, 0.05, seed=seed)` (RGB standard deviation 12.75) |
+
+The six named functions are also available directly in `image_transforms.high_level`,
+e.g. `high_level.blur(image)`. The existing top-level low-level functions still
+require their original parameters, so `image_transforms.blur(image, radius)` and
+`image_transforms.noise(image, amount, seed=...)` are unchanged.
+
+`transform_images` returns an ordered dict keyed by `HIGH_LEVEL_TRANSFORMS`.
+Pass the pilot's per-image `noise_seed` to reproduce its images; omitting the
+seed gives fresh noise. Seeds affect only noise. Unknown names raise `ValueError`;
+these functions do not parse LLM text/JSON, infer operations, or map answers.
+That processing belongs in the calling pipeline.
+
+For the reliability pilot, replace its local `transform_images` helper with
+`from image_transforms import transform_images` after bringing this package into
+that branch. Its existing RGB input/export path produces the same pixels.
+The new API also preserves RGBA alpha according to the low-level conventions;
+pass `image.convert('RGB')` explicitly to reproduce the old helper's RGB-only
+behavior for transparent inputs. These six filters use only Pillow and NumPy;
+SAM masking remains a separate operation.
+
+A thin CLI wrapper is available for manual smoke tests:
+
+```bash
+python -m image_transforms input.png output.png apply horizontal_flip
+python -m image_transforms input.png output.png apply noise --seed 42
+```
+
 ### Mask objects by word
 
 Install `requirements-masking.txt` to enable Grounding DINO + SAM:

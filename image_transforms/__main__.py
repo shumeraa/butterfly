@@ -4,7 +4,8 @@ from pathlib import Path
 
 from PIL import Image, ImageOps
 
-from . import GroundedSAM, mask_objects, COLOR_PRESETS, blur, color_filter, flip, hsv, noise, rotate
+from . import (HIGH_LEVEL_TRANSFORMS, GroundedSAM, apply_transform, mask_objects,
+               COLOR_PRESETS, blur, color_filter, flip, hsv, noise, rotate)
 
 
 def main(argv=None):
@@ -12,6 +13,9 @@ def main(argv=None):
     parser.add_argument('input', type=Path)
     parser.add_argument('output', type=Path, help='Use PNG to preserve alpha and exact pixels')
     commands = parser.add_subparsers(dest='transform', required=True)
+    high_level = commands.add_parser('apply', help='Apply a fixed-parameter reliability-prompt transform')
+    high_level.add_argument('name', choices=HIGH_LEVEL_TRANSFORMS)
+    high_level.add_argument('--seed', type=int, help='Reproducible noise seed (ignored by other transforms)')
     commands.add_parser('flip').add_argument('direction', choices=('up', 'left'))
     rotation = commands.add_parser('rotate')
     rotation.add_argument('angle', type=float)
@@ -34,7 +38,9 @@ def main(argv=None):
     try:
         with Image.open(args.input) as source:
             image = ImageOps.exif_transpose(source)
-            if args.transform == 'flip':
+            if args.transform == 'apply':
+                result = apply_transform(image, args.name, seed=args.seed)
+            elif args.transform == 'flip':
                 result = flip(image, args.direction)
             elif args.transform == 'rotate':
                 result = rotate(image, args.angle, expand=not args.no_expand)
