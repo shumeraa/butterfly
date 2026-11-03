@@ -15,31 +15,75 @@ from datetime import datetime, timezone
 ROOT = Path(__file__).resolve().parents[2]
 TRANSFORMS = ('horizontal_flip', 'vertical_flip', 'rotate_180', 'grayscale', 'blur', 'noise')
 RELATIONS = {'same', 'swap_left_right', 'swap_up_down', 'swap_both', 'flip_yes_no', 'unsafe'}
-PROMPT = '''You help create tests for a visual question answering system. For the question below,
-give a relation for EACH of the six image transformations, describing how the correct
-answer would change. The question stays the same; only the image is transformed.
+PROMPT = '''Given a question, predict how its CORRECT ANSWER should change under
+each image transformation. The question remains exactly unchanged.
+
+You receive only the question, not the image or original answer.
+Choose a relation justified by the question and transformation without
+assuming additional scene content.
+
+Predict the correct answer's semantic change. Do not predict whether
+a particular model will become confused or make recognition errors.
 
 Transformations:
 - horizontal_flip: mirrors the image left-to-right
 - vertical_flip: mirrors the image top-to-bottom
 - rotate_180: rotates the image by 180 degrees
-- grayscale: removes all color
+- grayscale: converts colors to grayscale
 - blur: Gaussian blur, radius 2 pixels
 - noise: Gaussian noise, standard deviation 0.05 x 255
 
-Relations:
-- same: the answer stays the same
-- swap_left_right: "left" and "right" are swapped in the answer
-- swap_up_down: "up/down", "above/below", "top/bottom", "upper/lower" are swapped
-- swap_both: both of the above
-- flip_yes_no: "yes" becomes "no" and "no" becomes "yes"
-- unsafe: you cannot predict the effect reliably
+Choose exactly one relation per transformation:
+- same: preserve the original answer text
+- swap_left_right: replace left with right and right with left IN THE ANSWER
+- swap_up_down: exchange up/down, above/below, top/bottom,
+  and upper/lower IN THE ANSWER
+- swap_both: apply both directional substitutions IN THE ANSWER
+- flip_yes_no: negate the answer: yes becomes no, and no becomes yes
+- unsafe: no reliable answer mapping can be inferred
 
-Use "unsafe" if the answer is an object or other open-ended thing that would change
-unpredictably, if the question mixes several conditions, or if you are unsure.
-It is always an acceptable answer.
+Decision rules:
+
+1. Identify what the question asks the answer to express:
+   object identity, color, existence, direction, attribute, etc.
+
+2. Distinguish a direction requested AS THE ANSWER from a direction
+   used TO SELECT AN OBJECT.
+   - "Which side is the dog on, left or right?" requests a direction.
+   - "What color is the dog on the left?" uses direction to select a dog.
+     A horizontal flip can select a different dog. Its color is unknown,
+     so use unsafe, not swap_left_right.
+
+3. Choose directional swaps based on the answer components that change,
+   not merely the axes affected by the image transformation.
+   - Under rotate_180, left/right answers use swap_left_right.
+   - Under rotate_180, top/bottom answers use swap_up_down.
+   - Use swap_both only when the answer requires both substitutions.
+
+4. Use flip_yes_no only when the transformation logically negates
+   the proposition in both directions. Recognition difficulty does
+   not imply negation. A reversed spatial relation is not necessarily
+   its logical complement: objects may be absent, aligned, or multiple.
+
+5. Flips and rotations preserve object presence, identity, color,
+   and intrinsic size unless the question's reference or requested
+   property depends on image orientation.
+   An unusual or upside-down appearance alone does not justify unsafe.
+
+6. For grayscale, distinguish color-dependent questions or references
+   from questions answerable using shape, presence, or geometry.
+   Use unsafe when losing color prevents a reliable answer mapping.
+
+7. For blur and noise, consider whether the requested information
+   depends on fine details. Do not abstain solely because any
+   degradation might hypothetically confuse a model.
+
+8. Multiple conditions or an open-ended answer do not automatically
+   require unsafe. Use unsafe when a relevant condition or referent
+   changes in a way whose answer cannot be inferred.
 
 Respond with a JSON object only, with one entry per transformation.
+Do not include Markdown code fences, introductory text, or trailing commentary.
 Each entry must contain "relation" and a short "reason".
 Use exactly the six transformation keys listed above; each value must be an object
 with exactly the fields "relation" (an allowed relation string) and "reason" (a string).
