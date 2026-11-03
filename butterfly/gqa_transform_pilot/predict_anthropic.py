@@ -39,6 +39,7 @@ def predict(args):
                     images=str(args.images.resolve()), sample_size=args.sample_size,
                     sampling_seed=args.seed, max_tokens=args.max_tokens,
                     thinking={'type': 'disabled'}, timeout_seconds=120, max_retries=2,
+                    allow_json_wrapper=True,
                     note='Seed controls dataset sampling and noise only; API output is not deterministic.',
                     blur_radius=2, noise_amount=.05, noise_stddev=12.75,
                     versions={p: importlib.metadata.version(p) for p in ('anthropic', 'Pillow', 'numpy')})
@@ -62,14 +63,16 @@ def predict(args):
                                    f'{len(responses)} completed responses are saved in {args.output}. '
                                    'Check your API key, model access, billing, and network.') from None
             raw = ''.join(block.text for block in message.content if block.type == 'text')
-            parsed, error = pilot.parse_prediction(raw)
+            parsed, error, warning = pilot.parse_for_review(raw, allow_json_wrapper=True)
+            _, strict_error = pilot.parse_prediction(raw)
             responses.append(dict(**prompt, raw_response=raw, parsed=parsed, prediction_error=error,
+                                  strict_prediction_error=strict_error, format_warning=warning,
                                   finish_reason=message.stop_reason, response_id=message.id,
                                   model=message.model, usage=message.usage.model_dump(mode='json'),
                                   api_response=message.model_dump(mode='json')))
             pilot.write_json(args.output / 'predictions.json', responses)
             print(f'Completed {index}/{len(records)}' + (' (malformed response)' if error else ''), flush=True)
-    pilot.export_review(args.output, records, responses)
+    pilot.export_review(args.output, records, responses, allow_json_wrapper=True)
     print(f'Review {len(records) * 6} cases in {args.output / "review.html"}; edit review.csv', flush=True)
 
 
