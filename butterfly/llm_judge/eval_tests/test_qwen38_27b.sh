@@ -7,9 +7,7 @@
 #SBATCH -t 00:25:00
 #SBATCH -o qwen38-27b-test.%j.out
 #SBATCH -e qwen38-27b-test.%j.err
-#SBATCH --gres=gpu:2
 #SBATCH --cpus-per-task=8
-#SBATCH --mem=96G
 
 # Text inference smoke test, not a benchmark suite. Requires two A100
 # 40GB/80GB GPUs, with vLLM BF16 inference and tensor parallelism of 2.
