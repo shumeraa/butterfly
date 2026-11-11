@@ -3,6 +3,7 @@
 #SBATCH -p gpu-a100-dev
 #SBATCH -N 1
 #SBATCH -n 1
+#SBATCH -A CCR26069
 #SBATCH -t 00:25:00
 #SBATCH -o qwen38-27b-test.%j.out
 #SBATCH -e qwen38-27b-test.%j.err
