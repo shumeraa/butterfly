@@ -38,7 +38,7 @@ set -eo pipefail
 # directory. Set QWEN_SCRIPT_DIR when submitting from a different directory.
 SCRIPT_DIR="${QWEN_SCRIPT_DIR:-${SLURM_SUBMIT_DIR:-$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)}}"
 PYTHON_SCRIPT="$SCRIPT_DIR/test_qwen38_27b.py"
-START_ENV="${BUTTERFLY_START_ENV:-$SCRIPT_DIR/../../start_env.sh}"
+START_ENV="${BUTTERFLY_START_ENV:-$SCRIPT_DIR/start_env.sh}"
 if [[ ! -f "$START_ENV" ]]; then
     echo "Missing project environment script: $START_ENV. Set BUTTERFLY_START_ENV to its path." >&2
     exit 1
