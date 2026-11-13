@@ -1,18 +1,6 @@
 
 #!/bin/bash
 
-# Initialize Conda for non-interactive shells
-source "$(conda info --base)/etc/profile.d/conda.sh"
-conda activate /work/11808/shumera/ls6/conda/envs/qwen_env
-
-# Compiler configuration
-export CC=gcc
-export CXX=g++
-
-# CUDA configuration
-export CUDA_HOME="$CONDA_PREFIX"
-export PATH="$CONDA_PREFIX/bin:$PATH"
-
 # Model and dataset paths
 export PRETRAINED_MODELS_PATH=/work/11808/shumera/ls6/butterfly_shared_resources/models
 export GQA_IMAGE_PATH=/work/11808/shumera/ls6/butterfly_shared_resources/datasets/gqa/images
