@@ -45,11 +45,15 @@ def sample_questions(data, seed):
     counts = {name: len(groups[name]) for name in sorted(groups)}
     print(json.dumps(counts, indent=2))
     sparse = [name for name, count in counts.items() if count < 2]
-    if sparse:
-        raise ValueError('Types with fewer than two questions: ' + ', '.join(sparse))
+    for name in sparse:
+        print(f'Ignoring type {name}: {counts[name]} question(s); at least 2 required.')
+    if len(sparse) == len(groups):
+        raise ValueError('No eligible types remain: every type has fewer than two questions')
     rng = random.Random(seed)
     rows = []
     for name in sorted(groups):
+        if counts[name] < 2:
+            continue
         for qid in sorted(rng.sample(sorted(groups[name]), 2)):
             rows.append({'id': qid, 'detailed_type': name, 'question': data[qid]['question']})
     return rows, counts
@@ -73,6 +77,7 @@ def main():
         save_jsonl(sample, rows)
         save_json(summary, {'dataset': str(dataset), 'dataset_sha256': hashlib.sha256(payload).hexdigest(),
                             'seed': args.seed, 'type_counts': counts, 'sample_size': len(rows),
+                            'skipped_types': {name: count for name, count in counts.items() if count < 2},
                             'selected_ids': {name: [r['id'] for r in rows if r['detailed_type'] == name] for name in counts},
                             'sample_sha256': hashlib.sha256(sample.read_bytes()).hexdigest()})
         print(f'Saved {len(rows)} questions to {sample}')
