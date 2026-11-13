@@ -325,6 +325,7 @@ python -m image_transforms input.png adjusted.png hsv --delta-h 30 --delta-s -0.
 | `blur` | Nonnegative Gaussian radius in pixels. |
 | `noise` | Gaussian standard deviation in `[0, 1]` relative to the full RGB range; optional nonnegative integer seed. Noise is independent per pixel/channel, then clipped. |
 | `hsv` | Additive hue delta in degrees, saturation/value deltas in `[-1, 1]`. Hue wraps; saturation/value clamp to `[0, 1]`. Brightness uses HSV value. |
+| Python-only `scale` | Positive independent X/Y factors; omit Y for uniform scaling. Dimensions round to the nearest integer, at least one pixel. Bicubic interpolation resizes pixels and alpha together. A shared primitive, **not** exposed in the six-filter MR1 registry or CLI. |
 
 Color operations convert to RGB or RGBA and preserve alpha unchanged. Flips and
 rotations transform alpha with the image. Grayscale and other non-RGB modes are
@@ -429,5 +430,110 @@ To bundle the package and dependencies for Colab, run
 `python -m scripts.export_colab_bundle`. The ZIP is written to
 `outputs/butterfly-transforms-colab.zip`.
 
-Local tests cover mask filling. Actual model inference and segmentation quality
-still need verification on a GPU.
+Local unit tests use synthetic/mocked masks and require only Pillow and NumPy.
+Actual model inference is a separate GPU smoke test; detection and segmentation
+quality must still be checked for the intended dataset.
+
+### MR2: segment, reuse a transform, composite back
+
+`transform_masked` accepts an explicit boolean `[H, W]` mask and an existing
+transform **callable**. It does not reimplement the MR1 filters. Segment once and
+reuse that mask for independent variants:
+
+```python
+from PIL import Image, ImageOps
+from image_transforms import GroundedSAM, hsv, scale, transform_masked
+from image_transforms import high_level
+
+with Image.open('input.png') as source:
+    image = ImageOps.exif_transpose(source).convert('RGB')
+segmenter = GroundedSAM(device='cuda')
+masks = segmenter.segment_instances(image, 'person')  # boolean [N, H, W]
+if not len(masks):
+    raise ValueError('No person detected; skip this source')
+mask = masks[0]  # Inspect masks first; detector order is not a semantic identity.
+
+variants = {
+    'local_grayscale': transform_masked(image, mask, high_level.grayscale),
+    'local_blur': transform_masked(image, mask, high_level.blur),
+    'local_noise': transform_masked(image, mask, high_level.noise, seed=42),
+    'local_color': transform_masked(image, mask, hsv, delta_h=30),
+    'local_brightness': transform_masked(image, mask, hsv, delta_v=.1),
+    'local_flip': transform_masked(
+        image, mask, high_level.horizontal_flip, geometry=True, fill='white'),
+    'taller_person': transform_masked(
+        image, mask, scale, geometry=True, scale_x=1, scale_y=1.25,
+        anchor='bottom_center', fill='white'),
+}
+for name, result in variants.items():
+    result.save(f'{name}.png')
+```
+
+All outputs preserve the scene canvas dimensions. `scale_x` changes object width;
+`scale_y` changes height. Omitting `scale_y` uses the X factor for both axes.
+Scaling remains a low-level primitive, not another MR1 prompt key.
+
+**Appearance mode** (the default) transforms a copy of the full image, then copies
+only selected pixels back. Dimensions and alpha must be preserved; outside-mask
+pixels remain byte-identical. Blur can sample background across mask boundaries;
+this is not mask-normalized blur. Blur/noise perturb detail, not replace texture.
+
+**Geometry mode** (`geometry=True`) extracts a tight RGBA object layer and passes
+it to the existing flip/rotate/scale callable. Transparent areas of the bounding
+box do not carry scene background into the edit. Pixels and alpha move together.
+Placement uses a named anchor (`center` by default); `bottom_center` keeps a
+person's feet at the original bottom edge, subject to integer rounding. The nine
+anchors are top/center/bottom crossed with left/center/right, using `center` for
+the middle and e.g. `top_left`, `center_right`, or `bottom_center` elsewhere.
+Known geometric callables (including `functools.partial` wrappers) require
+`geometry=True`, avoiding an accidental full-scene flip copied into a local mask.
+For custom callable wrappers, the caller must choose the correct mode explicitly.
+Visible clipping raises an error unless `allow_clipping=True`.
+
+**Exposed old-object pixels are not silently retained.** If the new object does
+not fully cover the original mask (including partial-alpha coverage), geometry
+requires one of:
+
+- `background=clean_background`: a full-size Pillow image of the scene without
+  the object. Only pixels inside the original mask are copied from it.
+- `fill='white'` (or another Pillow color): explicit non-photorealistic filling
+  of the original mask before compositing. The examples above use this policy.
+
+Without either, such edits raise `ValueError`. There is no automatic inpainting,
+clean-background recovery, or depth-aware occlusion. New object pixels can cover
+other scene objects; review geometric outputs accordingly. Imperfect segmentation
+can leave original-object outlines outside the mask; inspect/refine masks before
+using geometry. A passing composition test does not establish mask quality.
+
+For one-off edits, `transform_objects` performs segmentation and then delegates
+to the same compositor:
+
+```python
+from image_transforms import transform_objects
+
+result = transform_objects(
+    image, 'person', scale, segmenter=segmenter, instance=0,
+    geometry=True, scale_x=1, scale_y=1.25,
+    anchor='bottom_center', fill='white',
+)
+```
+
+With `instance=None`, appearance edits apply to the union of all matches, as
+`mask_objects` does. Geometry requires an explicit instance index when multiple
+objects match, rather than stretching their combined arrangement. An explicit
+index outside the detections raises `ValueError`; no detections with
+`instance=None` return an unchanged copy. Empty explicit masks also return a copy
+without invoking the transform. Callers should record these no-target cases as
+skipped rather than successful perturbations.
+
+`GroundedSAM.segment()` retains its original union-mask contract;
+`segment_instances()` exposes individual masks before unioning. Phrase-based
+spatial targeting is not guaranteed: inspect the instance masks, then select an
+index or supply an explicit mask. A partial mask can also select just part of an
+object. These composition APIs and `scale` do not import Torch/Transformers until
+a segmentation backend is constructed. Python is the interface for object edits;
+the existing CLI and six-filter reliability-prompt contract are unchanged.
+
+Finally, an edit is not automatically answer-preserving. Select or relabel VQA
+cases according to whether the changed color, texture, geometry, or visibility
+is relevant to the question.
