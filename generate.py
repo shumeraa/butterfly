@@ -36,6 +36,7 @@ from utils import (load_config,
 from my_datasets import get_dataset_class
 from unit_test_generation.processing import extract_unit_tests, get_unit_test_prompt, get_grounded_diffusion_prompt
 from unit_test_generation.unit_test_sampling import TextSampler
+from unit_test_generation.suites import build_suite, invalidate_suite_cache, suite_settings, uses_viunit
 from accuracy_fns import get_accuracy_fn
 from functools import partial
 
@@ -131,6 +132,7 @@ args = parser.parse_args()
 this_config = load_config(
     args.base_path, args.config_path, args.config_options)
 
+suite_settings(this_config)  # Validate the suite before loading models.
 set_seed(this_config['seed'])
 
 ## TASK SETUP ## 
@@ -203,6 +205,9 @@ if this_config['do_unit_test'] and args.unit_test_path:
     unit_test_data = pickle.load(open(args.unit_test_path, 'rb'))
     for i, d in enumerate(dataset.data):
         dataset.data[i]['unit_tests'] = unit_test_data[i]['unit_tests']
+        for field in ('unit_test_suite_key', 'unit_test_metadata'):
+            if field in unit_test_data[i]:
+                dataset.data[i][field] = unit_test_data[i][field]
         if args.load_selected:
             dataset.data[i]['selected_unit_tests'] = unit_test_data[i]['selected_unit_tests']
             if args.load_images:
@@ -213,6 +218,9 @@ if this_config['do_unit_test'] and args.unit_test_path:
 num_gpus = torch.cuda.device_count()                       
 num_cpus = torch.cuda.device_count() * 8
 
+if this_config['do_unit_test']:
+    invalidate_suite_cache(dataset, this_config)
+
 ## SETUP ENGINES ##
 if this_config['llm_engine'] == 'vllm':
     engine_path = 'python llm_generation_engines/vllm_engine.py'
@@ -220,7 +228,7 @@ else:
     engine_path = 'accelerate launch llm_generation_engines/hf_engine.py'
       
 ## SETUP PROMPTS and TOKENIZERS ##
-if this_config['do_unit_test']:
+if this_config['do_unit_test'] and uses_viunit(this_config):
     # unit test generation
     unit_test_system_prompt = open(
         this_config['unit_test_generation']['generation']['prompt_file']).read()
@@ -386,209 +394,217 @@ for iter in range(start_iter, this_config['execution']['feedback_max_iters']):
     
     
     if this_config['do_unit_test']:
-        ### Generate candidate unit tests ###
-        if this_config['unit_test_generation']['use_program'] and \
-            ('unit_tests' not in dataset.data[0] or \
-                not any([iter in dataset.data[idx]['unit_tests'] for idx in range(len(dataset))])):
-                formatted_inputs = {'text': [], 'index': []}
-                for i, d in enumerate(dataset):
-                    if iter in d['generated_code']:
-                        formatted_inputs['text'].extend(
-                            get_unit_test_prompt([d['text']]* len(d['generated_code'][iter]),
-                                                    unit_test_system_prompt,
-                                                    unit_test_in_context_examples, 
-                                                    this_config['unit_test_generation']['model_name'], 
-                                                    unit_test_tokenizer, 
-                                                    program=[extract_python_code(p) for p in d['generated_code'][iter]]
-                                                    )
-                            )
-                        formatted_inputs['index'].extend([f"{d['index']}-{c}" for c in range(len(d['generated_code'][iter]))])
+        def build_viunit_suite():
+            ### Generate candidate unit tests ###
+            if this_config['unit_test_generation']['use_program'] and \
+                ('unit_tests' not in dataset.data[0] or \
+                    not any([iter in dataset.data[idx]['unit_tests'] for idx in range(len(dataset))])):
+                    formatted_inputs = {'text': [], 'index': []}
+                    for i, d in enumerate(dataset):
+                        if iter in d['generated_code']:
+                            formatted_inputs['text'].extend(
+                                get_unit_test_prompt([d['text']]* len(d['generated_code'][iter]),
+                                                        unit_test_system_prompt,
+                                                        unit_test_in_context_examples,
+                                                        this_config['unit_test_generation']['model_name'],
+                                                        unit_test_tokenizer,
+                                                        program=[extract_python_code(p) for p in d['generated_code'][iter]]
+                                                        )
+                                )
+                            formatted_inputs['index'].extend([f"{d['index']}-{c}" for c in range(len(d['generated_code'][iter]))])
+                    if len(formatted_inputs['text']) == 0:
+                        exit(0)
+                    index2out = engine_execution(formatted_inputs, this_config, 'unit_test_generation', engine_path=engine_path)
+                    index2input = {i:t for i,t in zip(formatted_inputs['index'], formatted_inputs['text'])}
+                    for i in range(len(dataset.data)):
+                        if iter in dataset.data[i]['generated_code']:
+                            idx = dataset.data[i]['index']
+                            if 'unit_tests' not in dataset.data[i]:
+                                dataset.data[i]['unit_tests'] = {}
+                            if 'unit_test_prompt' not in dataset.data[i]:
+                                dataset.data[i]['unit_test_prompt'] = {}
+                            dataset.data[i]['unit_test_prompt'][iter] = index2input[f'{idx}-{c}']
+                            dataset.data[i]['unit_tests'][iter] = [
+                                extract_unit_tests(
+                                    index2out[f'{idx}-{c}']) for c in range(len(dataset.data[i]['generated_code'][iter]))
+                                ]
+                    pickle.dump(dataset.data, open(save_file, 'wb'))
+            elif 'unit_tests' not in dataset.data[0] and \
+                not this_config['unit_test_generation']['use_program']:
+                print("Generating unit tests...")
+                formatted_inputs = {
+                    'text': get_unit_test_prompt(
+                        [b_['text'] for b_ in dataset],
+                        unit_test_system_prompt,
+                        unit_test_in_context_examples,
+                        this_config['unit_test_generation']['model_name'],
+                        unit_test_tokenizer
+                        ),
+                    'index': [b_['index'] for b_ in dataset]}
                 if len(formatted_inputs['text']) == 0:
                     exit(0)
                 index2out = engine_execution(formatted_inputs, this_config, 'unit_test_generation', engine_path=engine_path)
                 index2input = {i:t for i,t in zip(formatted_inputs['index'], formatted_inputs['text'])}
                 for i in range(len(dataset.data)):
-                    if iter in dataset.data[i]['generated_code']:
-                        idx = dataset.data[i]['index']
-                        if 'unit_tests' not in dataset.data[i]:
-                            dataset.data[i]['unit_tests'] = {}
-                        if 'unit_test_prompt' not in dataset.data[i]:
-                            dataset.data[i]['unit_test_prompt'] = {}
-                        dataset.data[i]['unit_test_prompt'][iter] = index2input[f'{idx}-{c}']
-                        dataset.data[i]['unit_tests'][iter] = [
-                            extract_unit_tests(
-                                index2out[f'{idx}-{c}']) for c in range(len(dataset.data[i]['generated_code'][iter]))
-                            ]
+                    idx = dataset.data[i]['index']
+                    dataset.data[i]['unit_test_prompt'] = index2input[idx]
+                    dataset.data[i]['unit_tests'] = extract_unit_tests(
+                        index2out[idx])
                 pickle.dump(dataset.data, open(save_file, 'wb'))
-        elif 'unit_tests' not in dataset.data[0] and \
-            not this_config['unit_test_generation']['use_program']: 
-            print("Generating unit tests...")
-            formatted_inputs = {
-                'text': get_unit_test_prompt(
-                    [b_['text'] for b_ in dataset], 
-                    unit_test_system_prompt,
-                    unit_test_in_context_examples, 
-                    this_config['unit_test_generation']['model_name'], 
-                    unit_test_tokenizer
-                    ),
-                'index': [b_['index'] for b_ in dataset]}
-            if len(formatted_inputs['text']) == 0:
-                exit(0)
-            index2out = engine_execution(formatted_inputs, this_config, 'unit_test_generation', engine_path=engine_path)
-            index2input = {i:t for i,t in zip(formatted_inputs['index'], formatted_inputs['text'])}
-            for i in range(len(dataset.data)):
-                idx = dataset.data[i]['index']
-                dataset.data[i]['unit_test_prompt'] = index2input[idx]
-                dataset.data[i]['unit_tests'] = extract_unit_tests(
-                    index2out[idx])
-            pickle.dump(dataset.data, open(save_file, 'wb'))
-        else:
-            print("Unit tests already generated...")
-        
-        ### Sample unit tests ###
-        if this_config['unit_test_generation']['use_program'] and \
-            ('selected_unit_tests' not in dataset.data[0] or \
-                not any([iter in dataset.data[idx]['selected_unit_tests'] for idx in range(len(dataset))])):
-            print("Sampling unit tests....")
-            text_sampler = TextSampler(
-                model_name = this_config['unit_test_sampling']['model_name'],
-                sampling_strategy=this_config['unit_test_sampling']['strategy'],
-                filter_long_answers=this_config['unit_test_sampling']['filter_long_answers']
-                )
-            for i in tqdm(range(len(dataset.data))):
-                if 'selected_unit_tests' not in dataset.data[i]:
-                        dataset.data[i]['selected_unit_tests'] = {}
-                if iter in dataset.data[i]['unit_tests']:
-                    dataset.data[i]['selected_unit_tests'][iter] = []
-                    for code_index, code in enumerate(dataset.data[i]['generated_code'][iter]):
-                        dataset.data[i]['selected_unit_tests'][iter].append(text_sampler.sample(
-                                                dataset.data[i]['unit_tests'][iter][code_index], 
-                                                num_samples=this_config['unit_test_sampling']['num_unit_tests'],
-                                                ))
-            pickle.dump(dataset.data, open(save_file, 'wb'))
-            text_sampler.clear_sampler()
-            del text_sampler
-            gc.collect()
-            torch.cuda.empty_cache()
-        elif 'selected_unit_tests' not in dataset.data[0] and \
-            not this_config['unit_test_generation']['use_program']:
-            print("Sampling unit tests....")
-            text_sampler = TextSampler(
-                model_name = this_config['unit_test_sampling']['model_name'],
-                sampling_strategy=this_config['unit_test_sampling']['strategy'],
-                filter_long_answers=this_config['unit_test_sampling']['filter_long_answers']
-                )
-            for i in tqdm(range(len(dataset.data))):
-                dataset.data[i]['selected_unit_tests'] = text_sampler.sample(
-                                        dataset.data[i]['unit_tests'], 
-                                        num_samples=this_config['unit_test_sampling']['num_unit_tests'],
-                                        )
-            pickle.dump(dataset.data, open(save_file, 'wb'))
-            text_sampler.clear_sampler()
-            del text_sampler
-            gc.collect()
-            torch.cuda.empty_cache()
-        else:
-            print("Unit tests already sampled...")
-        
-        ## Generate images for unit tests ##
-        if this_config['unit_test_generation']['use_program']  and ('unit_test_images' not in dataset.data[0] or not any([iter in dataset.data[idx]['unit_test_images'] for idx in range(len(dataset))])):
-            print("Sampling images with program...")
-            image_retriever = initialize_image_generator(this_config)
-            queries, idx2lengths = [], {}
-            for d in dataset.data:
-                if iter in d['selected_unit_tests']:
-                    idx2lengths[d['index']] = [len(u) for u in d['selected_unit_tests'][iter]]
-                    for code_ut in d['selected_unit_tests'][iter]:
-                        queries.extend([uu[0] for uu in code_ut])
-            
-            if this_config['image_generation']['image_source'] == 'diffusion' and any([k in this_config['image_generation']['diffusion_model_name'].lower() for k in ['lmd', 'gligen']]):
-                formatted_inputs = {
-                    'text': get_grounded_diffusion_prompt(
-                        queries ,
-                        lm_grounded_diffusion_system_prompt,
-                        lm_grounded_diffusion_in_context_prompt, 
-                        this_config['unit_test_generation']['model_name'], 
-                        lm_grounded_diffusion_tokenizer) ,
-                    'index': list(range(len(queries)))}
-                index2out = engine_execution(formatted_inputs, 'image_generation')
-                llm_response = [index2out[i] for i in range(len(queries))]
-                images = []
-                image_batch_size = this_config['image_generation']['image_batch_size']*torch.cuda.device_count()
-                if this_config['image_generation']['distributed']:
-                    diffuser_input_queries = queries
-                    diffuser_llm_response = llm_response
-                    images = image_retriever.batch_fetch_image(diffuser_input_queries, diffuser_llm_response)
-                else:
-                    for i in tqdm(range(0, len(queries), image_batch_size)):
-                        images.extend(image_retriever.batch_fetch_image(queries[i:i+image_batch_size], llm_response[i:i+image_batch_size]))
             else:
-                if this_config['image_generation']['distributed']:
-                    diffuser_input_queries = queries
-                    images = image_retriever.batch_fetch_image(diffuser_input_queries)
-                else:
+                print("Unit tests already generated...")
+
+            ### Sample unit tests ###
+            if this_config['unit_test_generation']['use_program'] and \
+                ('selected_unit_tests' not in dataset.data[0] or \
+                    not any([iter in dataset.data[idx]['selected_unit_tests'] for idx in range(len(dataset))])):
+                print("Sampling unit tests....")
+                text_sampler = TextSampler(
+                    model_name = this_config['unit_test_sampling']['model_name'],
+                    sampling_strategy=this_config['unit_test_sampling']['strategy'],
+                    filter_long_answers=this_config['unit_test_sampling']['filter_long_answers']
+                    )
+                for i in tqdm(range(len(dataset.data))):
+                    if 'selected_unit_tests' not in dataset.data[i]:
+                            dataset.data[i]['selected_unit_tests'] = {}
+                    if iter in dataset.data[i]['unit_tests']:
+                        dataset.data[i]['selected_unit_tests'][iter] = []
+                        for code_index, code in enumerate(dataset.data[i]['generated_code'][iter]):
+                            dataset.data[i]['selected_unit_tests'][iter].append(text_sampler.sample(
+                                                    dataset.data[i]['unit_tests'][iter][code_index],
+                                                    num_samples=this_config['unit_test_sampling']['num_unit_tests'],
+                                                    ))
+                pickle.dump(dataset.data, open(save_file, 'wb'))
+                text_sampler.clear_sampler()
+                del text_sampler
+                gc.collect()
+                torch.cuda.empty_cache()
+            elif 'selected_unit_tests' not in dataset.data[0] and \
+                not this_config['unit_test_generation']['use_program']:
+                print("Sampling unit tests....")
+                text_sampler = TextSampler(
+                    model_name = this_config['unit_test_sampling']['model_name'],
+                    sampling_strategy=this_config['unit_test_sampling']['strategy'],
+                    filter_long_answers=this_config['unit_test_sampling']['filter_long_answers']
+                    )
+                for i in tqdm(range(len(dataset.data))):
+                    dataset.data[i]['selected_unit_tests'] = text_sampler.sample(
+                                            dataset.data[i]['unit_tests'],
+                                            num_samples=this_config['unit_test_sampling']['num_unit_tests'],
+                                            )
+                pickle.dump(dataset.data, open(save_file, 'wb'))
+                text_sampler.clear_sampler()
+                del text_sampler
+                gc.collect()
+                torch.cuda.empty_cache()
+            else:
+                print("Unit tests already sampled...")
+
+            ## Generate images for unit tests ##
+            if this_config['unit_test_generation']['use_program']  and ('unit_test_images' not in dataset.data[0] or not any([iter in dataset.data[idx]['unit_test_images'] for idx in range(len(dataset))])):
+                print("Sampling images with program...")
+                image_retriever = initialize_image_generator(this_config)
+                queries, idx2lengths = [], {}
+                for d in dataset.data:
+                    if iter in d['selected_unit_tests']:
+                        idx2lengths[d['index']] = [len(u) for u in d['selected_unit_tests'][iter]]
+                        for code_ut in d['selected_unit_tests'][iter]:
+                            queries.extend([uu[0] for uu in code_ut])
+
+                if this_config['image_generation']['image_source'] == 'diffusion' and any([k in this_config['image_generation']['diffusion_model_name'].lower() for k in ['lmd', 'gligen']]):
+                    formatted_inputs = {
+                        'text': get_grounded_diffusion_prompt(
+                            queries ,
+                            lm_grounded_diffusion_system_prompt,
+                            lm_grounded_diffusion_in_context_prompt,
+                            this_config['unit_test_generation']['model_name'],
+                            lm_grounded_diffusion_tokenizer) ,
+                        'index': list(range(len(queries)))}
+                    index2out = engine_execution(formatted_inputs, 'image_generation')
+                    llm_response = [index2out[i] for i in range(len(queries))]
                     images = []
                     image_batch_size = this_config['image_generation']['image_batch_size']*torch.cuda.device_count()
-                    for i in tqdm(range(0, len(queries), image_batch_size)):
-                        images.extend(image_retriever.batch_fetch_image(queries[i:i+image_batch_size]))
-            image_retriever.clear_retriever()
-            gc.collect()
-            torch.cuda.empty_cache()
-                
-            start = 0
-            for idx,d in enumerate(dataset.data):
-                if iter in d['selected_unit_tests']:
-                    if 'unit_test_images' not in d:
-                        dataset.data[idx]['unit_test_images'] = {}
-                    dataset.data[idx]['unit_test_images'][iter] = []
-                    for j in range(len(idx2lengths[d['index']])): # code index
-                            dataset.data[idx]['unit_test_images'][iter].append(images[start:start+idx2lengths[d['index']][j]])
-                            start += idx2lengths[d['index']][j]      
-        elif 'unit_test_images' not in dataset.data[0] and not this_config['unit_test_generation']['use_program']:
-            print("Sampling images...")
-            image_retriever = initialize_image_generator(this_config)
-            queries = [u[0] for d in dataset.data for u in d['selected_unit_tests']]
-            if this_config['image_generation']['image_source'] == 'diffusion' and any([k in this_config['image_generation']['diffusion_model_name'].lower() for k in ['lmd', 'gligen']]):
-                formatted_inputs = {
-                    'text': get_grounded_diffusion_prompt(
-                        queries ,
-                        lm_grounded_diffusion_system_prompt,
-                        lm_grounded_diffusion_in_context_prompt, 
-                        this_config['unit_test_generation']['model_name'], 
-                        lm_grounded_diffusion_tokenizer) ,
-                    'index': list(range(len(queries)))}
-                index2out = engine_execution(formatted_inputs, this_config, 'image_generation',engine_path=engine_path)
-                llm_response = [index2out[i] for i in range(len(queries))]
-                images = []
-                image_batch_size = this_config['image_generation']['image_batch_size']*torch.cuda.device_count()
-                if this_config['image_generation']['distributed']:
-                    diffuser_input_queries = queries
-                    diffuser_llm_response = llm_response
-                    images = image_retriever.batch_fetch_image(diffuser_input_queries, diffuser_llm_response)
+                    if this_config['image_generation']['distributed']:
+                        diffuser_input_queries = queries
+                        diffuser_llm_response = llm_response
+                        images = image_retriever.batch_fetch_image(diffuser_input_queries, diffuser_llm_response)
+                    else:
+                        for i in tqdm(range(0, len(queries), image_batch_size)):
+                            images.extend(image_retriever.batch_fetch_image(queries[i:i+image_batch_size], llm_response[i:i+image_batch_size]))
                 else:
-                    for i in tqdm(range(0, len(queries), image_batch_size)):
-                        images.extend(image_retriever.batch_fetch_image(queries[i:i+image_batch_size], llm_response[i:i+image_batch_size]))
-            else:
-                if this_config['image_generation']['distributed']:
-                    diffuser_input_queries = queries
-                    images = image_retriever.batch_fetch_image(diffuser_input_queries)
-                else:
+                    if this_config['image_generation']['distributed']:
+                        diffuser_input_queries = queries
+                        images = image_retriever.batch_fetch_image(diffuser_input_queries)
+                    else:
+                        images = []
+                        image_batch_size = this_config['image_generation']['image_batch_size']*torch.cuda.device_count()
+                        for i in tqdm(range(0, len(queries), image_batch_size)):
+                            images.extend(image_retriever.batch_fetch_image(queries[i:i+image_batch_size]))
+                image_retriever.clear_retriever()
+                gc.collect()
+                torch.cuda.empty_cache()
+
+                start = 0
+                for idx,d in enumerate(dataset.data):
+                    if iter in d['selected_unit_tests']:
+                        if 'unit_test_images' not in d:
+                            dataset.data[idx]['unit_test_images'] = {}
+                        dataset.data[idx]['unit_test_images'][iter] = []
+                        for j in range(len(idx2lengths[d['index']])): # code index
+                                dataset.data[idx]['unit_test_images'][iter].append(images[start:start+idx2lengths[d['index']][j]])
+                                start += idx2lengths[d['index']][j]
+            elif 'unit_test_images' not in dataset.data[0] and not this_config['unit_test_generation']['use_program']:
+                print("Sampling images...")
+                image_retriever = initialize_image_generator(this_config)
+                queries = [u[0] for d in dataset.data for u in d['selected_unit_tests']]
+                if this_config['image_generation']['image_source'] == 'diffusion' and any([k in this_config['image_generation']['diffusion_model_name'].lower() for k in ['lmd', 'gligen']]):
+                    formatted_inputs = {
+                        'text': get_grounded_diffusion_prompt(
+                            queries ,
+                            lm_grounded_diffusion_system_prompt,
+                            lm_grounded_diffusion_in_context_prompt,
+                            this_config['unit_test_generation']['model_name'],
+                            lm_grounded_diffusion_tokenizer) ,
+                        'index': list(range(len(queries)))}
+                    index2out = engine_execution(formatted_inputs, this_config, 'image_generation',engine_path=engine_path)
+                    llm_response = [index2out[i] for i in range(len(queries))]
                     images = []
                     image_batch_size = this_config['image_generation']['image_batch_size']*torch.cuda.device_count()
-                    for i in tqdm(range(0, len(queries), image_batch_size)):
-                        images.extend(image_retriever.batch_fetch_image(queries[i:i+image_batch_size]))
-            image_retriever.clear_retriever()
-            gc.collect()
-            torch.cuda.empty_cache()
-            start = 0
-            lengths = [len(d['selected_unit_tests']) for d in dataset.data]
-            for idx in range(len(lengths)):
-                dataset.data[idx]['unit_test_images'] = images[start:start+lengths[idx]]
-                start += lengths[idx]
-            pickle.dump(dataset.data, open(save_file, 'wb'))  
+                    if this_config['image_generation']['distributed']:
+                        diffuser_input_queries = queries
+                        diffuser_llm_response = llm_response
+                        images = image_retriever.batch_fetch_image(diffuser_input_queries, diffuser_llm_response)
+                    else:
+                        for i in tqdm(range(0, len(queries), image_batch_size)):
+                            images.extend(image_retriever.batch_fetch_image(queries[i:i+image_batch_size], llm_response[i:i+image_batch_size]))
+                else:
+                    if this_config['image_generation']['distributed']:
+                        diffuser_input_queries = queries
+                        images = image_retriever.batch_fetch_image(diffuser_input_queries)
+                    else:
+                        images = []
+                        image_batch_size = this_config['image_generation']['image_batch_size']*torch.cuda.device_count()
+                        for i in tqdm(range(0, len(queries), image_batch_size)):
+                            images.extend(image_retriever.batch_fetch_image(queries[i:i+image_batch_size]))
+                image_retriever.clear_retriever()
+                gc.collect()
+                torch.cuda.empty_cache()
+                start = 0
+                lengths = [len(d['selected_unit_tests']) for d in dataset.data]
+                for idx in range(len(lengths)):
+                    dataset.data[idx]['unit_test_images'] = images[start:start+lengths[idx]]
+                    start += lengths[idx]
+                pickle.dump(dataset.data, open(save_file, 'wb'))
+            else:
+                print("Images already sampled...")
+
+
+        if this_config['unit_test_generation']['use_program']:
+            build_viunit_suite()
         else:
-            print("Images already sampled...")
-            
+            build_suite(dataset, this_config, build_viunit_suite)
+        pickle.dump(dataset.data, open(save_file, 'wb'))
+
         if this_config['execution']['synonym_checker']:
             checker = SynonymChecker()
         if len(dataset.data) > 0 and 'unit_test_results' in dataset.data[0] and \

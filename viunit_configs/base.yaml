@@ -123,6 +123,13 @@ image_generation:
       num_return_sequences: 10
 
 
+# Per-question suites; metamorphic/hybrid require use_program: False.
+unit_test_suite:
+  mode: viunit # viunit | metamorphic | hybrid
+  viunit_count: null # null inherits unit_test_sampling.num_unit_tests
+  metamorphic_count: 5
+  metamorphic: {} # Settings passed to your custom generator
+
 unit_test_sampling:
   strategy: 'coverage_by_answer' # 'coverage_by_answer', 'coverage', 'random', 'answer_only'
   model_name: 'all-MiniLM-L6-v2'

@@ -284,3 +284,41 @@ This release is for research purposes only in support of an academic paper. Our 
 
 ## Acknowledgements
 API code adapted from [ViperGPT](https://github.com/cvlab-columbia/viper)
+
+### Per-question test suites
+
+Set `unit_test_generation.use_program: false` to share a suite across candidate
+programs for each question. Both `generate.py` and `train.py` support:
+
+```yaml
+unit_test_suite:
+  mode: viunit # viunit | metamorphic | hybrid
+  viunit_count: null # inherits unit_test_sampling.num_unit_tests
+  metamorphic_count: 5
+  metamorphic: {} # generator-specific settings
+```
+
+`viunit` remains the default and uses the existing caption generation, sampling,
+and image generation/retrieval pipeline. `metamorphic` calls
+`unit_test_generation/metamorphic/generator.py:generate_tests` once per question.
+Implement that interface before selecting `metamorphic` or `hybrid`; its default
+implementation raises `NotImplementedError`. It receives the original image,
+question, answer, count, seed, output directory, and `metamorphic` settings.
+It must return nonempty tests with existing absolute transformed-image paths and
+explicit expected answers. Answer-changing transformations need new answers.
+
+`hybrid` combines independently budgeted ViUniT and metamorphic tests. For an
+equal-budget comparison, use 6 ViUniT tests, 6 metamorphic tests, or 3 of each.
+The executor uses the combined suite score; `unit_test_metadata` records each
+test's source and custom metadata for later analysis.
+
+The shared dispatcher is `unit_test_generation/suites.py`. Cached suites are
+keyed by question/image identity, image size and modification time, suite and
+provider settings, prompt contents, execution settings, and seed. Mismatches
+invalidate tests, images, and unit-test results together before program feedback
+is read. Unversioned caches are rebuilt once. Rebuilds currently cover the entire
+batch to preserve the existing ViUniT batching behavior. Generated programs are
+retained. Custom artifacts live in `output_dir/metamorphic/<cache-key>/`.
+Increment a version in `unit_test_suite.metamorphic` when generator code changes.
+The legacy `use_program: true` ViUniT path retains its existing caching behavior;
+metamorphic and hybrid modes reject that setting.
