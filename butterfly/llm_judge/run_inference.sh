@@ -11,11 +11,9 @@
 
 # Based on eval_tests/qwen_apptainer.sh. Submit from the repository root:
 #   export WORK=/path/to/shared/work
-#   sbatch butterfly/llm_judge/run_inference.sh \
-#     --questions experiment/questions.jsonl --run-dir experiment/runs/run_001
+#   sbatch butterfly/llm_judge/run_inference.sh --questions /work/11808/shumera/ls6/projects/butterfly/experiment/questions.jsonl --run-dir /work/11808/shumera/ls6/projects/butterfly/experiment/runs/run_001
 # Set IMAGE for a different container and REPO_ROOT when submitting elsewhere.
 # All arguments are forwarded; repeated Python options use the last value.
-set -euo pipefail
 
 : "${WORK:?Set WORK to the execution-machine work directory containing containers/}"
 IMAGE="${IMAGE:-$WORK/containers/vllm-0.18.0.sif}"
