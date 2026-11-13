@@ -11,7 +11,6 @@ from pathlib import Path
 import sys
 
 from common import atomic_text, parse_response, read_jsonl, save_json, save_jsonl
-from excel_io import write_workbook
 from prompts import PROMPT_VERSION, TEMPLATES, render
 
 REVIEW_COLUMNS = ['id', 'detailed_type', 'question', 'answer_type', 'topic', 'objects',
@@ -77,8 +76,6 @@ def export_artifacts(directory, rows):
         writer.writerow({key: json.dumps(value, ensure_ascii=False) if isinstance(value, (dict, list)) else value
                          for key, value in row.items()})
     atomic_text(directory / 'review.csv', stream.getvalue())
-    extra = ['call1_raw', 'call2_raw', 'error', 'complete', 'call1_attempted', 'call2_attempted']
-    write_workbook(directory / 'predictions.xlsx', {'Predictions': (REVIEW_COLUMNS + extra, reviews)})
     lines = ['# Question-only classification run', '', f'Questions saved: {len(rows)}',
              f'Completed: {sum(bool(r["complete"]) for r in rows)}', '']
     counters = {
@@ -183,8 +180,6 @@ def main():
     parser.add_argument('--disable-thinking', action='store_true', help='Pass enable_thinking=False to tokenizer chat template')
     args = parser.parse_args()
     try:
-        # Check Excel dependency before paying for GPU initialization.
-        import openpyxl  # noqa: F401
         import fcntl
         questions = load_sample(args.questions)
         args.run_dir.mkdir(parents=True, exist_ok=True)

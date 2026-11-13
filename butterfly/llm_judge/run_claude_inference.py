@@ -106,7 +106,6 @@ def main():
     if args.timeout <= 0 or args.max_retries < 0:
         parser.error('--timeout must be positive and --max-retries must be nonnegative')
     try:
-        import openpyxl  # noqa: F401
         import fcntl
         questions = load_sample(args.questions)
         args.run_dir.mkdir(parents=True, exist_ok=True)

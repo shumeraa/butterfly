@@ -39,7 +39,7 @@ command -v apptainer >/dev/null || { echo 'apptainer is not available; load its 
 
 # Preserve the reference's shared caches and spawned vLLM workers.
 cache_root="${CACHE_ROOT:-$WORK}"
-mkdir -p "$cache_root/hf_cache" "$cache_root/vllm_cache"
+mkdir -p "$cache_root/hf_cache" "$cache_root/vllm_cache" || exit $?
 export APPTAINERENV_HF_HOME="$cache_root/hf_cache"
 export APPTAINERENV_VLLM_CACHE_ROOT="$cache_root/vllm_cache"
 export APPTAINERENV_VLLM_WORKER_MULTIPROC_METHOD=spawn
@@ -57,12 +57,11 @@ nvidia-smi
 
 echo '=== Container environment and GPU test ==='
 "${container[@]}" "$PYTHON_BIN" -c '
-import torch, transformers, vllm, openpyxl
+import torch, transformers, vllm
 
 print("PyTorch:", torch.__version__)
 print("Transformers:", transformers.__version__)
 print("vLLM:", vllm.__version__)
-print("openpyxl:", openpyxl.__version__)
 print("GPU count:", torch.cuda.device_count())
 assert torch.cuda.is_available(), "CUDA is unavailable inside the container"
 assert torch.cuda.device_count() >= 1, "No GPUs are visible"
@@ -70,7 +69,7 @@ for i in range(torch.cuda.device_count()):
     x = torch.randn(100, 100, device=f"cuda:{i}")
     result = (x @ x).sum().item()
     print(f"GPU {i} computation successful: {result}", flush=True)
-'
+' || exit $?
 
 echo '=== Running inference ==='
 exec "${container[@]}" "$PYTHON_BIN" "$SCRIPT" \

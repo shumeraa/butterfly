@@ -1,16 +1,50 @@
 #!/usr/bin/env python3
 """Evaluate semantic transformation rules; write canonical and human-review Excel files."""
 import argparse
+import csv
 import json
 from pathlib import Path
 
-from common import validate_predictions
+from common import read_jsonl, validate_predictions
 from excel_io import read_workbook, write_workbook
 
 GLOBAL = ('hflip', 'vflip', 'rot180', 'grayscale', 'blur', 'noise',
           'occlusion_mentioned', 'occlusion_unmentioned')
 LOCAL = ('color_shift', 'texture', 'segment_mr1')
 LABELS = {'I': 'invariant', 'C': 'equivariant', 'U': 'unsafe'}
+
+
+def read_predictions(path, sheet=None):
+    """Accept inference artifacts or corrected workbooks; retain every source field."""
+    suffix = path.suffix.lower()
+    if suffix == '.xlsx':
+        return read_workbook(path, sheet)
+    if sheet is not None:
+        raise ValueError('--sheet applies only to .xlsx input')
+    if suffix == '.jsonl':
+        rows = read_jsonl(path)
+        if any(not isinstance(row, dict) for row in rows):
+            raise ValueError('JSONL predictions must contain one object per row')
+        # Add flat prediction fields without overwriting manual corrections or
+        # dropping nested call2, full provider responses, and inference diagnostics.
+        for row in rows:
+            row.setdefault('answer_type', row.get('call1'))
+            parsed = row.get('call2')
+            for field in ('topic', 'objects', 'question_flags'):
+                row.setdefault(field, parsed.get(field) if isinstance(parsed, dict) else None)
+        headers = list(dict.fromkeys(key for row in rows for key in row))
+        return headers, rows
+    if suffix == '.csv':
+        with path.open(encoding='utf-8-sig', newline='') as stream:
+            reader = csv.DictReader(stream)
+            headers = reader.fieldnames
+            if not headers or any(not key for key in headers) or len(set(headers)) != len(headers):
+                raise ValueError('CSV headers must be nonempty and unique')
+            rows = list(reader)
+            if any(None in row for row in rows):
+                raise ValueError('CSV row has more cells than its header')
+        return headers, rows
+    raise ValueError('Input must be a .jsonl, .csv, or .xlsx file')
 
 
 def evaluate(answer_type, topic, objects, flags):
@@ -183,8 +217,8 @@ def build_outputs(headers, rows):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--input', required=True, type=Path)
-    parser.add_argument('--sheet', help='Sheet name; default is the first sheet')
+    parser.add_argument('--input', required=True, type=Path, help='results.jsonl, review.csv, or corrected .xlsx predictions')
+    parser.add_argument('--sheet', help='Excel input sheet name; default is the first sheet')
     parser.add_argument('--output-dir', type=Path, default=Path('.'))
     parser.add_argument('--raw-output', type=Path)
     parser.add_argument('--review-output', type=Path)
@@ -195,7 +229,7 @@ def main():
         paths = [args.input.resolve(), raw_path.resolve(), review_path.resolve()]
         if len(set(paths)) != 3:
             raise ValueError('Input, raw output, and review output must be distinct paths')
-        headers, rows = read_workbook(args.input, args.sheet)
+        headers, rows = read_predictions(args.input, args.sheet)
         raw, review = build_outputs(headers, rows)
         write_workbook(raw_path, raw)
         write_workbook(review_path, review, review=True)
