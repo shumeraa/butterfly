@@ -4,6 +4,7 @@
 # Model and dataset paths
 export PRETRAINED_MODELS_PATH=/work/11808/shumera/ls6/butterfly_shared_resources/models
 export GQA_IMAGE_PATH=/work/11808/shumera/ls6/butterfly_shared_resources/datasets/gqa/images
+export GQA_QUESTION_PATH=/work/11808/shumera/ls6/butterfly_shared_resources/datasets/gqa/questions
 export WINOGROUND_IMAGE_PATH=/work/11808/shumera/ls6/butterfly_shared_resources/datasets/winoground/data/images
 export COCO_VAL2017=/work/11808/shumera/ls6/butterfly_shared_resources/datasets/coco/val2017
 
