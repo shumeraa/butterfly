@@ -1,0 +1,3 @@
+# Claude runner only: Python 3.10+, no vLLM or GPU dependencies.
+-r requirements-cpu.txt
+anthropic>=1,<2
