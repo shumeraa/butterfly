@@ -55,16 +55,18 @@ def evaluate(answer_type, topic, objects, flags):
     def has(*values):
         return bool(f.intersection(values))
     g = {}
-    def spatial(name, blockers, directions):
+    def spatial(name, blockers, identities, answers):
         if has(*blockers):
             g[name] = ('U', 'spatial_blocker:' + ','.join(sorted(f.intersection(blockers))))
-        elif has(*directions):
+        elif has(*identities):
+            g[name] = ('U', 'spatial_identity_change:' + ','.join(sorted(f.intersection(identities))))
+        elif has(*answers):
             g[name] = ('C' if b else 'U', 'binary_spatial_change' if b else 'open_spatial_unsafe')
         else:
             g[name] = ('I', 'no_spatial_dependency')
-    spatial('hflip', ('TEXT', 'BODY'), ('LR',))
-    spatial('vflip', ('TEXT', 'SUPPORT'), ('UD',))
-    spatial('rot180', ('TEXT', 'SUPPORT'), ('LR', 'UD'))
+    spatial('hflip', ('TEXT', 'BODY'), ('LR_ID',), ('LR_ANSWER',))
+    spatial('vflip', ('TEXT', 'SUPPORT'), ('UD_ID',), ('UD_ANSWER',))
+    spatial('rot180', ('TEXT', 'SUPPORT'), ('LR_ID', 'UD_ID'), ('LR_ANSWER', 'UD_ANSWER'))
     gray = has('COLORW', 'COMPARE') or topic == 'COLOR'
     g['grayscale'] = ('U', 'color_or_comparison_dependency') if gray else ('I', 'no_color_dependency')
     blur = has('TEXT', 'MATW', 'ACTW', 'COMPARE') or topic in {'MATERIAL', 'ACTION'} or (not b and topic == 'OBJECT')

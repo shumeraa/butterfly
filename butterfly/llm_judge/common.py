@@ -9,8 +9,8 @@ TOPICS = {
     'BINARY': {'POSITION', 'COLOR', 'MATERIAL', 'EXISTS', 'IDENTITY', 'ACTION', 'SCENE', 'OTHER'},
     'OPEN': {'COLOR', 'MATERIAL', 'OBJECT', 'ACTION', 'POSITION', 'SCENE', 'OTHER'},
 }
-FLAGS = {'LR', 'UD', 'SUPPORT', 'TEXT', 'BODY', 'COLORW', 'MATW', 'EXISTW',
-         'CATW', 'COMPARE', 'ACTW', 'AND'}
+FLAGS = {'LR', 'UD', 'LR_ID', 'LR_ANSWER', 'UD_ID', 'UD_ANSWER',
+         'SUPPORT', 'TEXT', 'BODY', 'COLORW', 'MATW', 'EXISTW', 'CATW', 'COMPARE', 'ACTW', 'AND'}
 
 
 def atomic_text(path, text):

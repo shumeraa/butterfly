@@ -1,4 +1,4 @@
 # Dataset preparation needs only the Python standard library.
-# Excel exports and the CPU rule evaluator need:
+# Only the CPU rule evaluator and its Excel exports need:
 openpyxl>=3.1,<4
 # Install vLLM separately in the GPU execution environment.

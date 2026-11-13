@@ -1,6 +1,6 @@
 """Versioned, exact question-only templates from plan.md."""
 
-PROMPT_VERSION = "gqa-question-only-v1"
+PROMPT_VERSION = "gqa-question-only-v2"
 
 CALL1 = """Question: {question}
 
@@ -38,8 +38,13 @@ OTHER: none of these
 - For each object, include `id_features`: `COLOR` if its description uses color to identify it, MATERIAL if its description uses material, texture, pattern, or surface appearance. Otherwise use an empty list. Do not infer unmentioned properties.
 
 3. QUESTION_FLAGS: List all applicable features of the question wording:
-LR: Left/right spatial references.
-UD: Up/down spatial references.
+LR: Any left/right spatial reference. Include this alongside LR_ID and/or LR_ANSWER when applicable.
+UD: Any up/down spatial reference. Include this alongside UD_ID and/or UD_ANSWER when applicable.
+LR_ID: A left/right relation used to identify or select an object, rather than the relation being asked about. For example, "What is the girl to the left of the frisbee doing?"
+LR_ANSWER: A left/right relation being asked about or supplied as an answer choice. For example, "Is the girl to the left of the frisbee?"
+UD_ID: An up/down relation used to identify or select an object, rather than the relation being asked about. For example, "What color is the ball above the box?"
+UD_ANSWER: An up/down relation being asked about or supplied as an answer choice. For example, "Is the ball above the box?"
+Include both _ID and _ANSWER flags when both roles occur, even for different objects. For example, "Is the girl to the left of the frisbee above the boy?" has LR, LR_ID, UD, and UD_ANSWER.
 SUPPORT: Support, containment, or physical orientation (on, under, inside, sitting, hanging, lying).
 TEXT: Readable text, letters, numbers, signs, or logos.
 BODY: Left/right body parts.
@@ -53,7 +58,7 @@ AND: Requires multiple conditions to both be true.
 
 Examples:
 Question: Is the bowl to the right of the green apple?
-{"topic":"POSITION","objects":[{"name":"bowl","id_features":[]},{"name":"green apple","id_features":["COLOR"]}],"question_flags":["LR","COLORW"]}
+{"topic":"POSITION","objects":[{"name":"bowl","id_features":[]},{"name":"green apple","id_features":["COLOR"]}],"question_flags":["LR","LR_ANSWER","COLORW"]}
 
 Question: Is the man holding a blue umbrella?
 {"topic":"ACTION","objects":[{"name":"man","id_features":[]},{"name":"blue umbrella","id_features":["COLOR"]}],"question_flags":["ACTW","COLORW"]}
@@ -82,8 +87,13 @@ OTHER: none of these
 - For each object, include `id_features`: `COLOR` if its description uses color to identify it, MATERIAL if its description uses material, texture, pattern, or surface appearance. Otherwise use an empty list. Do not infer unmentioned properties.
 
 3. QUESTION_FLAGS: List all applicable features of the question wording:
-LR: Left/right spatial references.
-UD: Up/down spatial references.
+LR: Any left/right spatial reference. Include this alongside LR_ID and/or LR_ANSWER when applicable.
+UD: Any up/down spatial reference. Include this alongside UD_ID and/or UD_ANSWER when applicable.
+LR_ID: A left/right relation used to identify or select an object, rather than the relation being asked about. For example, "What is the girl to the left of the frisbee doing?"
+LR_ANSWER: A left/right relation being asked about or supplied as an answer choice. For example, "Is the girl to the left of the frisbee?"
+UD_ID: An up/down relation used to identify or select an object, rather than the relation being asked about. For example, "What color is the ball above the box?"
+UD_ANSWER: An up/down relation being asked about or supplied as an answer choice. For example, "Is the ball above the box?"
+Include both _ID and _ANSWER flags when both roles occur, even for different objects. For example, "Is the girl to the left of the frisbee above the boy?" has LR, LR_ID, UD, and UD_ANSWER.
 SUPPORT: Support, containment, or physical orientation (on, under, inside, sitting, hanging, lying).
 TEXT: Readable text, letters, numbers, signs, or logos.
 BODY: Left/right body parts.
