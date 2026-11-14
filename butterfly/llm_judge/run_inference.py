@@ -191,6 +191,23 @@ def load_sample(path):
     return rows
 
 
+def create_run_directory(directory, resume=False):
+    """Reserve a unique directory for a fresh run before acquiring its lock."""
+    if resume:
+        directory.mkdir(parents=True, exist_ok=True)
+        return directory
+    candidate = directory
+    suffix = 0
+    while True:
+        try:
+            candidate.mkdir(parents=True)
+        except FileExistsError:
+            suffix += 1
+            candidate = directory.with_name(f'{directory.name}_{suffix}')
+        else:
+            return candidate
+
+
 def prepare_run(args, questions):
     directory = args.run_dir
     directory.mkdir(parents=True, exist_ok=True)
@@ -245,7 +262,8 @@ def prepare_run(args, questions):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--questions', type=Path, required=True)
-    parser.add_argument('--run-dir', type=Path, required=True)
+    parser.add_argument('--run-dir', type=Path, required=True,
+                        help='Output directory; fresh runs append _1, _2, etc. if it already exists')
     parser.add_argument('--model', required=True, help='Hugging Face identifier or execution-machine model directory')
     parser.add_argument('--resume', action='store_true')
     recovery = parser.add_mutually_exclusive_group()
@@ -273,7 +291,8 @@ def main():
     try:
         import fcntl
         questions = load_sample(args.questions)
-        args.run_dir.mkdir(parents=True, exist_ok=True)
+        args.run_dir = create_run_directory(args.run_dir, args.resume)
+        print(f'Run directory: {args.run_dir}', flush=True)
         with (args.run_dir / '.run.lock').open('w') as lock:
             try:
                 fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
