@@ -4,15 +4,17 @@
 #SBATCH -N 1
 #SBATCH -n 1
 #SBATCH -A CCR26069
-#SBATCH -t 00:25:00
+#SBATCH -t 02:00:00
 #SBATCH -o gqa-llm-judge.%j.out
-#SBATCH -e gqa-llm-judge.%j.err
+#SBATCH -e gqa-llm-judge.%j.out
 #SBATCH --cpus-per-task=8
 
 # Based on eval_tests/qwen_apptainer.sh. Submit from the repository root:
 #   export WORK=/path/to/shared/work
 #   sbatch butterfly/llm_judge/run_inference.sh --questions /work/11808/shumera/ls6/projects/butterfly/experiment/questions.jsonl --run-dir /work/11808/shumera/ls6/projects/butterfly/experiment/runs/run_001
 # Set IMAGE for a different container and REPO_ROOT when submitting elsewhere.
+# Use gpu-a100-dev's two-hour maximum for the full pilot.
+# If the run reaches the limit, continue with the same settings and --resume.
 # All arguments are forwarded; repeated Python options use the last value.
 
 : "${WORK:?Set WORK to the execution-machine work directory containing containers/}"
