@@ -10,7 +10,7 @@ TOPICS = {
     'OPEN': {'COLOR', 'MATERIAL', 'OBJECT', 'ACTION', 'POSITION', 'SCENE', 'OTHER'},
 }
 FLAGS = {'LR', 'UD', 'LR_ID', 'LR_ANSWER', 'UD_ID', 'UD_ANSWER',
-         'SUPPORT', 'TEXT', 'BODY', 'COLORW', 'MATW', 'EXISTW', 'CATW', 'COMPARE', 'ACTW', 'AND'}
+         'SUPPORT', 'TEXT', 'BODY', 'COLORW', 'MATW', 'EXISTW', 'CATW', 'COMPARE', 'ACTW', 'MULTI_CONDITION'}
 
 
 def atomic_text(path, text):
@@ -54,9 +54,14 @@ def validate_predictions(answer_type, value):
     for obj in objects:
         if not isinstance(obj, dict) or not isinstance(obj.get('name'), str) or not obj['name'].strip():
             raise ValueError('each object needs a nonempty string name')
+        if obj.get('role') not in ('REFERENT', 'ANSWER_OPTION'):
+            raise ValueError('each object needs role REFERENT or ANSWER_OPTION')
         features = obj.get('id_features')
         if not isinstance(features, list) or any(not isinstance(f, str) or f not in {'COLOR', 'MATERIAL'} for f in features):
             raise ValueError('id_features must be a list containing only COLOR/MATERIAL')
+    options = value.get('answer_options')
+    if not isinstance(options, list) or any(not isinstance(option, str) or not option.strip() for option in options):
+        raise ValueError('answer_options must be a list of nonempty strings')
     flags = value.get('question_flags')
     if not isinstance(flags, list) or any(not isinstance(f, str) or f not in FLAGS for f in flags):
         raise ValueError('question_flags must be a list of declared flags')

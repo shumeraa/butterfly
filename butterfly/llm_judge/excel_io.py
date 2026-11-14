@@ -36,7 +36,7 @@ def write_workbook(path, sheets, review=False):
         for idx, header in enumerate(headers, 1):
             sheet.column_dimensions[get_column_letter(idx)].width = (
                 55 if any(s in header for s in ('question', 'summary', 'raw', 'warning', 'notes'))
-                else 34 if header in {'objects', 'question_flags', 'reason_code', 'object_name'} else 23)
+                else 34 if header in {'objects', 'answer_options', 'question_flags', 'reason_code', 'object_name'} else 23)
         for row in sheet.iter_rows(min_row=2):
             for cell in row:
                 cell.alignment = Alignment(vertical='top', wrap_text=True)
@@ -48,10 +48,6 @@ def write_workbook(path, sheets, review=False):
                 sheet.conditional_formatting.add(area, CellIsRule(
                     operator='equal', formula=['"' + word + '"'],
                     fill=PatternFill('solid', fgColor=color)))
-            if 'requires_edit_value_check' in headers:
-                col = get_column_letter(headers.index('requires_edit_value_check') + 1)
-                sheet.conditional_formatting.add(f'{col}2:{col}{max(2, sheet.max_row)}',
-                    CellIsRule(operator='equal', formula=['TRUE'], fill=PatternFill('solid', fgColor='FFF2CC')))
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     # Replace a complete workbook, never expose a half-written zip file.

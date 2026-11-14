@@ -15,7 +15,7 @@ from common import atomic_text, parse_response, read_jsonl, save_json, save_json
 from prompts import PROMPT_VERSION, TEMPLATES, render
 
 REVIEW_COLUMNS = ['id', 'detailed_type', 'question', 'answer_type', 'topic', 'objects',
-                  'question_flags', 'call1_valid', 'call2_valid', 'call1_parse_repaired',
+                  'answer_options', 'question_flags', 'call1_valid', 'call2_valid', 'call1_parse_repaired',
                   'call2_parse_repaired', 'correct', 'notes']
 
 
@@ -135,7 +135,8 @@ def export_artifacts(directory, rows):
     for row in rows:
         parsed = row['call2'] or {}
         reviews.append({**row, 'answer_type': row['call1'], 'topic': parsed.get('topic'),
-                        'objects': parsed.get('objects'), 'question_flags': parsed.get('question_flags'),
+                        'objects': parsed.get('objects'), 'answer_options': parsed.get('answer_options'),
+                        'question_flags': parsed.get('question_flags'),
                         'correct': None, 'notes': None})
     stream = io.StringIO(newline='')
     writer = csv.DictWriter(stream, fieldnames=REVIEW_COLUMNS, extrasaction='ignore')

@@ -8,9 +8,8 @@ from pathlib import Path
 from common import read_jsonl, validate_predictions
 from excel_io import read_workbook, write_workbook
 
-GLOBAL = ('hflip', 'vflip', 'rot180', 'grayscale', 'blur', 'noise',
-          'occlusion_mentioned', 'occlusion_unmentioned')
-LOCAL = ('color_shift', 'texture', 'segment_mr1')
+GLOBAL = ('hflip', 'vflip', 'rot180', 'grayscale', 'blur', 'noise')
+LOCAL = ('segment_mr1_grayscale', 'segment_mr1_blur', 'segment_mr1_noise')
 LABELS = {'I': 'invariant', 'C': 'equivariant', 'U': 'unsafe'}
 
 
@@ -30,7 +29,7 @@ def read_predictions(path, sheet=None):
         for row in rows:
             row.setdefault('answer_type', row.get('call1'))
             parsed = row.get('call2')
-            for field in ('topic', 'objects', 'question_flags'):
+            for field in ('topic', 'objects', 'answer_options', 'question_flags'):
                 row.setdefault(field, parsed.get(field) if isinstance(parsed, dict) else None)
         headers = list(dict.fromkeys(key for row in rows for key in row))
         return headers, rows
@@ -47,9 +46,10 @@ def read_predictions(path, sheet=None):
     raise ValueError('Input must be a .jsonl, .csv, or .xlsx file')
 
 
-def evaluate(answer_type, topic, objects, flags):
+def evaluate(answer_type, topic, objects, flags, answer_options=()):
     """Return ordered global and per-object (label, reason) results."""
-    validate_predictions(answer_type, {'topic': topic, 'objects': objects, 'question_flags': flags})
+    validate_predictions(answer_type, {'topic': topic, 'objects': objects,
+                                       'answer_options': list(answer_options), 'question_flags': flags})
     b = answer_type == 'BINARY'
     f = set(flags)
     def has(*values):
@@ -66,29 +66,41 @@ def evaluate(answer_type, topic, objects, flags):
             g[name] = ('I', 'no_spatial_dependency')
     spatial('hflip', ('TEXT', 'BODY'), ('LR_ID',), ('LR_ANSWER',))
     spatial('vflip', ('TEXT', 'SUPPORT'), ('UD_ID',), ('UD_ANSWER',))
-    spatial('rot180', ('TEXT', 'SUPPORT'), ('LR_ID', 'UD_ID'), ('LR_ANSWER', 'UD_ANSWER'))
+    for name in ('hflip', 'vflip'):
+        if has('MULTI_CONDITION') and g[name][0] == 'C':
+            g[name] = ('U', 'multi_condition_equivariance_unsafe')
+    flips = (g['hflip'][0], g['vflip'][0])
+    if 'U' in flips:
+        g['rot180'] = ('U', 'flip_component_unsafe')
+    elif flips == ('C', 'C'):
+        g['rot180'] = ('U', 'flip_equivariance_may_cancel')
+    elif 'C' in flips:
+        g['rot180'] = ('C', 'one_equivariant_flip')
+    else:
+        g['rot180'] = ('I', 'both_flips_invariant')
     gray = has('COLORW', 'COMPARE') or topic == 'COLOR'
     g['grayscale'] = ('U', 'color_or_comparison_dependency') if gray else ('I', 'no_color_dependency')
     blur = has('TEXT', 'MATW', 'ACTW', 'COMPARE') or topic in {'MATERIAL', 'ACTION'} or (not b and topic == 'OBJECT')
     g['blur'] = g['noise'] = ('U', 'detail_sensitive') if blur else ('I', 'no_detail_dependency')
-    g['occlusion_mentioned'] = ('U', 'mentioned_object_removed') if objects else (None, 'no_mentioned_objects')
-    occlusion = has('EXISTW', 'CATW', 'COMPARE', 'ACTW') or topic in {'EXISTS', 'SCENE', 'ACTION'} or (not b and topic == 'OBJECT')
-    g['occlusion_unmentioned'] = ('U', 'unmentioned_object_may_affect_answer') if occlusion else ('I', 'no_unmentioned_object_dependency')
     local = []
     for idx, obj in enumerate(objects):
         edits = {}
+        if obj['role'] != 'REFERENT':
+            local.append(edits)
+            continue
         if b and idx > 0:
             edits = {name: ('U', 'binary_non_target') for name in LOCAL}
+        elif has('EXISTW', 'TEXT', 'BODY', 'ACTW') or topic == 'ACTION':
+            edits = {name: ('U', 'segment_sensitive') for name in LOCAL}
         else:
-            for name, feature in (('color_shift', 'COLOR'), ('texture', 'MATERIAL')):
-                if has('EXISTW', 'COMPARE') or topic == 'EXISTS' or feature in obj['id_features']:
-                    edits[name] = ('U', 'existence_comparison_or_' + feature.lower() + '_identity')
-                elif topic == feature and idx == 0:
-                    edits[name] = ('C', 'binary_property_change_conditional') if b and not has('AND') else ('U', 'open_or_conjunctive_property_question')
+            for name in LOCAL:
+                global_name = name.removeprefix('segment_mr1_')
+                feature = 'COLOR' if global_name == 'grayscale' else 'MATERIAL'
+                if feature in obj['id_features']:
+                    edits[name] = ('U', 'local_' + feature.lower() + '_identity')
                 else:
-                    edits[name] = ('I', 'no_' + feature.lower() + '_dependency')
-            unsafe = has('EXISTW', 'TEXT', 'BODY', 'ACTW') or topic == 'ACTION'
-            edits['segment_mr1'] = ('U', 'segment_sensitive') if unsafe else ('I', 'no_segment_dependency')
+                    label, reason = g[global_name]
+                    edits[name] = ('I' if label == 'I' else 'U', 'global_mr1:' + reason)
         local.append(edits)
     return g, local
 
@@ -113,6 +125,7 @@ def normalize(row):
             raise ValueError(f'{key} indicates invalid inference; correct predictions and validity together')
     answer = row.get('answer_type') if row.get('answer_type') is not None else row.get('call1')
     data = {'topic': row.get('topic'), 'objects': parse_cell(row.get('objects'), 'objects'),
+            'answer_options': parse_cell(row.get('answer_options'), 'answer_options'),
             'question_flags': parse_cell(row.get('question_flags'), 'question_flags')}
     validate_predictions(answer, data)
     return answer, data
@@ -129,38 +142,37 @@ def build_outputs(headers, rows):
         notices = []
         try:
             answer, data = normalize(source)
-            g, local = evaluate(answer, data['topic'], data['objects'], data['question_flags'])
+            g, local = evaluate(answer, data['topic'], data['objects'], data['question_flags'], data['answer_options'])
             q.update({'normalized_answer_type': answer, 'normalized_topic': data['topic'],
                       'normalized_objects': data['objects'], 'normalized_question_flags': data['question_flags'],
+                      'normalized_answer_options': data['answer_options'],
                       'evaluation_status': 'evaluated', 'evaluation_error': None})
             r.update({'answer_type': answer, 'topic': data['topic'],
-                      'objects': '; '.join(f'{i}: {o["name"]} [{", ".join(o["id_features"])}]' for i, o in enumerate(data['objects'])),
+                      'objects': '; '.join(f'{i}: {o["name"]} ({o["role"]}) [{", ".join(o["id_features"])}]' for i, o in enumerate(data['objects'])),
+                      'answer_options': data['answer_options'],
                       'question_flags': ', '.join(data['question_flags']), 'evaluation_status': 'evaluated'})
             summaries = []
             for idx, edits in enumerate(local):
                 obj = data['objects'][idx]
+                if not edits:
+                    continue
                 summaries.append(f'{idx}: {obj["name"]}: ' + ', '.join(f'{k}={v[0]}' for k, v in edits.items()))
                 for name in LOCAL:
                     label, reason = edits[name]
-                    conditional = label == 'C' and name in {'color_shift', 'texture'}
                     entry = {**provenance, 'object_index': idx, 'object_name': obj['name'],
+                             'object_role': obj['role'],
                              'id_features': obj['id_features'], 'is_target': idx == 0,
                              'allowed_for_edit': not (answer == 'BINARY' and idx > 0),
                              'transformation': name, 'label': LABELS[label], 'reason_code': reason,
-                             'requires_edit_value_check': conditional, 'evaluation_status': 'evaluated'}
+                             'evaluation_status': 'evaluated'}
                     locals_.append(entry)
-                    if conditional:
-                        message = f'{name} on object {idx}: executor must check edited value maps to the other choice; otherwise downgrade to unsafe'
-                        notices.append(message)
-                        warnings.append({**provenance, 'object_index': idx, 'transformation': name,
-                                         'warning_code': 'requires_edit_value_check', 'message': message,
-                                         'source_record': source})
-            r['local_summary'] = '; '.join(summaries) or 'No mentioned objects: local edits not applicable'
+            r['local_summary'] = '; '.join(summaries) or 'No REFERENT objects: local edits not applicable'
         except (ValueError, TypeError) as exc:
             g = {name: (None, 'invalid_input') for name in GLOBAL}
             q.update({'evaluation_status': 'evaluation_error', 'evaluation_error': str(exc)})
             r.update({'evaluation_status': 'evaluation_error', 'local_summary': '',
-                      'objects': source.get('objects'), 'question_flags': source.get('question_flags')})
+                      'objects': source.get('objects'), 'answer_options': source.get('answer_options'),
+                      'question_flags': source.get('question_flags')})
             # Preserve identifiable object targets even when the prediction cannot be evaluated.
             try:
                 error_objects = parse_cell(source.get('objects'), 'objects')
@@ -168,13 +180,16 @@ def build_outputs(headers, rows):
                 error_objects = []
             if isinstance(error_objects, list):
                 for idx, obj in enumerate(error_objects):
+                    if isinstance(obj, dict) and obj.get('role') == 'ANSWER_OPTION':
+                        continue
                     for name in LOCAL:
                         locals_.append({**provenance, 'object_index': idx,
                             'object_name': obj.get('name') if isinstance(obj, dict) else None,
+                            'object_role': obj.get('role') if isinstance(obj, dict) else None,
                             'id_features': obj.get('id_features') if isinstance(obj, dict) else None,
                             'is_target': idx == 0, 'allowed_for_edit': None,
                             'transformation': name, 'label': None, 'reason_code': 'invalid_input',
-                            'requires_edit_value_check': None, 'evaluation_status': 'evaluation_error'})
+                            'evaluation_status': 'evaluation_error'})
             notices.append(str(exc))
             warnings.append({**provenance, 'warning_code': 'invalid_input', 'message': str(exc), 'source_record': source})
         for name in GLOBAL:
@@ -183,14 +198,12 @@ def build_outputs(headers, rows):
             q[name] = r[name] = LABELS.get(code)
             globals_.append({**provenance, 'transformation': name, 'label': LABELS.get(code),
                              'reason_code': reason, 'evaluation_status': status})
-        q['occlusion_mentioned_status'] = 'evaluation_error' if q['evaluation_status'] == 'evaluation_error' else 'not_applicable' if g['occlusion_mentioned'][0] is None else 'evaluated'
-        r['occlusion_mentioned_status'] = q['occlusion_mentioned_status']
         r.update({'warnings': '\n'.join(notices), 'correct?': None, 'review_notes': None})
         questions.append(q)
         reviews.append(r)
     # Source columns retain their original names even if they collide with computed fields.
     computed = ['source_row', 'normalized_answer_type', 'normalized_topic', 'normalized_objects',
-                'normalized_question_flags', *GLOBAL, 'occlusion_mentioned_status', 'evaluation_status', 'evaluation_error']
+                'normalized_question_flags', 'normalized_answer_options', *GLOBAL, 'evaluation_status', 'evaluation_error']
     collisions = set(headers).intersection(computed)
     for q, source in zip(questions, rows):
         for key in collisions:
@@ -200,16 +213,15 @@ def build_outputs(headers, rows):
             q[backup] = source[key]
     question_headers = list(dict.fromkeys(headers + computed + [k for q in questions for k in q]))
     gh = ['source_row', 'id', 'detailed_type', 'question', 'transformation', 'label', 'reason_code', 'evaluation_status']
-    lh = ['source_row', 'id', 'detailed_type', 'question', 'object_index', 'object_name', 'id_features', 'is_target',
-          'allowed_for_edit', 'transformation', 'label', 'reason_code', 'requires_edit_value_check', 'evaluation_status']
+    lh = ['source_row', 'id', 'detailed_type', 'question', 'object_index', 'object_name', 'object_role', 'id_features', 'is_target',
+          'allowed_for_edit', 'transformation', 'label', 'reason_code', 'evaluation_status']
     wh = ['source_row', 'id', 'detailed_type', 'question', 'object_index', 'transformation', 'warning_code', 'message', 'source_record']
-    rh = ['source_row', 'id', 'detailed_type', 'question', 'answer_type', 'topic', 'objects', 'question_flags', *GLOBAL,
-          'occlusion_mentioned_status', 'local_summary', 'evaluation_status', 'warnings', 'correct?', 'review_notes']
+    rh = ['source_row', 'id', 'detailed_type', 'question', 'answer_type', 'topic', 'objects', 'answer_options', 'question_flags', *GLOBAL,
+          'local_summary', 'evaluation_status', 'warnings', 'correct?', 'review_notes']
     legend = [{'meaning': 'Labels are predicted by rules, not visually verified.'},
               {'meaning': 'I = invariant; C = equivariant (predicted answer change); U = unsafe.'},
-              {'meaning': 'Blank labels: not applicable or evaluation error; inspect status and Warnings.'},
-              {'meaning': 'requires_edit_value_check: executor must verify other answer option or downgrade to unsafe.'},
-              {'meaning': 'occlusion_unmentioned assumes a future selectable object; none has been located.'}]
+              {'meaning': 'Blank labels: evaluation error; inspect status and Warnings.'},
+              {'meaning': 'Local segment_mr1 grayscale/blur/noise apply only to REFERENT objects; C maps to unsafe.'}]
     raw = {'Questions': (question_headers, questions), 'GlobalLabels': (gh, globals_),
            'LocalEdits': (lh, locals_), 'Warnings': (wh, warnings)}
     review = {'Review': (rh, reviews), 'LocalEditReview': (lh + ['correct?', 'review_notes'], locals_),
