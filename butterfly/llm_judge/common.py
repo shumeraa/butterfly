@@ -64,7 +64,15 @@ def validate_predictions(answer_type, value):
 
 
 def clean_response(raw):
-    text = re.sub(r'<think>.*?</think>', '', raw, flags=re.S).strip()
+    text = re.sub(r'<think>.*?</think>', '', raw, flags=re.S)
+    # Some chat templates supply the opening tag in the prompt, so only
+    # the closing tag appears in the generated completion.
+    if '</think>' in text:
+        text = text.rsplit('</think>', 1)[1]
+    # Never extract a label or a JSON example from unfinished thinking.
+    if '<think>' in text:
+        return ''
+    text = text.strip()
     text = re.sub(r'^```(?:json|text)?\s*\n?', '', text, flags=re.I)
     text = re.sub(r'\n?```$', '', text).strip()
     return text

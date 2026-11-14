@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Run two question-only vLLM calls and save durable results and review artifacts."""
 import argparse
+import copy
 from collections import Counter
 import csv
 from datetime import datetime, timezone
@@ -25,6 +26,66 @@ def new_result(question):
             'error': None, 'complete': False}
 
 
+def recover_failures(results):
+    """Reparse failed responses, archiving unresolved attempts before retrying."""
+    for row in results.values():
+        if row.get('call2_valid'):
+            continue
+        row['error'] = None
+        row['complete'] = False
+        for call in (1, 2):
+            prefix = f'call{call}'
+            if row.get(prefix + '_valid'):
+                continue
+            raw = row.get(prefix + '_raw')
+            parsed, valid, repaired, _ = parse_response(raw, None if call == 1 else row['call1'])
+            if row.get(prefix + '_finish_reason') == 'length':
+                valid = False
+            if valid:
+                row.update({prefix: parsed, prefix + '_valid': True,
+                            prefix + '_parse_repaired': repaired, prefix + '_attempted': True})
+                continue
+            # A new Call 1 can select a different branch; invalidate Call 2 too.
+            for reset_call in range(call, 3):
+                reset_prefix = f'call{reset_call}'
+                keys = [key for key in row if key == reset_prefix or key.startswith(reset_prefix + '_')]
+                if row.get(reset_prefix + '_attempted') or row.get(reset_prefix + '_raw') is not None:
+                    row.setdefault('attempt_history', []).append({key: copy.deepcopy(row[key]) for key in keys})
+                for key in keys:
+                    row[key] = False if key.endswith('_attempted') else None
+            break
+        row['complete'] = bool(row.get('call2_valid'))
+
+
+def import_recovery(directory, questions, model):
+    """Reuse responses only when their model, sample, and actual prompts match."""
+    metadata = json.loads((directory / 'run_metadata.json').read_text(encoding='utf-8'))
+    if metadata.get('settings', {}).get('provider') == 'anthropic':
+        raise ValueError('--recover-from supports vLLM runs only')
+    if metadata.get('model_identifier') != model:
+        raise ValueError('Recovery requires the same model identifier')
+    rows = read_jsonl(directory / 'results.jsonl')
+    lookup = {q['id']: q for q in questions}
+    results = {}
+    for row in rows:
+        qid = row['id']
+        if qid in results or qid not in lookup or any(row[k] != lookup[qid][k] for k in lookup[qid]):
+            raise ValueError('Recovery results have duplicate, unknown, or changed sample records')
+        for call in (1, 2):
+            if not row.get(f'call{call}_attempted'):
+                continue
+            template = 'call1' if call == 1 else row['call1']
+            if metadata.get('prompt_templates', {}).get(template) != TEMPLATES.get(template):
+                raise ValueError(f'Recovery prompt differs for {qid} call{call}; use a fresh run')
+        results[qid] = copy.deepcopy(row)
+    if metadata.get('sample_ids') != [q['id'] for q in questions]:
+        raise ValueError('Recovery requires the same sample IDs and order')
+    for question in questions:
+        results.setdefault(question['id'], new_result(question))
+    recover_failures(results)
+    return results
+
+
 def run_pipeline(questions, results, generate, checkpoint):
     """Checkpoint each response before continuing; completed IDs are never repeated."""
     for question in questions:
@@ -39,7 +100,7 @@ def run_pipeline(questions, results, generate, checkpoint):
                 break
             template = TEMPLATES['call1' if call == 1 else row['call1']]
             try:
-                raw = generate(render(template, question['question']), call)
+                response = generate(render(template, question['question']), call)
             except Exception as exc:
                 row[prefix + '_attempted'] = True
                 row[prefix + '_valid'] = False
@@ -48,13 +109,20 @@ def run_pipeline(questions, results, generate, checkpoint):
                 checkpoint()
                 break
             row[prefix + '_attempted'] = True
+            # String callbacks remain supported for CPU callers and tests.
+            raw = response['text'] if isinstance(response, dict) else response
+            if isinstance(response, dict):
+                row[prefix + '_finish_reason'] = response.get('finish_reason')
+                row[prefix + '_generated_tokens'] = response.get('generated_tokens')
             row[prefix + '_raw'] = raw
             parsed, valid, repaired, error = parse_response(raw, None if call == 1 else row['call1'])
+            if row.get(prefix + '_finish_reason') == 'length':
+                parsed, valid, repaired = None, False, False
+                error = 'generation reached its token/context limit before completing the answer'
             row[prefix] = parsed
             row[prefix + '_valid'] = valid
             row[prefix + '_parse_repaired'] = repaired
-            if error:
-                row['error'] = f'{prefix}: {error}'
+            row['error'] = f'{prefix}: {error}' if error else None
             row['complete'] = call == 2 or not valid
             checkpoint()
             if not valid:
@@ -125,7 +193,8 @@ def load_sample(path):
 def prepare_run(args, questions):
     directory = args.run_dir
     directory.mkdir(parents=True, exist_ok=True)
-    settings = {key: value for key, value in vars(args).items() if key not in {'questions', 'run_dir', 'resume'}}
+    settings = {key: value for key, value in vars(args).items()
+                if key not in {'questions', 'run_dir', 'resume', 'recover_failures', 'recover_from'}}
     checksum = hashlib.sha256(args.questions.read_bytes()).hexdigest()
     selection = None
     summary = args.questions.parent / 'sample_summary.json'
@@ -138,6 +207,11 @@ def prepare_run(args, questions):
                 'prompt_templates': TEMPLATES, 'settings': settings, 'dataset_selection': selection}
     metadata_path = directory / 'run_metadata.json'
     result_path = directory / 'results.jsonl'
+    recovery_source = getattr(args, 'recover_from', None)
+    if recovery_source is not None:
+        if args.resume or metadata_path.exists() or result_path.exists():
+            raise ValueError('--recover-from requires a fresh run directory without --resume')
+        recovered = import_recovery(recovery_source, questions, args.model)
     if metadata_path.exists():
         if not args.resume:
             raise ValueError('Run already exists; use --resume or a new --run-dir')
@@ -147,8 +221,11 @@ def prepare_run(args, questions):
     else:
         if args.resume or result_path.exists():
             raise ValueError('Cannot resume without matching run_metadata.json; choose a fresh run directory')
-        save_json(metadata_path, {**identity, 'questions_file': str(args.questions),
+        recovery = {'recovery_source': str(recovery_source.resolve())} if recovery_source is not None else {}
+        save_json(metadata_path, {**identity, **recovery, 'questions_file': str(args.questions),
                                  'timestamp': datetime.now(timezone.utc).isoformat()})
+    if recovery_source is not None:
+        return recovered
     existing = read_jsonl(result_path) if result_path.exists() else []
     results = {}
     lookup = {r['id']: r for r in questions}
@@ -159,6 +236,8 @@ def prepare_run(args, questions):
         results[qid] = row
     for row in questions:
         results.setdefault(row['id'], new_result(row))
+    if getattr(args, 'recover_failures', False):
+        recover_failures(results)
     return results
 
 
@@ -168,6 +247,11 @@ def main():
     parser.add_argument('--run-dir', type=Path, required=True)
     parser.add_argument('--model', required=True, help='Hugging Face identifier or execution-machine model directory')
     parser.add_argument('--resume', action='store_true')
+    recovery = parser.add_mutually_exclusive_group()
+    recovery.add_argument('--recover-failures', action='store_true',
+                          help='With --resume, reparse failed responses and retry unresolved calls once')
+    recovery.add_argument('--recover-from', type=Path,
+                          help='Import a previous run into a fresh directory, reusing matching prompts and reparsing failures')
     parser.add_argument('--seed', type=int, default=42)
     parser.add_argument('--dtype', default='auto')
     parser.add_argument('--tensor-parallel-size', type=int, default=1)
@@ -177,8 +261,14 @@ def main():
     parser.add_argument('--call2-max-tokens', type=int, default=1024)
     parser.add_argument('--temperature', type=float, default=0.0)
     parser.add_argument('--prompt-mode', choices=['chat', 'plain'], default='chat')
-    parser.add_argument('--disable-thinking', action='store_true', help='Pass enable_thinking=False to tokenizer chat template')
+    thinking = parser.add_mutually_exclusive_group()
+    thinking.add_argument('--disable-thinking', dest='disable_thinking', action='store_true', default=True,
+                          help='Pass enable_thinking=False to tokenizer chat template (default)')
+    thinking.add_argument('--enable-thinking', dest='disable_thinking', action='store_false',
+                          help='Use the tokenizer chat template default thinking behavior')
     args = parser.parse_args()
+    if args.recover_failures and not args.resume:
+        parser.error('--recover-failures requires --resume')
     try:
         import fcntl
         questions = load_sample(args.questions)
@@ -207,7 +297,10 @@ def main():
                         sampling = SamplingParams(temperature=args.temperature,
                                    max_tokens=args.call1_max_tokens if call == 1 else args.call2_max_tokens,
                                    seed=args.seed)
-                        return llm.generate([prompt], sampling)[0].outputs[0].text
+                        output = llm.generate([prompt], sampling)[0].outputs[0]
+                        token_ids = getattr(output, 'token_ids', None)
+                        return {'text': output.text, 'finish_reason': getattr(output, 'finish_reason', None),
+                                'generated_tokens': len(token_ids) if token_ids is not None else None}
                     run_pipeline(questions, results, generate, checkpoint)
             finally:
                 checkpoint()
