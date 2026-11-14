@@ -1,7 +1,7 @@
 """Image transformations using Pillow and NumPy.
 
 Transforms return new RGB/RGBA images. Color filters leave alpha unchanged;
-flips and rotations transform it with the image.
+flips, rotations, and scaling transform it with the image.
 """
 import math
 from numbers import Real
@@ -56,6 +56,25 @@ def rotate(image, angle, *, expand=True):
     return _prepare_image(image).rotate(
         angle % 360, resample=Image.Resampling.BICUBIC, expand=expand
     )
+
+
+def scale(image, scale_x=1, scale_y=None):
+    """Resize with positive X/Y factors, using bicubic resampling.
+
+    Omit scale_y for uniform scaling. Dimensions round to the nearest integer
+    (at least one pixel). RGBA pixels and alpha resize together. This is a shared
+    primitive, deliberately not a member of the six-filter MR1 registry.
+    """
+    sx = _validate_number('scale_x', scale_x)
+    sy = sx if scale_y is None else _validate_number('scale_y', scale_y)
+    if sx <= 0 or sy <= 0:
+        raise ValueError('scale factors must be > 0')
+    source = _prepare_image(image)
+    dimensions = (source.width * sx, source.height * sy)
+    if any(not math.isfinite(value) or value > 2**31 - 1 for value in dimensions):
+        raise ValueError('scaled dimensions are too large')
+    size = tuple(max(1, round(value)) for value in dimensions)
+    return source.resize(size, resample=Image.Resampling.BICUBIC)
 
 
 def color_filter(image, which):

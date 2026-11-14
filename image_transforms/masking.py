@@ -13,6 +13,13 @@ def _word(word):
     return word.strip().lower().rstrip('.') + '.'
 
 
+def _validate_mask(mask, image):
+    mask = np.asarray(mask)
+    if mask.dtype != np.bool_ or mask.shape != (image.height, image.width):
+        raise ValueError('segmenter must return a boolean mask matching the image dimensions')
+    return mask
+
+
 class GroundedSAM:
     """Reusable detector and segmenter; requires requirements-masking.txt.
 
@@ -39,6 +46,14 @@ class GroundedSAM:
 
     def segment(self, image, word):
         """Return the union of matching object masks as a boolean [H, W] array."""
+        return self.segment_instances(image, word).any(axis=0)
+
+    def segment_instances(self, image, word):
+        """Return boolean [N, H, W] masks in detector order, before unioning.
+
+        Indices are not semantic identities; inspect masks to select an instance.
+        No detections return an empty [0, H, W] array.
+        """
         import torch
 
         caption = _word(word)
@@ -55,7 +70,7 @@ class GroundedSAM:
         boxes[:, [1, 3]] = boxes[:, [1, 3]].clip(0, image.height)
         boxes = boxes[(boxes[:, 2] > boxes[:, 0]) & (boxes[:, 3] > boxes[:, 1])]
         if len(boxes) == 0:
-            return np.zeros((image.height, image.width), dtype=bool)
+            return np.zeros((0, image.height, image.width), dtype=bool)
 
         inputs = self.sam_processor(images=image, input_boxes=[boxes.tolist()],
                                     return_tensors='pt').to(self.device)
@@ -66,7 +81,7 @@ class GroundedSAM:
             inputs['reshaped_input_sizes'].cpu(),
         )[0]
         # [boxes, one mask, height, width] in original image coordinates.
-        return masks[:, 0].any(dim=0).numpy().astype(bool)
+        return masks[:, 0].numpy().astype(bool)
 
 
 @lru_cache(maxsize=1)
@@ -87,9 +102,7 @@ def mask_objects(image, word, fill='white', *, segmenter=None):
     source = _prepare_image(image)
     if segmenter is None:
         segmenter = _default_segmenter()
-    mask = np.asarray(segmenter.segment(source.convert('RGB'), word))
-    if mask.dtype != np.bool_ or mask.shape != (source.height, source.width):
-        raise ValueError('segmenter must return a boolean mask matching the image dimensions')
+    mask = _validate_mask(segmenter.segment(source.convert('RGB'), word), source)
     pixels = np.array(source)
     pixels[mask, :3] = 255 if fill == 'white' else 0
     return Image.fromarray(pixels)
