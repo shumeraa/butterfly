@@ -2,6 +2,9 @@
 Takes in json output from LLM and runs the specified transformations on the image
 
 TODO: need to hand over transformed image and expected answer to next step, what is the format that the next step expects?
+Also, need to implement other transforms, but currently do not have the llm output to support that
+Need parameters for blur and noise
+Need "correct" answers, different for test and for inference
 '''
 
 import json
@@ -16,11 +19,12 @@ from image_transforms import (HIGH_LEVEL_TRANSFORMS, GroundedSAM, apply_transfor
                COLOR_PRESETS, blur, color_filter, flip, hsv, noise, rotate)
 import random
 
-def apply_transformations(j: str, img: str, out: str) -> None:
+def apply_transformations(j: str, img: str, out: str) -> list:
     try:
         obj = json.loads(j)
         root_out_dir = Path(out)
         img_Path = Path(img)
+        transforms_info = [] # list of dicts, keys of image id, transformed image path, correct answer
         for q in obj:
             # figure out which transforms are valid
             parsed = q["parsed"]
@@ -53,6 +57,13 @@ def apply_transformations(j: str, img: str, out: str) -> None:
 
                     save_path = root_out_dir / f'{img_Path.stem}_{transformation}{img_Path.suffix}'
                     result.save(save_path)
+
+                    d = {
+                        'Image ID': image_id,
+                        'Transformed Image Path': save_path,
+                        'Correct Answer': None
+                    }
+                    transforms_info.append(d)
                     '''
                     elif args.transform == 'mask':
                         segmenter = GroundedSAM(device=args.device)
@@ -60,8 +71,10 @@ def apply_transformations(j: str, img: str, out: str) -> None:
                     else:
                         result = hsv(image, args.delta_h, args.delta_s, args.delta_v)
                     '''
+        return transforms_info
     except Exception as e:
         print(e)
+        exit(1)
 
 
 if __name__ == '__main__':

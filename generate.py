@@ -445,7 +445,7 @@ for iter in range(start_iter, this_config['execution']['feedback_max_iters']):
         else:
             print("Unit tests already generated...")
         
-        ### Sample unit tests ###
+        ### Sample unit tests THIS PART IS ME###
         if this_config['unit_test_generation']['use_program'] and \
             ('selected_unit_tests' not in dataset.data[0] or \
                 not any([iter in dataset.data[idx]['selected_unit_tests'] for idx in range(len(dataset))])):
@@ -664,7 +664,7 @@ for iter in range(start_iter, this_config['execution']['feedback_max_iters']):
                 if iter > 0 and iter not in dataset.data[idx]['generated_code']:
                     continue
                 for code_index, code in enumerate(dataset.data[idx]['generated_code'][iter]):
-                    unit_tests = dataset.data[idx]['selected_unit_tests']
+                    unit_tests = dataset.data[idx]['selected_unit_tests'] #need to update this???
                     images = dataset.data[idx]['unit_test_images']
                     if this_config['unit_test_generation']['use_program']:
                         unit_tests = unit_tests[iter][code_index]
