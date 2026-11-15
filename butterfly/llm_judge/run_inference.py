@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run two question-only vLLM calls and save durable results and review artifacts."""
+"""Run question-only vLLM classification and answer-rule calls and save durable results and review artifacts."""
 import argparse
 import copy
 from collections import Counter
@@ -16,7 +16,7 @@ from prompts import PROMPT_VERSION, TEMPLATES, render
 
 REVIEW_COLUMNS = ['id', 'detailed_type', 'question', 'answer_type', 'topic', 'objects',
                   'answer_options', 'question_flags', 'call1_valid', 'call2_valid', 'call1_parse_repaired',
-                  'call2_parse_repaired', 'correct', 'notes']
+                  'call2_parse_repaired', 'call3_status', 'answer_rules', 'correct', 'notes']
 
 
 def new_result(question):
@@ -77,7 +77,14 @@ def import_recovery(directory, questions, model):
             template = 'call1' if call == 1 else row['call1']
             if metadata.get('prompt_templates', {}).get(template) != TEMPLATES.get(template):
                 raise ValueError(f'Recovery prompt differs for {qid} call{call}; use a fresh run')
-        results[qid] = copy.deepcopy(row)
+        row = copy.deepcopy(row)
+        if row.get('answer_rules'):
+            from answer_rule_prompts import PROMPT, PROMPT_VERSION as RULE_VERSION, TRANSFORMATIONS
+            expected_rule_prompt = {'version': RULE_VERSION, 'template': PROMPT, 'transformations': TRANSFORMATIONS}
+            if metadata.get('answer_rule_prompt') != expected_rule_prompt:
+                row.setdefault('attempt_history', []).append({'answer_rules': row.pop('answer_rules')})
+                row.pop('call3_status', None)
+        results[qid] = row
     if metadata.get('sample_ids') != [q['id'] for q in questions]:
         raise ValueError('Recovery requires the same sample IDs and order')
     for question in questions:
@@ -86,10 +93,58 @@ def import_recovery(directory, questions, model):
     return results
 
 
-def run_pipeline(questions, results, generate, checkpoint):
+def prepare_answer_rules(row, include_color_swap=False, recover=False):
+    """Attach candidate tasks and derive question completion from all three stages."""
+    from enrich_answer_rules import make_tasks
+    if not row.get('call2_valid'):
+        row['call3_status'] = 'blocked' if row.get('complete') else 'pending'
+        row.setdefault('answer_rules', [])
+        return
+    source = {**row, 'answer_type': row['call1'], **row['call2']}
+    expected = [task for task in make_tasks([source], include_color_swap) if task['transformation']]
+    existing = row.get('answer_rules', [])
+    identity_keys = ('id', 'question', 'answer_type', 'analysis', 'transformation', 'selection')
+    identity = lambda tasks: [{key: t[key] for key in identity_keys} for t in tasks]
+    if identity(existing) != identity(expected):
+        if existing:
+            row.setdefault('attempt_history', []).append({'answer_rules': copy.deepcopy(existing)})
+        row['answer_rules'] = expected
+    else:
+        row['answer_rules'] = existing
+    for task in row['answer_rules']:
+        if recover and task['complete'] and not task.get('call3_valid'):
+            task.setdefault('attempt_history', []).append(copy.deepcopy({
+                k: v for k, v in task.items() if k != 'attempt_history'}))
+            for key in ('call3_raw', 'call3', 'call3_valid', 'call3_parse_repaired', 'error'):
+                task[key] = None
+            task.pop('generation', None)
+            task['complete'] = False
+    row['call3_status'] = ('not_applicable' if not row['answer_rules'] else
+                           'complete' if all(t['complete'] for t in row['answer_rules']) else 'pending')
+    row['complete'] = row['call3_status'] != 'pending'
+
+
+def run_answer_rules(row, generate, checkpoint):
+    from enrich_answer_rules import run_pipeline as enrich
+    def generate_rule(prompt):
+        response = generate(prompt, 3)
+        if isinstance(response, str):
+            return {'text': response, 'completed': True}
+        return {**response, 'completed': response.get('finish_reason') == 'stop'}
+    def save_progress():
+        row['complete'] = all(t['complete'] for t in row['answer_rules'])
+        row['call3_status'] = 'complete' if row['complete'] else 'pending'
+        checkpoint()
+    enrich(row['answer_rules'], generate_rule, save_progress)
+    save_progress()
+
+
+def run_pipeline(questions, results, generate, checkpoint, answer_rules=False, include_color_swap=False):
     """Checkpoint each response before continuing; completed IDs are never repeated."""
     for question in questions:
         row = results.setdefault(question['id'], new_result(question))
+        if answer_rules:
+            prepare_answer_rules(row, include_color_swap)
         if row['complete']:
             continue
         for call in (1, 2):
@@ -123,11 +178,18 @@ def run_pipeline(questions, results, generate, checkpoint):
             row[prefix + '_valid'] = valid
             row[prefix + '_parse_repaired'] = repaired
             row['error'] = f'{prefix}: {error}' if error else None
-            row['complete'] = call == 2 or not valid
+            row['complete'] = (call == 2 and not answer_rules) or not valid
+            if answer_rules and call == 2 and valid:
+                prepare_answer_rules(row, include_color_swap)
             checkpoint()
             if not valid:
                 print(f'{question["id"]}: {row["error"]}', file=sys.stderr)
                 break
+
+        if answer_rules and row.get('call2_valid'):
+            prepare_answer_rules(row, include_color_swap)
+            if not row['complete']:
+                run_answer_rules(row, generate, checkpoint)
 
 
 def export_artifacts(directory, rows):
@@ -168,6 +230,17 @@ def export_artifacts(directory, rows):
     for row in rows:
         if row['error']:
             lines.append(f'- Error {row["id"]}: {row["error"]}')
+    if any('call3_status' in row for row in rows):
+        lines.extend(['', '## Answer rules (Call 3)', ''])
+        counts = Counter(row.get('call3_status', 'pending') for row in rows)
+        lines.extend(f'- {key}: {count} questions' for key, count in sorted(counts.items()))
+        tasks = [task for row in rows for task in row.get('answer_rules', [])]
+        lines.append(f'- Requests: {sum(t["call3_raw"] is not None for t in tasks)} responses; '
+                     f'{sum(t["complete"] and not t["call3_valid"] for t in tasks)} invalid responses.')
+        for row in rows:
+            for task in row.get('answer_rules', []):
+                if task.get('error'):
+                    lines.append(f'- Error {row["id"]}/{task["transformation"]}: {task["error"]}')
     atomic_text(directory / 'summary.md', '\n'.join(lines) + '\n')
 
 
@@ -223,6 +296,10 @@ def prepare_run(args, questions):
     identity = {'sample_sha256': checksum, 'sample_ids': [r['id'] for r in questions],
                 'model_identifier': args.model, 'prompt_version': PROMPT_VERSION,
                 'prompt_templates': TEMPLATES, 'settings': settings, 'dataset_selection': selection}
+    if getattr(args, 'answer_rules', False):
+        from answer_rule_prompts import PROMPT, PROMPT_VERSION as RULE_VERSION, TRANSFORMATIONS
+        identity['answer_rule_prompt'] = {'version': RULE_VERSION, 'template': PROMPT,
+                                          'transformations': TRANSFORMATIONS}
     metadata_path = directory / 'run_metadata.json'
     result_path = directory / 'results.jsonl'
     recovery_source = getattr(args, 'recover_from', None)
@@ -243,6 +320,9 @@ def prepare_run(args, questions):
         save_json(metadata_path, {**identity, **recovery, 'questions_file': str(args.questions),
                                  'timestamp': datetime.now(timezone.utc).isoformat()})
     if recovery_source is not None:
+        if getattr(args, 'answer_rules', False):
+            for row in recovered.values():
+                prepare_answer_rules(row, args.include_color_swap, recover=True)
         return recovered
     existing = read_jsonl(result_path) if result_path.exists() else []
     results = {}
@@ -256,6 +336,9 @@ def prepare_run(args, questions):
         results.setdefault(row['id'], new_result(row))
     if getattr(args, 'recover_failures', False):
         recover_failures(results)
+    if getattr(args, 'answer_rules', False):
+        for row in results.values():
+            prepare_answer_rules(row, args.include_color_swap, recover=getattr(args, 'recover_failures', False))
     return results
 
 
@@ -278,6 +361,11 @@ def main():
     parser.add_argument('--gpu-memory-utilization', type=float, default=0.90)
     parser.add_argument('--call1-max-tokens', type=int, default=256)
     parser.add_argument('--call2-max-tokens', type=int, default=1024)
+    parser.add_argument('--call3-max-tokens', type=int, default=1024)
+    parser.add_argument('--skip-answer-rules', dest='answer_rules', action='store_false', default=True,
+                        help='Disable the default integrated Call 3 answer-rule stage')
+    parser.add_argument('--include-color-swap', action='store_true',
+                        help='Also request Call 3 for explicit binary red/blue COLOR questions')
     parser.add_argument('--temperature', type=float, default=0.0)
     parser.add_argument('--prompt-mode', choices=['chat', 'plain'], default='chat')
     thinking = parser.add_mutually_exclusive_group()
@@ -286,6 +374,10 @@ def main():
     thinking.add_argument('--enable-thinking', dest='disable_thinking', action='store_false',
                           help='Use the tokenizer chat template default thinking behavior')
     args = parser.parse_args()
+    if min(args.call1_max_tokens, args.call2_max_tokens, args.call3_max_tokens) <= 0:
+        parser.error('Call token budgets must be positive')
+    if args.include_color_swap and not args.answer_rules:
+        parser.error('--include-color-swap requires answer rules')
     if args.recover_failures and not args.resume:
         parser.error('--recover-failures requires --resume')
     try:
@@ -315,19 +407,19 @@ def main():
                             prompt = tokenizer.apply_chat_template([{'role': 'user', 'content': prompt}],
                                        tokenize=False, add_generation_prompt=True, **kwargs)
                         sampling = SamplingParams(temperature=args.temperature,
-                                   max_tokens=args.call1_max_tokens if call == 1 else args.call2_max_tokens,
+                                   max_tokens={1: args.call1_max_tokens, 2: args.call2_max_tokens, 3: args.call3_max_tokens}[call],
                                    seed=args.seed)
                         output = llm.generate([prompt], sampling)[0].outputs[0]
                         token_ids = getattr(output, 'token_ids', None)
                         return {'text': output.text, 'finish_reason': getattr(output, 'finish_reason', None),
                                 'generated_tokens': len(token_ids) if token_ids is not None else None}
-                    run_pipeline(questions, results, generate, checkpoint)
+                    run_pipeline(questions, results, generate, checkpoint, args.answer_rules, args.include_color_swap)
             finally:
                 checkpoint()
                 export_artifacts(args.run_dir, [results[q['id']] for q in questions])
     except KeyboardInterrupt:
         parser.exit(130, 'Interrupted; saved responses can be resumed with --resume.\n')
-    except (ValueError, OSError, ImportError) as exc:
+    except (ValueError, OSError, ImportError, RuntimeError) as exc:
         parser.exit(1, f'Error: {exc}\n')
 
 

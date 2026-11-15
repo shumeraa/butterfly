@@ -15,6 +15,8 @@
 # Set IMAGE for a different container and REPO_ROOT when submitting elsewhere.
 # Use gpu-a100-dev's two-hour maximum for the full pilot.
 # If the run reaches the limit, continue with the same settings and --resume.
+# Calls 1/2 and eligible Call 3 requests share one model and run directory.
+# Use --call3-max-tokens to tune Call 3 or --skip-answer-rules to disable it.
 # All arguments are forwarded; repeated Python options use the last value.
 
 : "${WORK:?Set WORK to the execution-machine work directory containing containers/}"
@@ -73,7 +75,7 @@ for i in range(torch.cuda.device_count()):
     print(f"GPU {i} computation successful: {result}", flush=True)
 ' || exit $?
 
-echo '=== Running inference ==='
+echo '=== Running classification and integrated answer-rule inference ==='
 exec "${container[@]}" "$PYTHON_BIN" "$SCRIPT" \
     --model "${MODEL:-Qwen/Qwen3.8-27B}" \
     --dtype "${DTYPE:-bfloat16}" \
