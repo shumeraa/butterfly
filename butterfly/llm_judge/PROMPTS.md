@@ -1,6 +1,6 @@
 # Inference prompt pipeline
 
-Prompt version: `gqa-question-only-v3`. Both vLLM and Claude use these templates
+Prompt version: `gqa-question-only-v4`. Both vLLM and Claude use these templates
 from [prompts.py](prompts.py), substituting only the question text. Call 1 is
 unchanged. Call 2 returns topic, ordered objects with REFERENT/ANSWER_OPTION roles
 and id_features, answer_options, and question_flags. There are still two calls.
@@ -49,7 +49,7 @@ OTHER: none of these
 - Give each object a role: REFERENT for an entity the question refers to or asks about; ANSWER_OPTION for an object/person offered as a possible answer. Keep objects in textual order, including answer options.
 - Non-object choices (colors, materials, actions, directions, etc.) belong only in answer_options, not as separate objects.
 - Use an empty list if none exist.
-- For each object, include `id_features`: `COLOR` if its description uses color to identify it, MATERIAL if its description uses material, texture, pattern, or surface appearance. Otherwise use an empty list. Do not infer unmentioned properties.
+- For each object, include `id_features`: COLOR if its description uses color to identify it; MATERIAL for material, texture, pattern, or surface appearance; SIZE for size, width, height, length, or proportions; SHAPE for shape or geometric form. Include all applicable features. Properties being asked about are not identifying features. Otherwise use an empty list. Do not infer unmentioned properties.
 
 3. ANSWER_OPTIONS: List explicit answer choices as strings in textual order, including both object and non-object "X or Y" choices. Use [] if no explicit choices are offered; do not invent yes/no options. Object/person choices must also appear in objects with role ANSWER_OPTION. An AND/OR condition about referents is not an answer-choice list ("Is there either a cat or a dog?" asks about existence; both are REFERENT objects and answer_options is []).
 
@@ -66,6 +66,9 @@ TEXT: Readable text, letters, numbers, signs, or logos.
 BODY: Left/right body parts.
 COLORW: Color words or references to color.
 MATW: Material, texture, pattern, or surface properties.
+SIZEW: References size, width, height, length, or proportions, whether asked about or used to identify an object.
+SHAPEW: References shape or geometric form, whether asked about or used to identify an object.
+COUNTW: Asks about the number of objects, including count comparisons or a specified quantity. Do not flag a numeral used only to identify an object, such as "player number 3".
 EXISTW: Asks whether something exists or is present.
 CATW: References a category, group, or collection of objects.
 COMPARE: Compares properties of multiple objects.
@@ -90,6 +93,15 @@ Question: Is the ball both red and above the box?
 
 Question: Is there either a cat or a dog?
 {"topic":"EXISTS","objects":[{"name":"cat","role":"REFERENT","id_features":[]},{"name":"dog","role":"REFERENT","id_features":[]}],"answer_options":[],"question_flags":["EXISTW","MULTI_CONDITION"]}
+
+Question: Is the tall bottle wider than the round jar?
+{"topic":"OTHER","objects":[{"name":"tall bottle","role":"REFERENT","id_features":["SIZE"]},{"name":"round jar","role":"REFERENT","id_features":["SHAPE"]}],"answer_options":[],"question_flags":["SIZEW","SHAPEW","COMPARE"]}
+
+Question: Is the plate round?
+{"topic":"OTHER","objects":[{"name":"plate","role":"REFERENT","id_features":[]}],"answer_options":[],"question_flags":["SHAPEW"]}
+
+Question: Are there three apples?
+{"topic":"EXISTS","objects":[{"name":"apples","role":"REFERENT","id_features":[]}],"answer_options":[],"question_flags":["EXISTW","COUNTW"]}
 
 Return ONLY valid JSON with keys "topic", "objects", "answer_options", and "question_flags". No explanation.
 ```
@@ -118,7 +130,7 @@ OTHER: none of these
 - Give each object a role: REFERENT for an entity the question refers to or asks about; ANSWER_OPTION for an object/person offered as a possible answer. Keep objects in textual order, including answer options.
 - Non-object choices (colors, materials, actions, directions, etc.) belong only in answer_options, not as separate objects.
 - Use an empty list if none exist.
-- For each object, include `id_features`: `COLOR` if its description uses color to identify it, MATERIAL if its description uses material, texture, pattern, or surface appearance. Otherwise use an empty list. Do not infer unmentioned properties.
+- For each object, include `id_features`: COLOR if its description uses color to identify it; MATERIAL for material, texture, pattern, or surface appearance; SIZE for size, width, height, length, or proportions; SHAPE for shape or geometric form. Include all applicable features. Properties being asked about are not identifying features. Otherwise use an empty list. Do not infer unmentioned properties.
 
 3. ANSWER_OPTIONS: List explicit answer choices as strings in textual order, including both object and non-object "X or Y" choices. Use [] if no explicit choices are offered; do not invent yes/no options. Object/person choices must also appear in objects with role ANSWER_OPTION. An AND/OR condition about referents is not an answer-choice list ("Is there either a cat or a dog?" asks about existence; both are REFERENT objects and answer_options is []).
 
@@ -135,6 +147,9 @@ TEXT: Readable text, letters, numbers, signs, or logos.
 BODY: Left/right body parts.
 COLORW: Color words or references to color.
 MATW: Material, texture, pattern, or surface properties.
+SIZEW: References size, width, height, length, or proportions, whether asked about or used to identify an object.
+SHAPEW: References shape or geometric form, whether asked about or used to identify an object.
+COUNTW: Asks about the number of objects, including count comparisons or a specified quantity. Do not flag a numeral used only to identify an object, such as "player number 3".
 EXISTW: Asks whether something exists or is present.
 CATW: References a category, group, or collection of objects.
 COMPARE: Compares properties of multiple objects.
@@ -146,7 +161,7 @@ Question: What color is the apple?
 {"topic":"COLOR","objects":[{"name":"apple","role":"REFERENT","id_features":[]}],"answer_options":[],"question_flags":["COLORW"]}
 
 Question: What is the small girl wearing?
-{"topic":"OBJECT","objects":[{"name":"small girl","role":"REFERENT","id_features":[]}],"answer_options":[],"question_flags":["ACTW"]}
+{"topic":"OBJECT","objects":[{"name":"small girl","role":"REFERENT","id_features":["SIZE"]}],"answer_options":[],"question_flags":["ACTW","SIZEW"]}
 
 Question: What is beside the cup: an apple, a banana, or an orange?
 {"topic":"OBJECT","objects":[{"name":"cup","role":"REFERENT","id_features":[]},{"name":"apple","role":"ANSWER_OPTION","id_features":[]},{"name":"banana","role":"ANSWER_OPTION","id_features":[]},{"name":"orange","role":"ANSWER_OPTION","id_features":[]}],"answer_options":["apple","banana","orange"],"question_flags":[]}
@@ -160,17 +175,31 @@ Question: What is the man who is both wearing a hat and holding a cup doing?
 Question: What color is the object that is either above the box or below the shelf?
 {"topic":"COLOR","objects":[{"name":"object","role":"REFERENT","id_features":[]},{"name":"box","role":"REFERENT","id_features":[]},{"name":"shelf","role":"REFERENT","id_features":[]}],"answer_options":[],"question_flags":["COLORW","UD","UD_ID","MULTI_CONDITION"]}
 
+Question: What color is the tall bottle beside the round jar?
+{"topic":"COLOR","objects":[{"name":"tall bottle","role":"REFERENT","id_features":["SIZE"]},{"name":"round jar","role":"REFERENT","id_features":["SHAPE"]}],"answer_options":[],"question_flags":["COLORW","SIZEW","SHAPEW"]}
+
+Question: What shape is the plate?
+{"topic":"OTHER","objects":[{"name":"plate","role":"REFERENT","id_features":[]}],"answer_options":[],"question_flags":["SHAPEW"]}
+
+Question: How many apples are there?
+{"topic":"OTHER","objects":[{"name":"apples","role":"REFERENT","id_features":[]}],"answer_options":[],"question_flags":["COUNTW"]}
+
 Return ONLY valid JSON with keys "topic", "objects", "answer_options", and "question_flags". No explanation.
 ```
 
 ## Deterministic transformation rules
 
 Rules use only the validated answer type, topic, objects with roles and
-`id_features`, `answer_options`, and the 16 declared question flags. Gold detailed
+`id_features`, `answer_options`, and the 19 declared question flags. Gold detailed
 types never affect labels. `I` means invariant, `C` equivariant, and `U` unsafe.
 Invalid or missing fields produce evaluation errors, blank labels, and warnings;
 older predictions need explicit object roles, answer_options, and the updated flags.
 No schema fields or labels are guessed.
+
+SIZEW, SHAPEW, and COUNTW capture question dependencies; SIZE and SHAPE in
+id_features capture object identification. These additions are descriptive in
+the current MR1 rules and do not independently change labels. No structured
+dependency fields or MR2 rules are introduced here.
 
 ### Global MR1 transformations
 
@@ -200,21 +229,25 @@ descriptive and do not trigger equivariance by themselves.
 
 ### Local segment_mr1
 
-Only REFERENT objects receive local segmentation results. ANSWER_OPTION objects
-remain in the ordered objects list for provenance but receive no local edit rows.
-The first listed object (index 0) remains the BINARY target: every local result
-for a BINARY REFERENT at another index is U. OPEN evaluates every REFERENT.
+Local edits apply grayscale, blur, noise, horizontal/vertical flip, or 180-degree
+rotation to a segmented object. These are question-only eligibility predictions;
+mask geometry and compositing are not evaluated. Apply the shared guards in
+order, then the transformation rule. Local labels are only I or U, never C.
 
-First check the existing segmentation blockers: EXISTW, TEXT, BODY, ACTW, or
-topic ACTION makes every local result U. Otherwise reuse global grayscale, blur,
-and noise with the conservative mapping I -> I, C -> U, U -> U. Additionally,
-COLOR in the edited object's own id_features blocks local grayscale; MATERIAL
-blocks local blur/noise. These identity guards are object-specific.
+| Scope / transformation | Rule |
+| --- | --- |
+| Object role | Only REFERENT objects receive local rows. ANSWER_OPTION objects remain in the ordered list for provenance but receive no local rows. |
+| BINARY target | U for every REFERENT whose index in the full ordered objects list is not 0. OPEN evaluates every REFERENT. |
+| Segmentation blockers | U for all six local edits if EXISTW, TEXT, BODY, ACTW, or topic ACTION is present. |
+| `segment_mr1_grayscale` | U if the edited object's own id_features includes COLOR; otherwise I only if global grayscale is I, else U. |
+| `segment_mr1_blur` | U if the edited object's own id_features includes MATERIAL; otherwise I only if global blur is I, else U. |
+| `segment_mr1_noise` | U if the edited object's own id_features includes MATERIAL; otherwise I only if global noise is I, else U. |
+| `segment_mr1_hflip` | I only if global hflip is I; global C or U maps to U. |
+| `segment_mr1_vflip` | I only if global vflip is I; global C or U maps to U. |
+| `segment_mr1_rot180` | I only if global rot180 is I; global C or U maps to U. |
 
-The three local result names are `segment_mr1_grayscale`, `segment_mr1_blur`,
-and `segment_mr1_noise`. They are the only local edit family. The evaluator emits
-six global rows per question and three local rows per REFERENT, with no local
-rows for an empty or answer-option-only object list.
+These are the only local edits: six rows per REFERENT, alongside six global
+rows per question. No local rows are emitted for an empty object list.
 
 ### Exports and review
 

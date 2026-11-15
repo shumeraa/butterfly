@@ -9,7 +9,8 @@ from common import read_jsonl, validate_predictions
 from excel_io import read_workbook, write_workbook
 
 GLOBAL = ('hflip', 'vflip', 'rot180', 'grayscale', 'blur', 'noise')
-LOCAL = ('segment_mr1_grayscale', 'segment_mr1_blur', 'segment_mr1_noise')
+LOCAL = ('segment_mr1_grayscale', 'segment_mr1_blur', 'segment_mr1_noise',
+         'segment_mr1_hflip', 'segment_mr1_vflip', 'segment_mr1_rot180')
 LABELS = {'I': 'invariant', 'C': 'equivariant', 'U': 'unsafe'}
 
 
@@ -95,7 +96,7 @@ def evaluate(answer_type, topic, objects, flags, answer_options=()):
         else:
             for name in LOCAL:
                 global_name = name.removeprefix('segment_mr1_')
-                feature = 'COLOR' if global_name == 'grayscale' else 'MATERIAL'
+                feature = {'grayscale': 'COLOR', 'blur': 'MATERIAL', 'noise': 'MATERIAL'}.get(global_name)
                 if feature in obj['id_features']:
                     edits[name] = ('U', 'local_' + feature.lower() + '_identity')
                 else:
@@ -221,7 +222,7 @@ def build_outputs(headers, rows):
     legend = [{'meaning': 'Labels are predicted by rules, not visually verified.'},
               {'meaning': 'I = invariant; C = equivariant (predicted answer change); U = unsafe.'},
               {'meaning': 'Blank labels: evaluation error; inspect status and Warnings.'},
-              {'meaning': 'Local segment_mr1 grayscale/blur/noise apply only to REFERENT objects; C maps to unsafe.'}]
+              {'meaning': 'Local segment_mr1 grayscale/blur/noise/hflip/vflip/rot180 apply only to REFERENT objects; only invariant or unsafe labels are allowed.'}]
     raw = {'Questions': (question_headers, questions), 'GlobalLabels': (gh, globals_),
            'LocalEdits': (lh, locals_), 'Warnings': (wh, warnings)}
     review = {'Review': (rh, reviews), 'LocalEditReview': (lh + ['correct?', 'review_notes'], locals_),

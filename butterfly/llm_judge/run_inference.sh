@@ -4,7 +4,7 @@
 #SBATCH -N 1
 #SBATCH -n 1
 #SBATCH -A CCR26069
-#SBATCH -t 02:00:00
+#SBATCH -t 00:40:00
 #SBATCH -o gqa-llm-judge.%j.out
 #SBATCH -e gqa-llm-judge.%j.out
 #SBATCH --cpus-per-task=8
