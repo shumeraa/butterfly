@@ -9,8 +9,16 @@ from common import read_jsonl, validate_predictions
 from excel_io import read_workbook, write_workbook
 
 GLOBAL = ('hflip', 'vflip', 'rot180', 'grayscale', 'blur', 'noise')
-LOCAL = ('segment_mr1_grayscale', 'segment_mr1_blur', 'segment_mr1_noise',
+SEGMENT_MR1 = ('segment_mr1_grayscale', 'segment_mr1_blur', 'segment_mr1_noise',
          'segment_mr1_hflip', 'segment_mr1_vflip', 'segment_mr1_rot180')
+LOCAL_TYPES = ('segment_mr1', 'fill_red', 'fill_blue', 'occlude_bbox', 'asymmetric_scale')
+LOCAL = SEGMENT_MR1 + LOCAL_TYPES[1:]
+
+
+def local_type(name):
+    return 'segment_mr1' if name in SEGMENT_MR1 else name
+
+
 LABELS = {'I': 'invariant', 'C': 'equivariant', 'U': 'unsafe'}
 
 
@@ -94,7 +102,7 @@ def evaluate(answer_type, topic, objects, flags, answer_options=()):
         elif has('EXISTW', 'TEXT', 'BODY', 'ACTW') or topic == 'ACTION':
             edits = {name: ('U', 'segment_sensitive') for name in LOCAL}
         else:
-            for name in LOCAL:
+            for name in SEGMENT_MR1:
                 global_name = name.removeprefix('segment_mr1_')
                 feature = {'grayscale': 'COLOR', 'blur': 'MATERIAL', 'noise': 'MATERIAL'}.get(global_name)
                 if feature in obj['id_features']:
@@ -102,6 +110,32 @@ def evaluate(answer_type, topic, objects, flags, answer_options=()):
                 else:
                     label, reason = g[global_name]
                     edits[name] = ('I' if label == 'I' else 'U', 'global_mr1:' + reason)
+            features = set(obj['id_features'])
+            for color in ('red', 'blue'):
+                name = 'fill_' + color
+                options = [option.casefold() for option in answer_options]
+                if features & {'COLOR', 'MATERIAL'}:
+                    edits[name] = ('U', 'fill_identity')
+                elif topic in {'MATERIAL', 'OBJECT', 'IDENTITY'} or has('MATW', 'COMPARE', 'CATW', 'MULTI_CONDITION'):
+                    edits[name] = ('U', 'fill_dependency')
+                elif topic == 'COLOR':
+                    if idx == 0 and ((not b and (not options or color in options)) or (len(options) == 2 and len(set(options)) == 2 and color in options)):
+                        edits[name] = ('C', 'constant_color:' + color)
+                    else:
+                        edits[name] = ('U', 'color_answer_not_determined')
+                elif has('COLORW'):
+                    edits[name] = ('U', 'fill_color_dependency')
+                else:
+                    edits[name] = ('I', 'no_fill_dependency')
+            edits['occlude_bbox'] = ('U', 'bbox_occlusion_removes_object_and_context')
+            if features & {'SIZE', 'SHAPE'}:
+                edits['asymmetric_scale'] = ('U', 'scale_identity')
+            elif topic in {'POSITION', 'OBJECT', 'IDENTITY'} or has(
+                    'SIZEW', 'SHAPEW', 'COMPARE', 'CATW', 'LR', 'UD', 'LR_ID',
+                    'LR_ANSWER', 'UD_ID', 'UD_ANSWER', 'SUPPORT'):
+                edits['asymmetric_scale'] = ('U', 'scale_geometry_or_identification_dependency')
+            else:
+                edits['asymmetric_scale'] = ('I', 'no_scale_dependency')
         local.append(edits)
     return g, local
 
@@ -164,7 +198,7 @@ def build_outputs(headers, rows):
                              'object_role': obj['role'],
                              'id_features': obj['id_features'], 'is_target': idx == 0,
                              'allowed_for_edit': not (answer == 'BINARY' and idx > 0),
-                             'transformation': name, 'label': LABELS[label], 'reason_code': reason,
+                             'transformation_type': local_type(name), 'transformation': name, 'label': LABELS[label], 'reason_code': reason,
                              'evaluation_status': 'evaluated'}
                     locals_.append(entry)
             r['local_summary'] = '; '.join(summaries) or 'No REFERENT objects: local edits not applicable'
@@ -189,7 +223,7 @@ def build_outputs(headers, rows):
                             'object_role': obj.get('role') if isinstance(obj, dict) else None,
                             'id_features': obj.get('id_features') if isinstance(obj, dict) else None,
                             'is_target': idx == 0, 'allowed_for_edit': None,
-                            'transformation': name, 'label': None, 'reason_code': 'invalid_input',
+                            'transformation_type': local_type(name), 'transformation': name, 'label': None, 'reason_code': 'invalid_input',
                             'evaluation_status': 'evaluation_error'})
             notices.append(str(exc))
             warnings.append({**provenance, 'warning_code': 'invalid_input', 'message': str(exc), 'source_record': source})
@@ -215,14 +249,14 @@ def build_outputs(headers, rows):
     question_headers = list(dict.fromkeys(headers + computed + [k for q in questions for k in q]))
     gh = ['source_row', 'id', 'detailed_type', 'question', 'transformation', 'label', 'reason_code', 'evaluation_status']
     lh = ['source_row', 'id', 'detailed_type', 'question', 'object_index', 'object_name', 'object_role', 'id_features', 'is_target',
-          'allowed_for_edit', 'transformation', 'label', 'reason_code', 'evaluation_status']
+          'allowed_for_edit', 'transformation_type', 'transformation', 'label', 'reason_code', 'evaluation_status']
     wh = ['source_row', 'id', 'detailed_type', 'question', 'object_index', 'transformation', 'warning_code', 'message', 'source_record']
     rh = ['source_row', 'id', 'detailed_type', 'question', 'answer_type', 'topic', 'objects', 'answer_options', 'question_flags', *GLOBAL,
           'local_summary', 'evaluation_status', 'warnings', 'correct?', 'review_notes']
     legend = [{'meaning': 'Labels are predicted by rules, not visually verified.'},
               {'meaning': 'I = invariant; C = equivariant (predicted answer change); U = unsafe.'},
               {'meaning': 'Blank labels: evaluation error; inspect status and Warnings.'},
-              {'meaning': 'Local segment_mr1 grayscale/blur/noise/hflip/vflip/rot180 apply only to REFERENT objects; only invariant or unsafe labels are allowed.'}]
+              {'meaning': 'MR2: segment_mr1, fill_red, fill_blue, occlude_bbox, asymmetric_scale. REFERENT only; shared BINARY and segmentation guards apply. Fills allow constant-answer equivariance; segment_mr1 and asymmetric_scale remain I/U. BBox occlusion is conservatively unsafe.'}]
     raw = {'Questions': (question_headers, questions), 'GlobalLabels': (gh, globals_),
            'LocalEdits': (lh, locals_), 'Warnings': (wh, warnings)}
     review = {'Review': (rh, reviews), 'LocalEditReview': (lh + ['correct?', 'review_notes'], locals_),

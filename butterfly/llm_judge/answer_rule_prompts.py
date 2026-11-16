@@ -1,13 +1,15 @@
 """Independent, versioned prompt for answer-rule enrichment."""
 import json
 
-PROMPT_VERSION = 'gqa-answer-rules-v1'
+PROMPT_VERSION = 'gqa-answer-rules-v2'
 TRANSFORMATIONS = {
     'hflip': 'Reflect the entire image horizontally.',
     'vflip': 'Reflect the entire image vertically.',
     'rot180': 'Rotate the entire image by 180 degrees.',
-    'color_swap_red_blue': ('Replace red regions with blue and blue regions with red throughout '
-                            'the image, preserving other colors and object geometry.'),
+    'fill_red': 'Segment object index 0 (the target REFERENT) and fill its mask uniformly red, preserving shape and location.',
+    'fill_blue': 'Segment object index 0 (the target REFERENT) and fill its mask uniformly blue, preserving shape and location.',
+    'occlude_bbox': 'Cover the selected REFERENT object bounding box with an opaque black rectangle, including background inside the box.',
+
 }
 
 PROMPT = '''Determine how an image transformation changes the answer to a visual question.
@@ -58,10 +60,10 @@ Example 2 input
 Question: Is the car red or blue?
 Answer type: BINARY
 Call 2 analysis: {"topic":"COLOR","objects":[{"name":"car","role":"REFERENT","id_features":[]}],"answer_options":["red","blue"],"question_flags":["COLORW"]}
-Transformation and definition: color_swap_red_blue — Replace red regions with blue and blue regions with red throughout the image, preserving other colors and object geometry.
+Transformation and definition: fill_red — Segment object index 0 (the target REFERENT) and fill its mask uniformly red, preserving shape and location.
 
 Example 2 output
-{"mode":"MAP","answer_domain":["red","blue"],"mapping":{"red":["blue"],"blue":["red"]},"constant_answer":null,"conditions":[{"condition":"The car has a definite red or blue answer before transformation.","verified_from_input":false}],"reason":"The transformation swaps the two colors offered as answers."}
+{"mode":"CONSTANT","answer_domain":["red","blue"],"mapping":{},"constant_answer":"red","conditions":[],"reason":"The target car is filled uniformly red, so either original color yields red."}
 '''
 
 

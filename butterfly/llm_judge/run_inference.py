@@ -93,7 +93,7 @@ def import_recovery(directory, questions, model):
     return results
 
 
-def prepare_answer_rules(row, include_color_swap=False, recover=False):
+def prepare_answer_rules(row, recover=False):
     """Attach candidate tasks and derive question completion from all three stages."""
     from enrich_answer_rules import make_tasks
     if not row.get('call2_valid'):
@@ -101,7 +101,7 @@ def prepare_answer_rules(row, include_color_swap=False, recover=False):
         row.setdefault('answer_rules', [])
         return
     source = {**row, 'answer_type': row['call1'], **row['call2']}
-    expected = [task for task in make_tasks([source], include_color_swap) if task['transformation']]
+    expected = [task for task in make_tasks([source]) if task['transformation']]
     existing = row.get('answer_rules', [])
     identity_keys = ('id', 'question', 'answer_type', 'analysis', 'transformation', 'selection')
     identity = lambda tasks: [{key: t[key] for key in identity_keys} for t in tasks]
@@ -139,12 +139,12 @@ def run_answer_rules(row, generate, checkpoint):
     save_progress()
 
 
-def run_pipeline(questions, results, generate, checkpoint, answer_rules=False, include_color_swap=False):
+def run_pipeline(questions, results, generate, checkpoint, answer_rules=False):
     """Checkpoint each response before continuing; completed IDs are never repeated."""
     for question in questions:
         row = results.setdefault(question['id'], new_result(question))
         if answer_rules:
-            prepare_answer_rules(row, include_color_swap)
+            prepare_answer_rules(row)
         if row['complete']:
             continue
         for call in (1, 2):
@@ -180,14 +180,14 @@ def run_pipeline(questions, results, generate, checkpoint, answer_rules=False, i
             row['error'] = f'{prefix}: {error}' if error else None
             row['complete'] = (call == 2 and not answer_rules) or not valid
             if answer_rules and call == 2 and valid:
-                prepare_answer_rules(row, include_color_swap)
+                prepare_answer_rules(row)
             checkpoint()
             if not valid:
                 print(f'{question["id"]}: {row["error"]}', file=sys.stderr)
                 break
 
         if answer_rules and row.get('call2_valid'):
-            prepare_answer_rules(row, include_color_swap)
+            prepare_answer_rules(row)
             if not row['complete']:
                 run_answer_rules(row, generate, checkpoint)
 
@@ -322,7 +322,7 @@ def prepare_run(args, questions):
     if recovery_source is not None:
         if getattr(args, 'answer_rules', False):
             for row in recovered.values():
-                prepare_answer_rules(row, args.include_color_swap, recover=True)
+                prepare_answer_rules(row, recover=True)
         return recovered
     existing = read_jsonl(result_path) if result_path.exists() else []
     results = {}
@@ -338,7 +338,7 @@ def prepare_run(args, questions):
         recover_failures(results)
     if getattr(args, 'answer_rules', False):
         for row in results.values():
-            prepare_answer_rules(row, args.include_color_swap, recover=getattr(args, 'recover_failures', False))
+            prepare_answer_rules(row, recover=getattr(args, 'recover_failures', False))
     return results
 
 
@@ -364,8 +364,6 @@ def main():
     parser.add_argument('--call3-max-tokens', type=int, default=1024)
     parser.add_argument('--skip-answer-rules', dest='answer_rules', action='store_false', default=True,
                         help='Disable the default integrated Call 3 answer-rule stage')
-    parser.add_argument('--include-color-swap', action='store_true',
-                        help='Also request Call 3 for explicit binary red/blue COLOR questions')
     parser.add_argument('--temperature', type=float, default=0.0)
     parser.add_argument('--prompt-mode', choices=['chat', 'plain'], default='chat')
     thinking = parser.add_mutually_exclusive_group()
@@ -376,8 +374,6 @@ def main():
     args = parser.parse_args()
     if min(args.call1_max_tokens, args.call2_max_tokens, args.call3_max_tokens) <= 0:
         parser.error('Call token budgets must be positive')
-    if args.include_color_swap and not args.answer_rules:
-        parser.error('--include-color-swap requires answer rules')
     if args.recover_failures and not args.resume:
         parser.error('--recover-failures requires --resume')
     try:
@@ -413,7 +409,7 @@ def main():
                         token_ids = getattr(output, 'token_ids', None)
                         return {'text': output.text, 'finish_reason': getattr(output, 'finish_reason', None),
                                 'generated_tokens': len(token_ids) if token_ids is not None else None}
-                    run_pipeline(questions, results, generate, checkpoint, args.answer_rules, args.include_color_swap)
+                    run_pipeline(questions, results, generate, checkpoint, args.answer_rules)
             finally:
                 checkpoint()
                 export_artifacts(args.run_dir, [results[q['id']] for q in questions])

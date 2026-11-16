@@ -228,27 +228,37 @@ descriptive and do not trigger equivariance by themselves.
 | Exactly one C and the other I | C                         |
 | Both I                        | I                         |
 
-### Local segment_mr1
+### MR2 local transformations
 
-Local edits apply grayscale, blur, noise, horizontal/vertical flip, or 180-degree
-rotation to a segmented object. These are question-only eligibility predictions;
-mask geometry and compositing are not evaluated. Apply the shared guards in
-order, then the transformation rule. Local labels are only I or U, never C.
+MR2 contains `segment_mr1` (six variants), `fill_red` (Fill Red), `fill_blue`
+(Fill Blue), `occlude_bbox` (Occlude BBox), and `asymmetric_scale`.
+There are ten local rows per REFERENT and six unchanged global MR1 rows per
+question. `transformation_type` groups the segment variants under `segment_mr1`.
 
-| Scope / transformation    | Rule                                                                                                                                 |
-| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
-| Object role               | Only REFERENT objects receive local rows. ANSWER_OPTION objects remain in the ordered list for provenance but receive no local rows. |
-| BINARY target             | U for every REFERENT whose index in the full ordered objects list is not 0. OPEN evaluates every REFERENT.                           |
-| Segmentation blockers     | U for all six local edits if EXISTW, TEXT, BODY, ACTW, or topic ACTION is present.                                                   |
-| `segment_mr1_grayscale` | U if the edited object's own id_features includes COLOR; otherwise I only if global grayscale is I, else U.                          |
-| `segment_mr1_blur`      | U if the edited object's own id_features includes MATERIAL; otherwise I only if global blur is I, else U.                            |
-| `segment_mr1_noise`     | U if the edited object's own id_features includes MATERIAL; otherwise I only if global noise is I, else U.                           |
-| `segment_mr1_hflip`     | I only if global hflip is I; global C or U maps to U.                                                                                |
-| `segment_mr1_vflip`     | I only if global vflip is I; global C or U maps to U.                                                                                |
-| `segment_mr1_rot180`    | I only if global rot180 is I; global C or U maps to U.                                                                               |
+Apply shared guards in order:
 
-These are the only local edits: six rows per REFERENT, alongside six global
-rows per question. No local rows are emitted for an empty object list.
+1. Only REFERENT objects receive local rows. ANSWER_OPTION objects retain their
+   original indices but cannot be edited.
+2. BINARY permits only object index 0; other REFERENT edits are U.
+3. EXISTW, TEXT, BODY, ACTW, or topic ACTION makes every MR2 edit U.
+
+Then apply the transformation rule:
+
+| Transformation                                                       | Deterministic rule                                                                                                                                                                                                                                                                                                                                                                                                           |
+| -------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `segment_mr1_grayscale`                                            | U for object COLOR identity; otherwise I only when global grayscale is I.                                                                                                                                                                                                                                                                                                                                                    |
+| `segment_mr1_blur`, `segment_mr1_noise`                          | U for object MATERIAL identity; otherwise I only when the corresponding global rule is I.                                                                                                                                                                                                                                                                                                                                    |
+| `segment_mr1_hflip`, `segment_mr1_vflip`, `segment_mr1_rot180` | I only when the corresponding global rule is I; C/U becomes U.                                                                                                                                                                                                                                                                                                                                                               |
+| `fill_red`, `fill_blue`                                          | U for object COLOR/MATERIAL identity, MATERIAL/OBJECT/IDENTITY topic, or MATW/COMPARE/CATW/MULTI_CONDITION flags. For COLOR topic and target index 0, C means a constant red/blue answer: OPEN must have no explicit choices or include that color; BINARY must have two distinct explicit choices including that color (case insensitive). Other COLOR cases are U. For other topics, COLORW makes the fill U; otherwise I. |
+| `occlude_bbox`                                                     | Cover the object's full bounding box, including background inside it, with opaque black. Deterministically U because it removes the object and context. Review permits I/C/U when a reviewer can establish an answer relationship.                                                                                                                                                                                           |
+| `asymmetric_scale`                                                 | U for object SIZE/SHAPE identity; POSITION/OBJECT/IDENTITY topic; or SIZEW, SHAPEW, COMPARE, CATW, LR, UD, LR_ID, LR_ANSWER, UD_ID, UD_ANSWER, SUPPORT flags. Otherwise I.                                                                                                                                                                                                                                                   |
+
+Fill Red and Fill Blue preserve object shape and location and allow constant-answer
+equivariance; C does not assert that the original answer was different. Call 3
+requests their answer rules automatically when the deterministic label is C.
+Segment then MR1 and asymmetric scale retain I/U labels. Empty object lists have
+no local rows. Labels are question-only predictions; masks and background plates
+still need to correspond to the intended object.
 
 ### Exports and review
 
@@ -260,7 +270,7 @@ The raw workbook contains Questions, GlobalLabels, LocalEdits, and Warnings;
 the review workbook contains Review, LocalEditReview, and Legend. Questions include
 normalized_answer_options. Reviews display object roles and answer choices. Local
 rows include the original object index, object_role, target restriction, specific
-segment_mr1 transformation, label, and reason. Invalid inputs have explicit errors;
+MR2 type, specific transformation, label, and reason. Invalid inputs have explicit errors;
 identifiable non-option objects retain blank local error rows. Labels remain
 predictions from wording, not visually verified answers.
 
@@ -273,12 +283,12 @@ eligible transformation receives one fresh request with the question, validated
 answer type, Call 2 analysis, and transformation definition. It returns MAP,
 CONSTANT, or UNRESOLVED with answer domain, optional conditions, and a reason.
 No Call 2 conversation history is replayed. Conditions remain unverified model
-claims. The optional red/blue example describes a hypothetical global color
-swap; `--include-color-swap` enables that experimental candidate.
+claims. Fill Red and Fill Blue are selected automatically for eligible local
+equivariance, and the color example uses a constant red answer.
 
 ### Exact prompt
 
-Prompt version: `gqa-answer-rules-v1`. The template below is copied exactly
+Prompt version: `gqa-answer-rules-v2`. The template below is copied exactly
 from `answer_rule_prompts.py`. Only the four input placeholders are substituted;
 `transformation_definition` contains the transformation name and definition.
 
@@ -331,10 +341,10 @@ Example 2 input
 Question: Is the car red or blue?
 Answer type: BINARY
 Call 2 analysis: {"topic":"COLOR","objects":[{"name":"car","role":"REFERENT","id_features":[]}],"answer_options":["red","blue"],"question_flags":["COLORW"]}
-Transformation and definition: color_swap_red_blue — Replace red regions with blue and blue regions with red throughout the image, preserving other colors and object geometry.
+Transformation and definition: fill_red — Segment object index 0 (the target REFERENT) and fill its mask uniformly red, preserving shape and location.
 
 Example 2 output
-{"mode":"MAP","answer_domain":["red","blue"],"mapping":{"red":["blue"],"blue":["red"]},"constant_answer":null,"conditions":[{"condition":"The car has a definite red or blue answer before transformation.","verified_from_input":false}],"reason":"The transformation swaps the two colors offered as answers."}
+{"mode":"CONSTANT","answer_domain":["red","blue"],"mapping":{},"constant_answer":"red","conditions":[],"reason":"The target car is filled uniformly red, so either original color yields red."}
 ```
 
 ### Transformation definitions
@@ -342,4 +352,6 @@ Example 2 output
 - `hflip`: Reflect the entire image horizontally.
 - `vflip`: Reflect the entire image vertically.
 - `rot180`: Rotate the entire image by 180 degrees.
-- `color_swap_red_blue`: Replace red regions with blue and blue regions with red throughout the image, preserving other colors and object geometry.
+- `fill_red`: Segment object index 0 (the target REFERENT) and fill its mask uniformly red, preserving shape and location.
+- `fill_blue`: Segment object index 0 (the target REFERENT) and fill its mask uniformly blue, preserving shape and location.
+- `occlude_bbox`: Cover the selected REFERENT object bounding box with an opaque black rectangle, including background inside the box.

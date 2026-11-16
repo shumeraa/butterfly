@@ -9,7 +9,7 @@ import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from answer_rule_prompts import PROMPT_VERSION, TRANSFORMATIONS
-from evaluate_rules import GLOBAL
+from evaluate_rules import GLOBAL, LOCAL, SEGMENT_MR1
 from excel_io import write_workbook
 
 DEFINITIONS = {
@@ -17,16 +17,22 @@ DEFINITIONS = {
     'grayscale': 'Convert the entire image to grayscale, preserving geometry.',
     'blur': 'Blur the entire image, reducing visible fine detail.',
     'noise': 'Add image noise throughout the image.',
-    'fill_color': ('Planned color-fill transformation; not implemented yet. Specify the target, '
-                   'fill color, and intended operation in Notes before grading. No default fill color is assumed.'),
+    **{name: 'Segment one REFERENT object, then apply ' + name.removeprefix('segment_mr1_') +
+       ' to that object. Retain existing MR1 eligibility and identity guards; global C/U becomes local U.'
+       for name in SEGMENT_MR1},
+    'fill_red': 'Segment one REFERENT and fill its mask uniformly red, preserving shape and location. A color question may have a constant red answer.',
+    'fill_blue': 'Segment one REFERENT and fill its mask uniformly blue, preserving shape and location. A color question may have a constant blue answer.',
+    'occlude_bbox': 'Cover the selected REFERENT bounding box with an opaque black rectangle, including background inside the box. The deterministic evaluator conservatively labels this unsafe; document any reliable answer mapping when grading equivariant.',
+    'asymmetric_scale': 'Segment one REFERENT and scale its width and height by unequal positive factors around its center. Unsafe for size, shape, spatial, comparison, or identification dependencies.',
+
 }
 DISPLAY_NAMES = {
     'hflip': 'Horizontal flip', 'vflip': 'Vertical flip', 'rot180': '180° rotation',
     'grayscale': 'Grayscale', 'blur': 'Blur', 'noise': 'Noise',
-    'color_swap_red_blue': 'Red / blue swap',
-    'fill_color': 'Fill color (planned)',
+    'fill_red': 'Fill Red', 'fill_blue': 'Fill Blue', 'occlude_bbox': 'Occlude BBox', 'asymmetric_scale': 'Asymmetric scale',
+    **{name: 'Segment then MR1: ' + name.removeprefix('segment_mr1_') for name in SEGMENT_MR1},
 }
-EQUIVARIANT = frozenset({'hflip', 'vflip', 'rot180', 'fill_color'})
+EQUIVARIANT = frozenset({'hflip', 'vflip', 'rot180', 'fill_red', 'fill_blue', 'occlude_bbox'})
 
 
 def allowed_labels(name):
@@ -36,19 +42,20 @@ def allowed_labels(name):
 INSTRUCTIONS = [
     ('1. Grade each question', 'Open Global edits and choose a label for each transformation. Keep the question unchanged; use only its wording, without guessing an image or original answer.'),
     ('Labels', 'invariant = answer stays the same. equivariant = answers follow a useful mapping. unsafe = no reliable relationship or the question may become unanswerable. Dropdowns offer only eligible labels; see Transformations.'),
+    ('MR2 local edits', 'In Local edits, specify one REFERENT target and the unequal scale factors in Notes. BINARY permits only object index 0. All local edits are unsafe for EXISTW, TEXT, BODY, ACTW, or ACTION topic; ANSWER_OPTION objects cannot be edited. Use the deterministic evaluator for separate rows per object.'),
     ('Blur / noise', 'Choose once in Blur / noise. The same label applies to both transformations.'),
     ('2. Map only if equivariant', 'Write original -> transformed, one line per original answer. Separate multiple possible outputs with commas. Cover every original answer. Only the mapping is required; leave it blank for invariant or unsafe.'),
-    ('Mapping example', 'Horizontal flip: Is the ball left of the box?\n\nyes -> no\nno -> yes, no\n\nFor an edit that always makes the answer blue: Always -> blue'),
-    ('Tips', 'Use Alt+Enter (Option+Return on Mac) for new lines in a cell. Do not assume not-left means right. An empty equivariant mapping is highlighted red. Notes are optional.'),
+    ('Mapping example', 'Horizontal flip: Is the ball left of the box?\n\nyes -> no\nno -> yes, no\n\nFill Red: red -> red; blue -> red (constant answer).'),
+    ('Tips', 'Use Alt+Enter (Option+Return on Mac) for new lines in a cell. Do not assume not-left means right. An empty equivariant mapping is highlighted red. Notes are optional except for local target and scale parameters.'),
 ]
 
 
-def transformation_names(include_color_swap=False):
-    return list(GLOBAL) + ['fill_color'] + (['color_swap_red_blue'] if include_color_swap else [])
+def transformation_names():
+    return list(GLOBAL)
 
 
-def grading_names(include_color_swap=False):
-    return [name for name in transformation_names(include_color_swap) if name != 'noise']
+def grading_names():
+    return [name for name in transformation_names() if name != 'noise']
 
 
 def label_header(name):
@@ -87,7 +94,7 @@ def grading_rows(questions):
     return [{'Question ID': q['id'], 'Question': q['question']} for q in questions]
 
 
-def create_workbook(path, questions, include_color_swap=False):
+def create_workbook(path, questions):
     from openpyxl import load_workbook
     from openpyxl.formatting.rule import FormulaRule
     from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
@@ -97,7 +104,7 @@ def create_workbook(path, questions, include_color_swap=False):
     if len(questions) > 1_048_575:
         raise ValueError('Assignment exceeds the Excel row limit')
     sheets = {}
-    groups = [('Global edits', grading_names(include_color_swap))]
+    groups = [('Global edits', grading_names()), ('Local edits', list(LOCAL))]
     for title, names in groups:
         headers = ['Question ID', 'Question']
         for name in names:
@@ -109,16 +116,16 @@ def create_workbook(path, questions, include_color_swap=False):
     sheets['Quick guide'] = (['Step', 'What to do'], [{'Step': k, 'What to do': v} for k, v in INSTRUCTIONS])
     definitions = []
     for title, names in groups:
-        for name in transformation_names(include_color_swap):
+        for name in (transformation_names() if title == 'Global edits' else names):
             definition = DEFINITIONS[name]
-            if name in {'blur', 'noise'}:
+            if title == 'Global edits' and name in {'blur', 'noise'}:
                 definition += ' Graded together in the Blur / noise column; noise always uses the blur label.'
             definitions.append({'Transformation': DISPLAY_NAMES[name], 'Scope': title,
                                 'Allowed labels': allowed_labels(name).replace(',', ', '),
                                 'Can be equivariant?': 'Yes' if name in EQUIVARIANT else 'No',
                                 'Definition': definition})
     sheets['Transformations'] = (['Transformation', 'Scope', 'Can be equivariant?', 'Allowed labels', 'Definition'], definitions)
-    sheets = {title: sheets[title] for title in ('Quick guide', 'Transformations', 'Global edits')}
+    sheets = {title: sheets[title] for title in ('Quick guide', 'Transformations', 'Global edits', 'Local edits')}
     write_workbook(path, sheets)
     book = load_workbook(path)
     try:
@@ -186,7 +193,7 @@ def create_workbook(path, questions, include_color_swap=False):
         book.close()
 
 
-def generate(input_path, output_dir, num_workbooks, seed=None, include_color_swap=False):
+def generate(input_path, output_dir, num_workbooks, seed=None):
     questions = load_questions(input_path)
     if not 1 <= num_workbooks <= len(questions):
         raise ValueError('num-workbooks must be between 1 and the number of questions')
@@ -198,15 +205,15 @@ def generate(input_path, output_dir, num_workbooks, seed=None, include_color_swa
     for index in range(num_workbooks):
         subset = questions[index::num_workbooks]
         path = output_dir / f'grader_{index + 1:02d}.xlsx'
-        create_workbook(path, subset, include_color_swap)
+        create_workbook(path, subset)
         assignments.append({'workbook': path.name, 'question_ids': [q['id'] for q in subset],
                             'question_count': len(subset),
                             'grading_rows_per_sheet': len(subset),
-                            'transformation_judgments': len(subset) * len(grading_names(include_color_swap))})
+                            'transformation_judgments': len(subset) * (len(grading_names()) + len(LOCAL))})
     manifest = {'input': str(input_path), 'input_sha256': hashlib.sha256(input_path.read_bytes()).hexdigest(),
-                'seed': seed, 'include_color_swap': include_color_swap,
+                'seed': seed,
                 'question_count': len(questions), 'answer_rule_guidance_version': PROMPT_VERSION,
-                'layout_version': 5, 'derived_labels': {'noise': 'blur'}, 'assignments': assignments}
+                'layout_version': 7, 'derived_labels': {'noise': 'blur'}, 'assignments': assignments}
     (output_dir / 'manifest.json').write_text(json.dumps(manifest, indent=2) + '\n', encoding='utf-8')
     return manifest
 
@@ -217,10 +224,9 @@ def main():
     parser.add_argument('--output-dir', type=Path, required=True, help='New directory; existing directories are refused')
     parser.add_argument('--num-workbooks', '-x', type=int, required=True)
     parser.add_argument('--seed', type=int, help='Optionally shuffle questions reproducibly before splitting')
-    parser.add_argument('--include-color-swap', action='store_true', help='Also include experimental red/blue swap')
     args = parser.parse_args()
     try:
-        result = generate(args.input, args.output_dir, args.num_workbooks, args.seed, args.include_color_swap)
+        result = generate(args.input, args.output_dir, args.num_workbooks, args.seed)
     except (ValueError, OSError) as exc:
         parser.exit(1, f'Error: {exc}\n')
     for assignment in result['assignments']:

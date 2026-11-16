@@ -22,17 +22,17 @@ class WorkbookTests(unittest.TestCase):
                 self.assertEqual(assignment['question_count'], 5)
                 book = load_workbook(output / assignment['workbook'])
                 try:
-                    self.assertEqual(book.sheetnames, ['Quick guide', 'Transformations', 'Global edits'])
+                    self.assertEqual(book.sheetnames, ['Quick guide', 'Transformations', 'Global edits', 'Local edits'])
                     self.assertEqual(book.active.title, 'Quick guide')
-                    for title, first_label in [('Global edits', 3)]:
+                    for title, first_label in [('Global edits', 3), ('Local edits', 3)]:
                         sheet = book[title]
                         self.assertEqual(sheet.max_row, 6)
-                        self.assertEqual(len(sheet.data_validations.dataValidation), 6)
+                        self.assertEqual(len(sheet.data_validations.dataValidation), 5 if title == 'Global edits' else 10)
                         for validation in sheet.data_validations.dataValidation:
                             column = next(iter(validation.sqref.ranges)).min_col
                             header = sheet.cell(1, column).value
                             can_map = title == 'Global edits' and header in {
-                                'Horizontal flip', 'Vertical flip', '180° rotation', 'Fill color (planned)'}
+                                'Horizontal flip', 'Vertical flip', '180° rotation'} or (title == 'Local edits' and header in {'Fill Red', 'Fill Blue', 'Occlude BBox'})
                             self.assertEqual(validation.formula1, '"equivariant,invariant,unsafe"' if can_map else '"invariant,unsafe"')
                             if can_map:
                                 self.assertIn('mapping if equivariant', sheet.cell(1, column + 1).value)
@@ -41,26 +41,26 @@ class WorkbookTests(unittest.TestCase):
                         self.assertEqual([cell.value for cell in sheet['A'][1:]], assignment['question_ids'])
                         for row in sheet.iter_rows(min_row=2):
                             self.assertTrue(all(cell.value is None for cell in row[first_label - 1:]))
-                        self.assertEqual(len(sheet.conditional_formatting), 10)
+                        self.assertEqual(len(sheet.conditional_formatting), 8 if title == 'Global edits' else 13)
                     self.assertEqual(book['Global edits'].freeze_panes, 'C2')
                     self.assertNotIn('Call3', book.sheetnames)
                     guide = ' '.join(str(cell.value) for row in book['Quick guide'] for cell in row)
                     self.assertIn('yes -> no\nno -> yes, no', guide)
-                    self.assertIn('Always -> blue', guide)
+                    self.assertIn('REFERENT', guide)
                     self.assertNotIn('JSON', guide)
                     self.assertNotIn('Reason:', guide)
                     self.assertNotIn('Assumptions:', guide)
-                    self.assertEqual(book['Quick guide'].max_row, 7)
+                    self.assertEqual(book['Quick guide'].max_row, 8)
                     all_text = ' '.join(str(cell.value) for sheet in book for row in sheet for cell in row)
-                    self.assertNotIn('local edit', all_text.lower())
-                    self.assertNotIn('segment_mr1', all_text)
-                    self.assertEqual(assignment['transformation_judgments'], 30)
+                    self.assertIn('local edits', all_text.lower())
+                    self.assertNotIn('Fill color (planned)', all_text)
+                    self.assertEqual(assignment['transformation_judgments'], 75)
                     self.assertEqual(manifest['derived_labels'], {'noise': 'blur'})
                     headers = [cell.value for cell in book['Global edits'][1]]
                     self.assertIn('Blur / noise', headers)
                     self.assertNotIn('Noise', headers)
                     self.assertNotIn('Blur', headers)
-                    self.assertEqual(book['Transformations'].max_row, 8)
+                    self.assertEqual(book['Transformations'].max_row, 17)
                     for name, scope, can_map, labels, definition in book['Transformations'].iter_rows(min_row=2, values_only=True):
                         sheet = book[scope]
                         header = 'Blur / noise' if name in {'Blur', 'Noise'} else name
@@ -81,13 +81,13 @@ class WorkbookTests(unittest.TestCase):
             source = root / 'questions.jsonl'
             rows = [{'id': str(i), 'question': '=HYPERLINK("example")'} for i in range(3)]
             source.write_text('\n'.join(json.dumps(r) for r in rows))
-            manifest = generate(source, root / 'out', 2, seed=42, include_color_swap=True)
+            manifest = generate(source, root / 'out', 2, seed=42)
             self.assertEqual([r['question_count'] for r in manifest['assignments']], [2, 1])
             book = load_workbook(root / 'out/grader_01.xlsx')
             try:
                 self.assertEqual(book['Global edits']['B2'].data_type, 's')
                 self.assertEqual(book['Global edits'].max_row, 3)
-                self.assertEqual(len(book['Global edits'].data_validations.dataValidation), 7)
+                self.assertEqual(len(book['Global edits'].data_validations.dataValidation), 5)
                 swap = book['Global edits'].data_validations.dataValidation[-1]
                 self.assertEqual(swap.formula1, '"invariant,unsafe"')
             finally:

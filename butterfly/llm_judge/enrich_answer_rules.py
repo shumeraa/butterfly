@@ -88,18 +88,16 @@ def classify(rule):
     return informative, 'conditional_prediction' if rule['conditions'] else 'prediction'
 
 
-def make_tasks(rows, include_color_swap=False):
+def make_tasks(rows):
     tasks = []
     for source_row, source in enumerate(rows, 1):
         try:
             answer_type, analysis = normalize(source)
-            globals_, _ = evaluate(answer_type, analysis['topic'], analysis['objects'],
+            globals_, locals_ = evaluate(answer_type, analysis['topic'], analysis['objects'],
                                    analysis['question_flags'], analysis['answer_options'])
             candidates = [(name, 'equivariant') for name, (label, _) in globals_.items() if label == 'C']
-            if (include_color_swap and answer_type == 'BINARY' and analysis['topic'] == 'COLOR'
-                    and {x.casefold() for x in analysis['answer_options']} == {'red', 'blue'}
-                    and len(analysis['answer_options']) == 2):
-                candidates.append(('color_swap_red_blue', 'experimental_opt_in'))
+            for edits in locals_:
+                candidates.extend((name, 'local_equivariant') for name, (label, _) in edits.items() if label == 'C')
             error = None
         except (ValueError, TypeError) as exc:
             candidates, answer_type, analysis, error = [], None, None, str(exc)
@@ -165,7 +163,6 @@ def main():
     parser.add_argument('--run-dir', type=Path, required=True)
     parser.add_argument('--provider', choices=['anthropic', 'vllm'], default='anthropic')
     parser.add_argument('--model', help='Defaults to the Claude runner model; required for vLLM')
-    parser.add_argument('--include-color-swap', action='store_true', help='Also enrich explicit binary red/blue COLOR questions')
     parser.add_argument('--resume', action='store_true')
     parser.add_argument('--max-tokens', type=int, default=1024)
     parser.add_argument('--timeout', type=float, default=120)
@@ -189,7 +186,7 @@ def main():
         if args.run_dir.resolve() == args.input.parent.resolve():
             raise ValueError('Use a separate enrichment directory')
         _, rows = read_predictions(args.input)
-        expected = make_tasks(rows, args.include_color_swap)
+        expected = make_tasks(rows)
         identity = {'input_sha256': hashlib.sha256(args.input.read_bytes()).hexdigest(),
                     'prompt_version': PROMPT_VERSION, 'prompt_template': PROMPT,
                     'transformations': TRANSFORMATIONS,

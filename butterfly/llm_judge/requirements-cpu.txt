@@ -2,3 +2,6 @@
 # Only the CPU rule evaluator and its Excel exports need:
 openpyxl>=3.1,<4
 # Install vLLM separately in the GPU execution environment.
+
+# Optional deterministic MR2 mask-based image rendering:
+Pillow>=9.1
