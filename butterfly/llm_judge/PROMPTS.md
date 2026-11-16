@@ -206,13 +206,13 @@ dependency fields or MR2 rules are introduced here.
 
 Apply blockers before answer dependencies:
 
-| Transformation | Rule |
-| --- | --- |
-| `hflip` | U for TEXT, BODY, or LR_ID; otherwise C for BINARY with LR_ANSWER, U for OPEN with LR_ANSWER; otherwise I. |
-| `vflip` | U for TEXT, SUPPORT, or UD_ID; otherwise C for BINARY with UD_ANSWER, U for OPEN with UD_ANSWER; otherwise I. |
-| `grayscale` | U for COLORW, COMPARE, or topic COLOR; otherwise I. |
-| `blur` | U for TEXT, MATW, ACTW, COMPARE, topic MATERIAL/ACTION, or OPEN topic OBJECT; otherwise I. |
-| `noise` | Same rule as blur. |
+| Transformation | Rule                                                                                                          |
+| -------------- | ------------------------------------------------------------------------------------------------------------- |
+| `hflip`      | U for TEXT, BODY, or LR_ID; otherwise C for BINARY with LR_ANSWER, U for OPEN with LR_ANSWER; otherwise I.    |
+| `vflip`      | U for TEXT, SUPPORT, or UD_ID; otherwise C for BINARY with UD_ANSWER, U for OPEN with UD_ANSWER; otherwise I. |
+| `grayscale`  | U for COLORW, COMPARE, or topic COLOR; otherwise I.                                                           |
+| `blur`       | U for TEXT, MATW, ACTW, COMPARE, topic MATERIAL/ACTION, or OPEN topic OBJECT; otherwise I.                    |
+| `noise`      | Same rule as blur.                                                                                            |
 
 If MULTI_CONDITION is present, downgrade any otherwise C result to U. This flag
 covers conjunctions and disjunctions of conditions, including both/either, but
@@ -221,12 +221,12 @@ descriptive and do not trigger equivariance by themselves.
 
 `rot180` has no independent blockers. Derive it from the final hflip/vflip labels:
 
-| hflip / vflip combination | rot180 |
-| --- | --- |
-| Either U | U |
-| Both C | U (possible cancellation) |
-| Exactly one C and the other I | C |
-| Both I | I |
+| hflip / vflip combination     | rot180                    |
+| ----------------------------- | ------------------------- |
+| Either U                      | U                         |
+| Both C                        | U (possible cancellation) |
+| Exactly one C and the other I | C                         |
+| Both I                        | I                         |
 
 ### Local segment_mr1
 
@@ -235,17 +235,17 @@ rotation to a segmented object. These are question-only eligibility predictions;
 mask geometry and compositing are not evaluated. Apply the shared guards in
 order, then the transformation rule. Local labels are only I or U, never C.
 
-| Scope / transformation | Rule |
-| --- | --- |
-| Object role | Only REFERENT objects receive local rows. ANSWER_OPTION objects remain in the ordered list for provenance but receive no local rows. |
-| BINARY target | U for every REFERENT whose index in the full ordered objects list is not 0. OPEN evaluates every REFERENT. |
-| Segmentation blockers | U for all six local edits if EXISTW, TEXT, BODY, ACTW, or topic ACTION is present. |
-| `segment_mr1_grayscale` | U if the edited object's own id_features includes COLOR; otherwise I only if global grayscale is I, else U. |
-| `segment_mr1_blur` | U if the edited object's own id_features includes MATERIAL; otherwise I only if global blur is I, else U. |
-| `segment_mr1_noise` | U if the edited object's own id_features includes MATERIAL; otherwise I only if global noise is I, else U. |
-| `segment_mr1_hflip` | I only if global hflip is I; global C or U maps to U. |
-| `segment_mr1_vflip` | I only if global vflip is I; global C or U maps to U. |
-| `segment_mr1_rot180` | I only if global rot180 is I; global C or U maps to U. |
+| Scope / transformation    | Rule                                                                                                                                 |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| Object role               | Only REFERENT objects receive local rows. ANSWER_OPTION objects remain in the ordered list for provenance but receive no local rows. |
+| BINARY target             | U for every REFERENT whose index in the full ordered objects list is not 0. OPEN evaluates every REFERENT.                           |
+| Segmentation blockers     | U for all six local edits if EXISTW, TEXT, BODY, ACTW, or topic ACTION is present.                                                   |
+| `segment_mr1_grayscale` | U if the edited object's own id_features includes COLOR; otherwise I only if global grayscale is I, else U.                          |
+| `segment_mr1_blur`      | U if the edited object's own id_features includes MATERIAL; otherwise I only if global blur is I, else U.                            |
+| `segment_mr1_noise`     | U if the edited object's own id_features includes MATERIAL; otherwise I only if global noise is I, else U.                           |
+| `segment_mr1_hflip`     | I only if global hflip is I; global C or U maps to U.                                                                                |
+| `segment_mr1_vflip`     | I only if global vflip is I; global C or U maps to U.                                                                                |
+| `segment_mr1_rot180`    | I only if global rot180 is I; global C or U maps to U.                                                                               |
 
 These are the only local edits: six rows per REFERENT, alongside six global
 rows per question. No local rows are emitted for an empty object list.
