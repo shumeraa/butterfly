@@ -46,14 +46,14 @@ class WorkbookTests(unittest.TestCase):
                     self.assertEqual(book['Grades'].freeze_panes, 'C2')
                     self.assertNotIn('Call3', book.sheetnames)
                     guide = ' '.join(str(cell.value) for row in book['Quick guide'] for cell in row)
-                    self.assertNotIn('yes -> no', guide)
+                    self.assertIn('left -> right', guide)
+                    self.assertIn('You make the decisions', guide)
+                    self.assertIn('oversimplified', guide)
                     self.assertIn('all three labels', guide)
                     self.assertNotIn('JSON', guide)
                     self.assertNotIn('Reason:', guide)
                     self.assertNotIn('Assumptions:', guide)
-                    self.assertEqual(book['Quick guide'].max_row, 10)
-                    self.assertFalse(any(str(row[0].value).startswith('Example grade:')
-                                         for row in book['Quick guide']))
+                    self.assertEqual(book['Quick guide'].max_row, 15)
                     guide_rows = dict(book['Quick guide'].iter_rows(min_row=2, values_only=True))
                     target_rule = guide_rows['Target selection rule']
                     self.assertIn('Apply in order, and stop at the first match.', target_rule)
@@ -65,7 +65,7 @@ class WorkbookTests(unittest.TestCase):
                     self.assertIn('What is on the table?', target_rule)
                     self.assertIn('Objects used only to identify another object', guide_rows['Never a target'])
                     self.assertIn('Answer options', guide_rows['Never a target'])
-                    self.assertIn('The man is presupposed, so the man is the target.', guide_rows['Never a target'])
+                    self.assertIn('the man is the target, not the cup.', guide_rows['Never a target'])
                     examples = book['Examples']
                     grades = book['Grades']
                     self.assertEqual([c.value for c in examples[1]], [c.value for c in grades[1]])
@@ -82,11 +82,22 @@ class WorkbookTests(unittest.TestCase):
                     self.assertEqual(len(examples.data_validations.dataValidation), 8)
                     label_columns = [next(iter(v.sqref.ranges)).min_col
                                      for v in examples.data_validations.dataValidation]
+                    example_headers = [c.value for c in examples[1]]
+                    target_column = example_headers.index('Target object') + 1
+                    self.assertTrue(all('(Global Edit)' in h for h in example_headers[2:target_column - 1] if 'mapping' not in h))
+                    self.assertTrue(all('(Local Edit on Target Object)' in h for h in example_headers[target_column:-1] if 'mapping' not in h))
+                    self.assertIn('no target object = unsafe', guide.lower())
                     seen_labels = set()
+                    example_questions = ' '.join(examples.cell(r, 2).value.lower()
+                                                 for r in range(2, examples.max_row + 1))
+                    for needle in ('left or right', 'is there', 'red or blue'):
+                        self.assertIn(needle, example_questions)
                     for row in range(2, examples.max_row + 1):
                         self.assertTrue(examples.cell(row, 1).value)
                         self.assertTrue(examples.cell(row, 2).value)
-                        self.assertIn('Target:', examples.cell(row, examples.max_column).value)
+                        self.assertTrue(examples.cell(row, target_column).value)
+                        for word in ('asymmetric', 'factor', 'width'):
+                            self.assertNotIn(word, examples.cell(row, examples.max_column).value.lower())
                         for column in label_columns:
                             label = examples.cell(row, column).value
                             seen_labels.add(label)
@@ -99,11 +110,12 @@ class WorkbookTests(unittest.TestCase):
                         self.assertNotIn(removed, all_text)
                     self.assertEqual(assignment['transformation_judgments'], 40)
                     self.assertEqual(manifest['derived_labels'], {'noise': 'blur'})
-                    self.assertEqual(manifest['layout_version'], 10)
+                    self.assertEqual(manifest['layout_version'], 13)
                     headers = [cell.value for cell in book['Grades'][1]]
-                    self.assertIn('Blur / noise', headers)
-                    self.assertNotIn('Noise', headers)
-                    self.assertNotIn('Blur', headers)
+                    self.assertIn('Blur / noise (Global Edit)', headers)
+                    self.assertIn('Fill Red (Local Edit on Target Object)', headers)
+                    self.assertNotIn('Noise (Global Edit)', headers)
+                    self.assertNotIn('Blur (Global Edit)', headers)
                     self.assertEqual(book['Transformations'].max_row, 10)
                     self.assertEqual([cell.value for cell in book['Transformations'][1]],
                                      ['Transformation', 'Definition', 'Summarized Rules'])
@@ -114,7 +126,7 @@ class WorkbookTests(unittest.TestCase):
                         # Rules must stay readable without internal question/identity flag names.
                         self.assertNotRegex(rules, r'\b[A-Z][A-Z_]+\b')
                         header = 'Blur / noise' if name in {'Blur', 'Noise'} else name
-                        self.assertIn(header, headers)
+                        self.assertTrue(any(h.startswith(header + ' (') for h in headers))
                 finally:
                     book.close()
             self.assertEqual(len(ids), 20)

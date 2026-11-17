@@ -49,88 +49,169 @@ FILL_RULE = (
     'Match color choices without regard to capitalization. Other color-question cases are unsafe. '
     'For other topics, any mention of color makes the edit unsafe; otherwise it is invariant.'
 )
-BLUR_RULE = (
+NO_EQ_NOTE = (
+    'The automatic rules do not assign equivariant for this transformation. This does not mean you '
+    'should avoid it: choose equivariant whenever you believe the answer changes predictably.\n'
+)
+BLUR_RULE = NO_EQ_NOTE + (
     'Unsafe if the question involves readable text, material, texture, pattern, surface properties, '
     'actions or interactions, or comparisons of object properties, or asks for an object name '
-    'without limiting the answer to two possibilities. Otherwise invariant. '
-    'The automatic rules do not assign equivariant for this transformation.'
+    'without limiting the answer to two possibilities. Otherwise invariant.'
 )
 SUMMARIZED_RULES = {
     'hflip': (
-        'Unsafe if the question involves readable text, left/right body parts, or a left/right '
-        'relation used to identify an object. Otherwise, if a left/right relation is asked about '
-        'or offered as an answer, it is equivariant when there are only two possible answers and '
-        'unsafe for other answer formats. An otherwise equivariant result becomes unsafe when '
-        'the question combines multiple conditions with and/or; a simple pair of answer choices '
-        'does not count as multiple conditions. Otherwise invariant. Merely mentioning a horizontal '
-        'direction does not by itself make the result equivariant.'
+        'Invariant: the question has no left/right wording, no left/right body parts, and no readable text.\n'
+        'Equivariant: the question asks which side something is on (answer must be left or right, e.g. '
+        '“Is X on the left or right?”), left/right is not used to identify an object, and there are no '
+        'body parts, readable text, or multiple and/or conditions. Answer: swap left and right.\n'
+        'Unsafe: everything else. This includes yes/no questions such as “Is X left of Y?” and any '
+        'question that uses left/right to pick out an object.'
     ),
     'vflip': (
-        'Unsafe if the question involves readable text, support, containment, physical orientation '
-        '(such as on, under, inside, sitting, hanging, or lying), or an above/below relation used '
-        'to identify an object. Otherwise, if an up/down relation is asked about or offered as an '
-        'answer, it is equivariant when there are only two possible answers and unsafe for other '
-        'answer formats. An otherwise equivariant result becomes unsafe when the question combines '
-        'multiple conditions with and/or; a simple pair of answer choices does not count as multiple '
-        'conditions. Otherwise invariant. Merely mentioning a vertical direction does not by itself '
-        'make the result equivariant.'
+        'Invariant: the question has no up/down wording (top, bottom, above, below), no support or '
+        'orientation words (on, under, inside, sitting, hanging, lying), and no readable text.\n'
+        'Equivariant: the question asks which side something is on (answer must be top or bottom), '
+        'up/down is not used to identify an object, and there is no support wording, readable text, or '
+        'multiple and/or conditions. Answer: swap top and bottom, above and below.\n'
+        'Unsafe: everything else, including yes/no questions such as “Is X above Y?”.'
     ),
     'grayscale': (
-        'Unsafe if the question mentions color, asks about color, or compares properties of objects. '
-        'Otherwise invariant. The automatic rules do not assign equivariant for this transformation.'
+        'Invariant: the question contains no color or brightness wording (dark, bright, colorful).\n'
+        'Equivariant: the question asks what color one object is, with no comparison or multiple '
+        'conditions. Answer: gray, black, or white (black and white objects stay as they are). '
+        'Also equivariant: “Is X <color>?” where the color is not gray, black, or white. Answer: no, '
+        'because a chromatic color cannot survive grayscale.\n'
+        'Unsafe: everything else, including “red or blue?” choice questions and yes/no questions '
+        'that name gray, black, or white.'
     ),
     'blur': BLUR_RULE,
     'noise': BLUR_RULE,
-    'fill_red': LOCAL_GUARDS + FILL_RULE.format(color='red'),
-    'fill_blue': LOCAL_GUARDS + FILL_RULE.format(color='blue'),
-    'occlude_bbox': LOCAL_GUARDS + (
-        'The automatic rules always label bounding-box occlusion unsafe because it removes the '
-        'object and surrounding context. A reviewer may choose invariant or equivariant when '
-        'a reliable answer relationship can be established.'
+    'fill_red': (
+        'First pick one target object (see Target selection rule on the Quick guide); if there is none, '
+        'there is no automatic label.\n'
+        'Invariant: the question has no color, material, texture, pattern, surface, or readable-text wording.\n'
+        'Equivariant: the target is clear, there is no comparison or multiple and/or conditions, and '
+        'the question is about the target’s color. “What color is X?” answers red. “Is X <color>?” '
+        'answers yes if the color is red, otherwise no. “Is X <color> or red?” answers red.\n'
+        'Unsafe: everything else.'
     ),
-    'asymmetric_scale': LOCAL_GUARDS + (
+    'fill_blue': LOCAL_GUARDS + FILL_RULE.format(color='blue'),
+    'occlude_bbox': (
+        'Never invariant: the object is named in the question, so hiding it cannot be shown irrelevant.\n'
+        'Equivariant: the target is clear, there is no comparison or multiple and/or conditions, and '
+        'one of these applies. “What color is X?” answers black. “Is X <color>?” answers yes if the color '
+        'is black, otherwise no. “Is X <color> or black?” answers black. “Is there an X?” answers no '
+        'when the wording implies only one X.\n'
+        'Unsafe: everything else.\n'
+        'Caveats: the color answers assume the box fully covers the object, and the existence answer '
+        'is wrong if other instances of X remain outside the box.'
+    ),
+    'asymmetric_scale': NO_EQ_NOTE + LOCAL_GUARDS + (
         'After those checks, unsafe if size, proportions, or shape identifies the selected object; '
         'if the question asks about position, object type, or identity; or if it mentions size, '
         'proportions, shape, comparisons of object properties, categories or collections, left/right '
-        'or up/down relations, support, containment, or physical orientation. Otherwise invariant. '
-        'The automatic rules do not assign equivariant for this transformation.'
+        'or up/down relations, support, containment, or physical orientation. Otherwise invariant.'
     ),
 }
 
 
+# (section, text, fill color). Section is bold in column A.
 INSTRUCTIONS = [
-    ('1. Grade each question', 'Open Grades and choose a label for each transformation. Keep the question unchanged; use only its wording, without guessing an image or original answer.'),
-    ('Labels', 'invariant = answer stays the same. equivariant = answers follow a useful mapping. unsafe = no reliable relationship or the question may become unanswerable. Every transformation allows all three labels and has a mapping column.'),
-    ('Rules and examples', 'Transformations summarizes the current automatic rules from PROMPTS.md in plain language. These are reference rules; human grading allows all three labels for every transformation. See the Examples sheet for worked grades and mappings.'),
-    ('MR2 local edits', 'On Grades, specify one target object for local edits and unequal scale factors for asymmetric scale in Notes. The target must be an object referred to by the question, not an object offered solely as an answer choice. See Transformations for the current automatic rules.'),
-    ('Target selection rule', 'Apply in order, and stop at the first match.\n\n1. Asked-about object. If the question asks the color of X, or whether X exists, X is the target. (“What color is the apple?”, “Is the shirt red?”, “Is there a cat?”)\n\n2. Grammatical subject. For other questions, take the head noun of the main clause: the thing the question is predicated on. (“Is the ball above the box?”, “What is the girl holding?”, “Is the man wearing a hat?”)\n\n3. Only named object. If the question names just one object, it is the target. (“What is on the table?”)\n\n4. Tie. If two objects both qualify, take the first in textual order.'),
-    ('Never a target', 'Objects used only to identify another object (relative clauses, “to the left of the Z”).\n\nAnswer options (“an apple or a banana”).\n\nObjects whose existence the question doesn’t presuppose, such as the cup in “Is the man holding a cup?” The man is presupposed, so the man is the target.'),
-    ('Blur / noise', 'Choose once in Blur / noise. The same label and mapping apply to both transformations.'),
-    ('2. Map only if equivariant', 'Write original -> transformed, one line per original answer. Separate multiple possible outputs with commas. Cover every original answer. Only the mapping is required; leave it blank for invariant or unsafe.'),
-    ('Tips', 'Use Alt+Enter (Option+Return on Mac) for new lines in a cell. Do not assume not-left means right. An empty equivariant mapping is highlighted red. Notes are optional except for local target and scale parameters.'),
+    ('About this workbook',
+     'You will judge how edits to an image would change the answer to a question. For each question, '
+     'decide whether each edit (a flip, a recoloring, hiding an object, and so on) leaves the answer the same, '
+     'changes it in a predictable way, or makes it unreliable. Use only the question wording: do not guess '
+     'an image or the original answer.', 'EFF6FF'),
+    ('Tabs',
+     'Quick guide: these instructions.\n'
+     'Transformations: what each edit does, plus a summary of the rules an automatic checker uses for it.\n'
+     'Examples: four fully graded rows to copy the style from.\n'
+     'Grades: where you work. One row per question.', 'EFF6FF'),
+    ('You make the decisions',
+     'The rules on the Transformations tab are a reference, not an answer key. They are deliberately '
+     'oversimplified and may contain logic errors; finding those errors is exactly what this grading is for. '
+     'Use them for ideas, but make every label and mapping on your own judgment. '
+     'If a rule seems wrong for a question, ignore it and grade what you believe is correct.', 'FEE2E2'),
+    ('1. Grade each question',
+     'On Grades, choose a label for every transformation; all three labels are allowed for every transformation.', 'EFF6FF'),
+    ('invariant',
+     'The answer stays the same after the edit.', 'DCFCE7'),
+    ('equivariant',
+     'The answer changes in a predictable way (including always becoming one fixed answer). '
+     'Write the mapping in the next column.', 'FEF3C7'),
+    ('unsafe',
+     'No reliable expectation: the answer could change unpredictably, or the question may become unanswerable.', 'FEE2E2'),
+    ('2. Mapping (equivariant only)',
+     'If you chose equivariant, say how the answer changes. Imagine the question had every possible original answer, '
+     'and write one line for each: original answer -> answer after the edit.\n\n'
+     'Example: horizontal flip of “Is the ball on the left or right of the box?” swaps the sides:\n'
+     'left -> right\nright -> left\n\n'
+     'Fixed result: if the edit always forces one answer, every line ends the same way '
+     '(Fill Red on “Is the car red or blue?”: red -> red, blue -> red).\n'
+     'Several possible results: separate them with commas (no -> yes, no).\n\n'
+     'Cover every possible original answer, and don’t assume “not left” means right. '
+     'For invariant or unsafe, leave the mapping blank. A blank mapping next to equivariant turns red.', 'EFF6FF'),
+    ('3. Name the target (local edits)',
+     'Fill Red, Fill Blue, Occlude BBox and Asymmetric scale edit one object. Enter it in the Target object '
+     'column, chosen with the rule below.', 'EFF6FF'),
+    ('No target object = unsafe',
+     'If no object qualifies as the target (for example “Is it sunny?”), enter none in Target object and '
+     'mark every local edit unsafe. Whole-image (Global Edit) transformations are still graded normally.', 'FEE2E2'),
+    ('Target selection rule',
+     'The target is the one object the question is really about. Ask: “If someone edited just one thing '
+     'in the picture, which thing would the question depend on most?” Apply in order, and stop at the first match.\n\n'
+     '1. Asked-about object. If the question asks about an object’s color, or whether it exists, that object is '
+     'the target. (“What color is the apple?” → apple. “Is there a cat?” → cat.)\n'
+     '2. Grammatical subject. Otherwise, take the thing doing or being described: the main noun the sentence is built around. '
+     '(“Is the ball above the box?” → ball. “What is the girl holding?” → girl.)\n'
+     '3. Only named object. If the question mentions just one object, it is the target. '
+     '(“What is on the table?” → table.)\n'
+     '4. Tie. If two objects still seem equally good, take the one mentioned first.', 'F8FAFC'),
+    ('Never a target',
+     'Objects used only to identify another object. They are just directions (“the girl to the left of the Z” → '
+     'the girl, not Z).\n'
+     'Answer options. They are possible answers, not things being asked about (“an apple or a banana”).\n'
+     'Objects the question doesn’t assume are in the picture. “Is the man holding a cup?” may well have no cup, '
+     'so the man is the target, not the cup. (Exception: in an existence question, the object asked about is the target.)', 'F8FAFC'),
+    ('Blur / noise',
+     'Graded once in the Blur / noise column; the same label and mapping apply to both.', 'F8FAFC'),
+    ('Tips',
+     'Use Alt+Enter (Option+Return on Mac) for a new line inside a cell.', 'F8FAFC'),
 ]
 
-# Complete worked rows in the same column order as the grading sheet.
+# Complete worked rows in the same column order as the grading sheet:
+# Horizontal flip, Vertical flip, Grayscale, Blur / noise, Fill Red, Fill Blue, Occlude BBox, Asymmetric scale.
 EXAMPLES = [
-    ('How many balls are there?',
-     ('invariant', 'invariant', 'invariant', 'invariant', 'invariant', 'invariant', 'unsafe', 'invariant'),
-     {},
-     'Target: balls. Scale width by 1.5 and height by 0.75. Count is preserved by the other edits; occlusion hides objects.'),
-    ('Is the car red or blue?',
+    ('Is the car red or blue?', 'car',
      ('invariant', 'invariant', 'unsafe', 'invariant', 'equivariant', 'equivariant', 'unsafe', 'invariant'),
      {'fill_red': 'red -> red\nblue -> red', 'fill_blue': 'red -> blue\nblue -> blue'},
-     'Target: car. Scale width by 1.5 and height by 0.75. Fills force their color; grayscale and occlusion lose the color answer.'),
-    ('Is the ball above the box?',
-     ('invariant', 'equivariant', 'invariant', 'invariant', 'invariant', 'invariant', 'unsafe', 'unsafe'),
-     {'vflip': 'yes -> no\nno -> yes, no'},
-     'Target: ball (subject), not box. Scale width by 1.5 and height by 0.75. A ball that was not above may be below or vertically aligned.'),
+     'COLOR question. Fills force their color; grayscale and occlusion remove the color, so the answer is unpredictable.'),
+    ('Is the ball to the left or right of the box?', 'ball',
+     ('equivariant', 'invariant', 'invariant', 'invariant', 'invariant', 'invariant', 'unsafe', 'unsafe'),
+     {'hflip': 'left -> right\nright -> left'},
+     'LEFT/RIGHT question. The ball is the subject; the box only helps locate it. '
+     'Occlusion hides the ball being located.'),
+    ('Is there a cat in the image?', 'cat',
+     ('invariant', 'invariant', 'invariant', 'invariant', 'invariant', 'invariant', 'equivariant', 'invariant'),
+     {'occlude_bbox': 'yes -> no\nno -> no'},
+     'EXISTS question. A recolored cat still exists; if there is one cat, covering its box makes the answer no.'),
+    ('Is it sunny?', 'none',
+     ('invariant', 'invariant', 'invariant', 'invariant', 'unsafe', 'unsafe', 'unsafe', 'unsafe'),
+     {},
+     'NO TARGET question. It is about the whole scene, so no single object can be edited. '
+     'Whole-image edits leave the answer alone; local edits have nothing to act on, so they are unsafe.'),
 ]
+
+
+def wrapped_lines(text, width):
+    """Approximate wrapped line count for sizing Excel rows."""
+    return sum(max(1, -(-len(part) // width)) for part in text.split('\n'))
 
 
 def example_rows():
     rows = []
-    for index, (question, labels, mappings, notes) in enumerate(EXAMPLES, 1):
-        row = {'Question ID': f'worked_{index:02d}', 'Question': question, 'Notes': notes}
+    for index, (question, target, labels, mappings, notes) in enumerate(EXAMPLES, 1):
+        row = {'Question ID': f'worked_{index:02d}', 'Question': question, 'Target object': target, 'Notes': notes}
         for name, label in zip(grading_names(), labels):
             row[label_header(name)] = label
             row[mapping_header(name)] = mappings.get(name, '')
@@ -147,12 +228,21 @@ def grading_names():
     return [name for name in transformation_names() if name != 'noise']
 
 
-def label_header(name):
+def base_header(name):
     return 'Blur / noise' if name == 'blur' else DISPLAY_NAMES[name]
 
 
+def label_header(name):
+    base = base_header(name)
+    return f'{base} ({"Global Edit" if name in GLOBAL else "Local Edit on Target Object"})'
+
+
+def is_local(name):
+    return name not in GLOBAL
+
+
 def mapping_header(name):
-    return label_header(name) + ' — mapping if equivariant'
+    return base_header(name) + ' — mapping if equivariant'
 
 
 def load_questions(path):
@@ -197,11 +287,13 @@ def create_workbook(path, questions):
     for title, names in groups:
         headers = ['Question ID', 'Question']
         for name in names:
+            if name == next(n for n in names if is_local(n)):
+                headers.append('Target object')
             headers.append(label_header(name))
             headers.append(mapping_header(name))
         headers.append('Notes')
         sheets[title] = (headers, example_rows() if title == 'Examples' else grading_rows(questions))
-    sheets['Quick guide'] = (['Step', 'What to do'], [{'Step': k, 'What to do': v} for k, v in INSTRUCTIONS])
+    sheets['Quick guide'] = (['Topic', 'Guidance'], [{'Topic': k, 'Guidance': v} for k, v, _ in INSTRUCTIONS])
     definitions = []
     for name in transformation_names():
         definition = DEFINITIONS[name]
@@ -217,13 +309,16 @@ def create_workbook(path, questions):
         for title, names in groups:
             sheet = book[title]
             first_label = 3
-            sheet.freeze_panes = f'{get_column_letter(first_label)}2'
+            target_column = 3 + 2 * sum(1 for n in names if not is_local(n))
+            first_local = next(n for n in names if is_local(n))
+            sheet.freeze_panes = 'C2'
             sheet.sheet_view.zoomScale = 85
             sheet.sheet_view.showGridLines = False
             sheet.sheet_properties.tabColor = '2563EB'
             sheet.column_dimensions['A'].width = 18
             sheet.column_dimensions['B'].width = 62
-            sheet.row_dimensions[1].height = 48
+            sheet.column_dimensions[get_column_letter(target_column)].width = 22
+            sheet.row_dimensions[1].height = 64
             for cell in sheet[1]:
                 cell.alignment = Alignment(vertical='center', wrap_text=True)
             for row in range(2, sheet.max_row + 1):
@@ -234,6 +329,8 @@ def create_workbook(path, questions):
                 sheet.cell(row, 2).font = Font(size=12, color='0F172A')
             next_column = first_label
             for name in names:
+                if name == first_local:
+                    next_column += 1  # Target object column sits between global and local edits
                 label_col = get_column_letter(next_column)
                 next_column += 1
                 sheet.column_dimensions[label_col].width = 22
@@ -262,18 +359,32 @@ def create_workbook(path, questions):
                     formula=[f'{label_col}2="equivariant"'], fill=PatternFill('solid', fgColor='FEF3C7')))
             sheet.column_dimensions[get_column_letter(sheet.max_column)].width = 42
         guide = book['Quick guide']
-        guide.column_dimensions['A'].width = 35
-        guide.column_dimensions['B'].width = 105
-        for row in range(2, guide.max_row + 1):
-            guide.row_dimensions[row].height = {
-                'Target selection rule': 260, 'Never a target': 150,
-            }.get(guide.cell(row, 1).value, 65)
+        guide.sheet_view.showGridLines = False
+        guide.auto_filter.ref = None
+        guide.sheet_properties.tabColor = 'DC2626'
+        guide.column_dimensions['A'].width = 32
+        guide.column_dimensions['B'].width = 110
+        guide.row_dimensions[1].height = 28
+        for cell in guide[1]:
+            cell.alignment = Alignment(vertical='center', indent=1)
+        thin = Side(style='thin', color='FFFFFF')
+        for row, (_, text, color) in enumerate(INSTRUCTIONS, 2):
+            guide.row_dimensions[row].height = max(34, 17 * wrapped_lines(text, 105) + 14)
+            for column in (1, 2):
+                cell = guide.cell(row, column)
+                cell.fill = PatternFill('solid', fgColor=color)
+                cell.border = Border(top=thin, bottom=thin)
+                cell.alignment = Alignment(vertical='center', wrap_text=True, indent=1)
+            guide.cell(row, 1).font = Font(bold=True, size=12, color='991B1B' if row == 2 else '0F172A')
+            guide.cell(row, 2).font = Font(size=11, color='0F172A')
         for column, width in [('A', 27), ('B', 65), ('C', 110)]:
             book['Transformations'].column_dimensions[column].width = width
         for row in range(2, book['Transformations'].max_row + 1):
             name = transformation_names()[row - 2]
-            book['Transformations'].row_dimensions[row].height = (
-                230 if name in {'fill_red', 'fill_blue'} else 150)
+            book['Transformations'].row_dimensions[row].height = max(
+                60, 16 * wrapped_lines(SUMMARIZED_RULES[name], 105) + 16)
+            for cell in book['Transformations'][row]:
+                cell.alignment = Alignment(vertical='top', wrap_text=True)
         book.save(path)
     finally:
         book.close()
@@ -299,7 +410,7 @@ def generate(input_path, output_dir, num_workbooks, seed=None):
     manifest = {'input': str(input_path), 'input_sha256': hashlib.sha256(input_path.read_bytes()).hexdigest(),
                 'seed': seed,
                 'question_count': len(questions), 'answer_rule_guidance_version': PROMPT_VERSION,
-                'layout_version': 10, 'derived_labels': {'noise': 'blur'}, 'assignments': assignments}
+                'layout_version': 13, 'derived_labels': {'noise': 'blur'}, 'assignments': assignments}
     (output_dir / 'manifest.json').write_text(json.dumps(manifest, indent=2) + '\n', encoding='utf-8')
     return manifest
 
