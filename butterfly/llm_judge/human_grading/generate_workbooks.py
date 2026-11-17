@@ -246,14 +246,17 @@ def mapping_header(name):
 
 
 def load_questions(path):
-    """Accept the inference JSONL schema or the same records as a JSON array."""
-    content = path.read_text(encoding='utf-8')
-    if path.suffix.lower() == '.jsonl':
-        rows = [json.loads(line) for line in content.splitlines() if line.strip()]
-    else:
-        rows = json.loads(content)
-    if not isinstance(rows, list) or not rows:
-        raise ValueError('Input must be a nonempty JSON array or JSONL of question records')
+    """Read the inference questions.jsonl format: one JSON object per line."""
+    rows = []
+    for number, line in enumerate(path.read_text(encoding='utf-8').splitlines(), 1):
+        if not line.strip():
+            continue
+        try:
+            rows.append(json.loads(line))
+        except json.JSONDecodeError as exc:
+            raise ValueError(f'{path.name} line {number} is not valid JSON ({exc.msg}); expected questions.jsonl') from exc
+    if not rows:
+        raise ValueError('Input must be a nonempty questions.jsonl with one question record per line')
     seen = set()
     for row in rows:
         if not isinstance(row, dict):
@@ -417,7 +420,7 @@ def generate(input_path, output_dir, num_workbooks, seed=None):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--input', type=Path, required=True, help='Question JSON array or inference questions.jsonl')
+    parser.add_argument('--input', type=Path, required=True, help='questions.jsonl: one record per line with id, question, and optional detailed_type')
     parser.add_argument('--output-dir', type=Path, required=True, help='New directory; existing directories are refused')
     parser.add_argument('--num-workbooks', '-x', type=int, required=True)
     parser.add_argument('--seed', type=int, help='Optionally shuffle questions reproducibly before splitting')

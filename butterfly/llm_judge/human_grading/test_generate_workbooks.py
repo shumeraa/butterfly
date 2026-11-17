@@ -12,7 +12,7 @@ from generate_workbooks import generate, load_questions
 
 class WorkbookTests(unittest.TestCase):
     def test_example_split_and_grading_controls(self):
-        source = Path(__file__).parent / 'examples/questions.json'
+        source = Path(__file__).parent / 'examples/questions.jsonl'
         with tempfile.TemporaryDirectory() as directory:
             output = Path(directory) / 'assignments'
             manifest = generate(source, output, 4)
