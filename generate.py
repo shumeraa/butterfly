@@ -38,6 +38,7 @@ from unit_test_generation.processing import extract_unit_tests, get_unit_test_pr
 from unit_test_generation.unit_test_sampling import TextSampler
 from accuracy_fns import get_accuracy_fn
 from functools import partial
+from apply_transformations.apply import append_custom_unit_tests
 
 
 ### ARGUMENT PARSING ###
@@ -125,11 +126,33 @@ parser.add_argument(
 )
 
 
+parser.add_argument(
+    '--custom_unit_tests_path',
+    type=str,
+    default='',
+    help='JSON mapping question IDs to custom tests appended after ViUniT sampling. '
+         'Image paths are relative to the working directory or absolute.'
+)
+
 args = parser.parse_args()
 
 ## CONFIG SETUP ##
 this_config = load_config(
     args.base_path, args.config_path, args.config_options)
+
+tests_by_question_id = None
+if args.custom_unit_tests_path:
+    if not this_config['do_unit_test']:
+        parser.error('--custom_unit_tests_path requires do_unit_test=True')
+    if this_config['unit_test_generation']['use_program']:
+        parser.error('--custom_unit_tests_path requires unit_test_generation.use_program=False')
+    if not args.execute_unit_tests or not args.recompute_unit_tests:
+        parser.error('Custom tests require --execute_unit_tests 1 --recompute_unit_tests 1 '
+                     'so results include the supplied tests')
+    with open(args.custom_unit_tests_path, encoding='utf-8') as f:
+        tests_by_question_id = json.load(f)
+    if not isinstance(tests_by_question_id, dict):
+        parser.error('Custom tests JSON must be an object mapping question IDs to lists of tests')
 
 set_seed(this_config['seed'])
 
@@ -445,7 +468,7 @@ for iter in range(start_iter, this_config['execution']['feedback_max_iters']):
         else:
             print("Unit tests already generated...")
         
-        ### Sample unit tests THIS PART IS ME###
+        ### Sample unit tests ###
         if this_config['unit_test_generation']['use_program'] and \
             ('selected_unit_tests' not in dataset.data[0] or \
                 not any([iter in dataset.data[idx]['selected_unit_tests'] for idx in range(len(dataset))])):
@@ -588,7 +611,13 @@ for iter in range(start_iter, this_config['execution']['feedback_max_iters']):
             pickle.dump(dataset.data, open(save_file, 'wb'))  
         else:
             print("Images already sampled...")
-            
+
+        ### JASON ADDED ###
+        if tests_by_question_id is not None:
+            added = append_custom_unit_tests(dataset.data, tests_by_question_id) # tests_by_question_id should be passed in as a path to a .json file in --custom_unit_tests_path
+            print(f'Added {added} custom unit tests after sampling')
+            pickle.dump(dataset.data, open(save_file, 'wb'))
+
         if this_config['execution']['synonym_checker']:
             checker = SynonymChecker()
         if len(dataset.data) > 0 and 'unit_test_results' in dataset.data[0] and \
