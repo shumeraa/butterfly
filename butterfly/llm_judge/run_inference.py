@@ -249,7 +249,6 @@ def load_sample(path):
     if not rows:
         raise ValueError('Sample is empty')
     ids = set()
-    counts = Counter()
     for row in rows:
         if not isinstance(row, dict) or set(row) != {'id', 'detailed_type', 'question'}:
             raise ValueError('Sample rows must contain only id, detailed_type, question')
@@ -258,9 +257,6 @@ def load_sample(path):
         if row['id'] in ids:
             raise ValueError(f'Duplicate sample ID: {row["id"]}')
         ids.add(row['id'])
-        counts[row['detailed_type']] += 1
-    if any(count != 2 for count in counts.values()):
-        raise ValueError('Expected exactly two questions per discovered detailed type')
     return rows
 
 
