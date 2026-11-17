@@ -29,7 +29,10 @@ def resolve_dataset(explicit, split):
     return candidates[0]
 
 
-def sample_questions(data, seed):
+def sample_questions(data, seed, sample_size=200):
+    """Allocate proportional detailed-type quotas, then sample without replacement."""
+    if isinstance(sample_size, bool) or not isinstance(sample_size, int) or sample_size <= 0:
+        raise ValueError('Sample size must be a positive integer')
     if not isinstance(data, dict) or not data:
         raise ValueError('Expected a nonempty GQA question-ID mapping')
     groups = defaultdict(list)
@@ -44,17 +47,23 @@ def sample_questions(data, seed):
         groups[detailed].append(qid)
     counts = {name: len(groups[name]) for name in sorted(groups)}
     print(json.dumps(counts, indent=2))
-    sparse = [name for name, count in counts.items() if count < 2]
-    for name in sparse:
-        print(f'Ignoring type {name}: {counts[name]} question(s); at least 2 required.')
-    if len(sparse) == len(groups):
-        raise ValueError('No eligible types remain: every type has fewer than two questions')
+    total = len(data)
+    target = min(sample_size, total)
+    # Largest-remainder allocation keeps each quota within one of its ideal
+    # share. Integer arithmetic avoids floating-point ties; prefer more common
+    # types, then type name, when remainders tie. No minimum quota is imposed.
+    quotas = {name: target * count // total for name, count in counts.items()}
+    remainder_order = sorted(counts, key=lambda name: (
+        -(target * counts[name] % total), -counts[name], name))
+    for name in remainder_order[:target - sum(quotas.values())]:
+        quotas[name] += 1
+    for name, quota in quotas.items():
+        if quota == 0:
+            print(f'Ignoring type {name}: {counts[name]} question(s); proportional allocation is 0.')
     rng = random.Random(seed)
     rows = []
     for name in sorted(groups):
-        if counts[name] < 2:
-            continue
-        for qid in sorted(rng.sample(sorted(groups[name]), 2)):
+        for qid in sorted(rng.sample(sorted(groups[name]), quotas[name])):
             rows.append({'id': qid, 'detailed_type': name, 'question': data[qid]['question']})
     return rows, counts
 
@@ -65,6 +74,8 @@ def main():
     parser.add_argument('--split', choices=['train', 'val', 'testdev'], default='val')
     parser.add_argument('--experiment-dir', type=Path, required=True)
     parser.add_argument('--seed', type=int, default=42)
+    parser.add_argument('--sample-size', type=int, default=200,
+                        help='Number of questions to sample proportionally by detailed type (default: 200)')
     args = parser.parse_args()
     try:
         sample = args.experiment_dir / 'questions.jsonl'
@@ -73,14 +84,26 @@ def main():
             raise ValueError('Permanent sample already exists; reuse it or choose a new experiment directory')
         dataset = resolve_dataset(args.dataset, args.split)
         payload = dataset.read_bytes()
-        rows, counts = sample_questions(json.loads(payload), args.seed)
+        rows, counts = sample_questions(json.loads(payload), args.seed, args.sample_size)
+        selected_ids = {name: [] for name in counts}
+        for row in rows:
+            selected_ids[row['detailed_type']].append(row['id'])
         save_jsonl(sample, rows)
         save_json(summary, {'dataset': str(dataset), 'dataset_sha256': hashlib.sha256(payload).hexdigest(),
                             'seed': args.seed, 'type_counts': counts, 'sample_size': len(rows),
-                            'skipped_types': {name: count for name, count in counts.items() if count < 2},
-                            'selected_ids': {name: [r['id'] for r in rows if r['detailed_type'] == name] for name in counts},
+                            'requested_sample_size': args.sample_size,
+                            'sampling_method': 'proportional_largest_remainder',
+                            'sample_type_counts': {name: len(ids) for name, ids in selected_ids.items()},
+                            'skipped_types': {name: count for name, count in counts.items() if not selected_ids[name]},
+                            'selected_ids': selected_ids,
                             'sample_sha256': hashlib.sha256(sample.read_bytes()).hexdigest()})
         print(f'Saved {len(rows)} questions to {sample}')
+        print('\nCreated dataset distribution (question type: count, percentage):')
+        for name in sorted(selected_ids, key=lambda name: (-len(selected_ids[name]), name)):
+            count = len(selected_ids[name])
+            print(f'  {name}: {count} ({100 * count / len(rows):.2f}%)')
+        omitted = sum(not ids for ids in selected_ids.values())
+        print(f'Question types not represented: {omitted} of {len(counts)}')
     except (ValueError, OSError) as exc:
         parser.exit(1, f'Error: {exc}\n')
 
