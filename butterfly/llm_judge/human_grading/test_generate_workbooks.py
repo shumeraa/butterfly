@@ -12,7 +12,7 @@ from generate_workbooks import generate, load_questions
 
 class WorkbookTests(unittest.TestCase):
     def test_example_split_and_grading_controls(self):
-        source = Path(__file__).parent / 'examples/questions.jsonl'
+        source = Path(__file__).parent / 'examples/sample_questions.jsonl'
         with tempfile.TemporaryDirectory() as directory:
             output = Path(directory) / 'assignments'
             manifest = generate(source, output, 4)
@@ -53,7 +53,7 @@ class WorkbookTests(unittest.TestCase):
                     self.assertNotIn('JSON', guide)
                     self.assertNotIn('Reason:', guide)
                     self.assertNotIn('Assumptions:', guide)
-                    self.assertEqual(book['Quick guide'].max_row, 15)
+                    self.assertEqual(book['Quick guide'].max_row, 16)
                     guide_rows = dict(book['Quick guide'].iter_rows(min_row=2, values_only=True))
                     target_rule = guide_rows['Target selection rule']
                     self.assertIn('Apply in order, and stop at the first match.', target_rule)
@@ -134,6 +134,24 @@ class WorkbookTests(unittest.TestCase):
             with self.assertRaises(FileExistsError):
                 generate(source, output, 4)
 
+    def test_random_split_is_shuffled_equal_and_reproducible(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source = root / 'questions.jsonl'
+            source.write_text('\n'.join(json.dumps({'id': str(i), 'question': f'q{i}'}) for i in range(40)))
+            first = generate(source, root / 'a', 4, seed=1)
+            again = generate(source, root / 'b', 4, seed=1)
+            other = generate(source, root / 'c', 4, seed=2)
+            unseeded = generate(source, root / 'd', 4)
+            ids = lambda m: [a['question_ids'] for a in m['assignments']]
+            self.assertEqual(ids(first), ids(again))
+            self.assertNotEqual(ids(first), ids(other))
+            self.assertNotEqual(ids(first)[0], [str(i) for i in range(0, 40, 4)])
+            for manifest in (first, other, unseeded):
+                self.assertEqual([a['question_count'] for a in manifest['assignments']], [10] * 4)
+                self.assertEqual(sorted(sum(ids(manifest), []), key=int), [str(i) for i in range(40)])
+            self.assertIsInstance(unseeded['seed'], int)
+
     def test_uneven_jsonl_literal_strings_and_invalid_inputs(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
@@ -141,6 +159,7 @@ class WorkbookTests(unittest.TestCase):
             rows = [{'id': str(i), 'question': '=HYPERLINK("example")'} for i in range(3)]
             source.write_text('\n'.join(json.dumps(r) for r in rows))
             manifest = generate(source, root / 'out', 2, seed=42)
+            self.assertEqual(manifest['seed'], 42)
             self.assertEqual([r['question_count'] for r in manifest['assignments']], [2, 1])
             book = load_workbook(root / 'out/grader_01.xlsx')
             try:
