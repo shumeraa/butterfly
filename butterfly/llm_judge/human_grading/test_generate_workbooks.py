@@ -27,7 +27,7 @@ class WorkbookTests(unittest.TestCase):
                     for title, first_label in [('Grades', 3)]:
                         sheet = book[title]
                         self.assertEqual(sheet.max_row, 6)
-                        self.assertEqual(len(sheet.data_validations.dataValidation), 8)
+                        self.assertEqual(len(sheet.data_validations.dataValidation), 5)
                         for validation in sheet.data_validations.dataValidation:
                             column = next(iter(validation.sqref.ranges)).min_col
                             self.assertEqual(validation.formula1, '"equivariant,invariant,unsafe"')
@@ -42,7 +42,7 @@ class WorkbookTests(unittest.TestCase):
                         self.assertEqual([cell.value for cell in sheet['A'][1:]], assignment['question_ids'])
                         for row in sheet.iter_rows(min_row=2):
                             self.assertTrue(all(cell.value is None for cell in row[first_label - 1:]))
-                        self.assertEqual(len(sheet.conditional_formatting), 16)
+                        self.assertEqual(len(sheet.conditional_formatting), 10)
                     self.assertEqual(book['Grades'].freeze_panes, 'C2')
                     self.assertNotIn('Call3', book.sheetnames)
                     guide = ' '.join(str(cell.value) for row in book['Quick guide'] for cell in row)
@@ -53,7 +53,7 @@ class WorkbookTests(unittest.TestCase):
                     self.assertNotIn('JSON', guide)
                     self.assertNotIn('Reason:', guide)
                     self.assertNotIn('Assumptions:', guide)
-                    self.assertEqual(book['Quick guide'].max_row, 16)
+                    self.assertEqual(book['Quick guide'].max_row, 15)
                     guide_rows = dict(book['Quick guide'].iter_rows(min_row=2, values_only=True))
                     target_rule = guide_rows['Target selection rule']
                     self.assertIn('Apply in order, and stop at the first match.', target_rule)
@@ -79,7 +79,7 @@ class WorkbookTests(unittest.TestCase):
                         self.assertEqual(example_cell._style, grade_cell._style)
                     self.assertEqual(examples.row_dimensions[2].height, grades.row_dimensions[2].height)
                     self.assertEqual(len(examples.conditional_formatting), len(grades.conditional_formatting))
-                    self.assertEqual(len(examples.data_validations.dataValidation), 8)
+                    self.assertEqual(len(examples.data_validations.dataValidation), 5)
                     label_columns = [next(iter(v.sqref.ranges)).min_col
                                      for v in examples.data_validations.dataValidation]
                     example_headers = [c.value for c in examples[1]]
@@ -108,15 +108,17 @@ class WorkbookTests(unittest.TestCase):
                     self.assertIn('local edits', all_text.lower())
                     for removed in ('Segment then MR1', '180° rotation', 'Global edits', 'Local edits'):
                         self.assertNotIn(removed, all_text)
-                    self.assertEqual(assignment['transformation_judgments'], 40)
-                    self.assertEqual(manifest['derived_labels'], {'noise': 'blur'})
-                    self.assertEqual(manifest['layout_version'], 13)
+                    self.assertEqual(assignment['transformation_judgments'], 25)
+                    self.assertNotIn('derived_labels', manifest)
+                    self.assertEqual(manifest['layout_version'], 14)
                     headers = [cell.value for cell in book['Grades'][1]]
-                    self.assertIn('Blur / noise (Global Edit)', headers)
+                    for removed in ('Blur', 'Noise', 'Fill Blue', 'Asymmetric scale'):
+                        self.assertFalse(any(removed in h for h in headers), removed)
+                        self.assertNotIn(removed.lower(), all_text.lower())
                     self.assertIn('Fill Red (Local Edit on Target Object)', headers)
-                    self.assertNotIn('Noise (Global Edit)', headers)
-                    self.assertNotIn('Blur (Global Edit)', headers)
-                    self.assertEqual(book['Transformations'].max_row, 10)
+                    self.assertNotIn('answers black', all_text)
+                    self.assertIn('does not turn the object black', all_text)
+                    self.assertEqual(book['Transformations'].max_row, 6)
                     self.assertEqual([cell.value for cell in book['Transformations'][1]],
                                      ['Transformation', 'Definition', 'Summarized Rules'])
                     transformations = list(book['Transformations'].iter_rows(min_row=2, values_only=True))
@@ -125,7 +127,7 @@ class WorkbookTests(unittest.TestCase):
                         self.assertIn('unsafe', rules.lower())
                         # Rules must stay readable without internal question/identity flag names.
                         self.assertNotRegex(rules, r'\b[A-Z][A-Z_]+\b')
-                        header = 'Blur / noise' if name in {'Blur', 'Noise'} else name
+                        header = name
                         self.assertTrue(any(h.startswith(header + ' (') for h in headers))
                 finally:
                     book.close()
@@ -165,7 +167,7 @@ class WorkbookTests(unittest.TestCase):
             try:
                 self.assertEqual(book['Grades']['B2'].data_type, 's')
                 self.assertEqual(book['Grades'].max_row, 3)
-                self.assertEqual(len(book['Grades'].data_validations.dataValidation), 8)
+                self.assertEqual(len(book['Grades'].data_validations.dataValidation), 5)
                 swap = book['Grades'].data_validations.dataValidation[-1]
                 self.assertEqual(swap.formula1, '"equivariant,invariant,unsafe"')
             finally:

@@ -9,55 +9,24 @@ import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from answer_rule_prompts import PROMPT_VERSION, TRANSFORMATIONS
-from evaluate_rules import GLOBAL, LOCAL
+from evaluate_rules import GLOBAL
 from excel_io import write_workbook
 
 DEFINITIONS = {
     **TRANSFORMATIONS,
     'grayscale': 'Convert the entire image to grayscale, preserving geometry.',
-    'blur': 'Blur the entire image, reducing visible fine detail.',
-    'noise': 'Add image noise throughout the image.',
     'fill_red': 'Segment one object referred to by the question and fill its mask uniformly red, preserving shape and location.',
-    'fill_blue': 'Segment one object referred to by the question and fill its mask uniformly blue, preserving shape and location.',
     'occlude_bbox': 'Cover the selected object’s whole bounding box with an opaque black rectangle, including background inside the box. This hides the object; it does not turn the object black.',
-    'asymmetric_scale': 'Segment one object referred to by the question and scale its width and height by unequal positive factors around its center.',
-
 }
 DISPLAY_NAMES = {
-    'hflip': 'Horizontal flip', 'vflip': 'Vertical flip',
-    'grayscale': 'Grayscale', 'blur': 'Blur', 'noise': 'Noise',
-    'fill_red': 'Fill Red', 'fill_blue': 'Fill Blue', 'occlude_bbox': 'Occlude BBox', 'asymmetric_scale': 'Asymmetric scale',
+    'hflip': 'Horizontal flip', 'vflip': 'Vertical flip', 'grayscale': 'Grayscale',
+    'fill_red': 'Fill Red', 'occlude_bbox': 'Occlude BBox',
 }
+GRADED = ['hflip', 'vflip', 'grayscale', 'fill_red', 'occlude_bbox']
 ALLOWED_LABELS = 'equivariant,invariant,unsafe'
 
-# Plain-language summaries of the deterministic tables in ../PROMPTS.md.
+# Plain-language summaries of the deterministic tables in ../SIMPLE_PROMPTS.md.
 # Human reviewers may choose any label, including equivariant, for every edit.
-LOCAL_GUARDS = (
-    'Edit only an object the question refers to, never an object offered solely as an answer choice. '
-    'For a question with only two possible answers, editing any object other than the first object '
-    'mentioned is unsafe. Every local edit is unsafe if the question asks whether something exists, '
-    'involves readable text or left/right body parts, or concerns actions or interactions. '
-)
-FILL_RULE = (
-    'After those checks, filling is unsafe if color, material, texture, pattern, or surface appearance '
-    'identifies the selected object; if the question asks about material, object type, or identity; '
-    'or if it mentions material or surface properties, compares properties of objects, refers to a '
-    'category or collection, or combines multiple conditions with and/or. '
-    'For a color question about the first object mentioned, the result is equivariant with a constant '
-    '{color} answer only when a question without a two-answer limit has no explicit choices or includes '
-    '{color}, or a two-answer question explicitly offers two distinct choices including {color}. '
-    'Match color choices without regard to capitalization. Other color-question cases are unsafe. '
-    'For other topics, any mention of color makes the edit unsafe; otherwise it is invariant.'
-)
-NO_EQ_NOTE = (
-    'The automatic rules do not assign equivariant for this transformation. This does not mean you '
-    'should avoid it: choose equivariant whenever you believe the answer changes predictably.\n'
-)
-BLUR_RULE = NO_EQ_NOTE + (
-    'Unsafe if the question involves readable text, material, texture, pattern, surface properties, '
-    'actions or interactions, or comparisons of object properties, or asks for an object name '
-    'without limiting the answer to two possibilities. Otherwise invariant.'
-)
 SUMMARIZED_RULES = {
     'hflip': (
         'Invariant: the question has no left/right wording, no left/right body parts, and no readable text.\n'
@@ -84,8 +53,6 @@ SUMMARIZED_RULES = {
         'Unsafe: everything else, including “red or blue?” choice questions and yes/no questions '
         'that name gray, black, or white.'
     ),
-    'blur': BLUR_RULE,
-    'noise': BLUR_RULE,
     'fill_red': (
         'First pick one target object (see Target selection rule on the Quick guide); if there is none, '
         'there is no automatic label.\n'
@@ -95,7 +62,6 @@ SUMMARIZED_RULES = {
         'answers yes if the color is red, otherwise no. “Is X <color> or red?” answers red.\n'
         'Unsafe: everything else.'
     ),
-    'fill_blue': LOCAL_GUARDS + FILL_RULE.format(color='blue'),
     'occlude_bbox': (
         'Never invariant: the object is named in the question, so hiding it cannot be shown irrelevant.\n'
         'Equivariant: the target is clear, there is no comparison or multiple and/or conditions, and '
@@ -105,102 +71,8 @@ SUMMARIZED_RULES = {
         'recoloring it, so its visible color is not a reliable answer.\n'
         'Caveat: the existence answer is wrong if the segmenter misses an instance of X.'
     ),
-    'asymmetric_scale': 'Segment one object referred to by the question and scale its width and height by unequal positive factors around its center.',
-
-}
-DISPLAY_NAMES = {
-    'hflip': 'Horizontal flip', 'vflip': 'Vertical flip',
-    'grayscale': 'Grayscale', 'blur': 'Blur', 'noise': 'Noise',
-    'fill_red': 'Fill Red', 'fill_blue': 'Fill Blue', 'occlude_bbox': 'Occlude BBox', 'asymmetric_scale': 'Asymmetric scale',
-}
-ALLOWED_LABELS = 'equivariant,invariant,unsafe'
-
-# Plain-language summaries of the deterministic tables in ../PROMPTS.md.
-# Human reviewers may choose any label, including equivariant, for every edit.
-LOCAL_GUARDS = (
-    'Edit only an object the question refers to, never an object offered solely as an answer choice. '
-    'For a question with only two possible answers, editing any object other than the first object '
-    'mentioned is unsafe. Every local edit is unsafe if the question asks whether something exists, '
-    'involves readable text or left/right body parts, or concerns actions or interactions. '
-)
-FILL_RULE = (
-    'After those checks, filling is unsafe if color, material, texture, pattern, or surface appearance '
-    'identifies the selected object; if the question asks about material, object type, or identity; '
-    'or if it mentions material or surface properties, compares properties of objects, refers to a '
-    'category or collection, or combines multiple conditions with and/or. '
-    'For a color question about the first object mentioned, the result is equivariant with a constant '
-    '{color} answer only when a question without a two-answer limit has no explicit choices or includes '
-    '{color}, or a two-answer question explicitly offers two distinct choices including {color}. '
-    'Match color choices without regard to capitalization. Other color-question cases are unsafe. '
-    'For other topics, any mention of color makes the edit unsafe; otherwise it is invariant.'
-)
-NO_EQ_NOTE = (
-    'The automatic rules do not assign equivariant for this transformation. This does not mean you '
-    'should avoid it: choose equivariant whenever you believe the answer changes predictably.\n'
-)
-BLUR_RULE = NO_EQ_NOTE + (
-    'Unsafe if the question involves readable text, material, texture, pattern, surface properties, '
-    'actions or interactions, or comparisons of object properties, or asks for an object name '
-    'without limiting the answer to two possibilities. Otherwise invariant.'
-)
-SUMMARIZED_RULES = {
-    'hflip': (
-        'Invariant: the question has no left/right wording, no left/right body parts, and no readable text.\n'
-        'Equivariant: the question asks which side something is on (answer must be left or right, e.g. '
-        '“Is X on the left or right?”), left/right is not used to identify an object, and there are no '
-        'body parts, readable text, or multiple and/or conditions. Answer: swap left and right.\n'
-        'Unsafe: everything else. This includes yes/no questions such as “Is X left of Y?” and any '
-        'question that uses left/right to pick out an object.'
-    ),
-    'vflip': (
-        'Invariant: the question has no up/down wording (top, bottom, above, below), no support or '
-        'orientation words (on, under, inside, sitting, hanging, lying), and no readable text.\n'
-        'Equivariant: the question asks which side something is on (answer must be top or bottom), '
-        'up/down is not used to identify an object, and there is no support wording, readable text, or '
-        'multiple and/or conditions. Answer: swap top and bottom, above and below.\n'
-        'Unsafe: everything else, including yes/no questions such as “Is X above Y?”.'
-    ),
-    'grayscale': (
-        'Invariant: the question contains no color or brightness wording (dark, bright, colorful).\n'
-        'Equivariant: the question asks what color one object is, with no comparison or multiple '
-        'conditions. Answer: gray, black, or white (black and white objects stay as they are). '
-        'Also equivariant: “Is X <color>?” where the color is not gray, black, or white. Answer: no, '
-        'because a chromatic color cannot survive grayscale.\n'
-        'Unsafe: everything else, including “red or blue?” choice questions and yes/no questions '
-        'that name gray, black, or white.'
-    ),
-    'blur': BLUR_RULE,
-    'noise': BLUR_RULE,
-    'fill_red': (
-        'First pick one target object (see Target selection rule on the Quick guide); if there is none, '
-        'there is no automatic label.\n'
-        'Invariant: the question has no color, material, texture, pattern, surface, or readable-text wording.\n'
-        'Equivariant: the target is clear, there is no comparison or multiple and/or conditions, and '
-        'the question is about the target’s color. “What color is X?” answers red. “Is X <color>?” '
-        'answers yes if the color is red, otherwise no. “Is X <color> or red?” answers red.\n'
-        'Unsafe: everything else.'
-    ),
-    'fill_blue': LOCAL_GUARDS + FILL_RULE.format(color='blue'),
-    'occlude_bbox': (
-        'Never invariant: the object is named in the question, so hiding it cannot be shown irrelevant.\n'
-        'Equivariant: the target is clear, there is no comparison or multiple and/or conditions, and '
-        'one of these applies. “What color is X?” answers black. “Is X <color>?” answers yes if the color '
-        'is black, otherwise no. “Is X <color> or black?” answers black. “Is there an X?” answers no '
-        'when the wording implies only one X.\n'
-        'Unsafe: everything else.\n'
-        'Caveats: the color answers assume the box fully covers the object, and the existence answer '
-        'is wrong if other instances of X remain outside the box.'
-    ),
-    'asymmetric_scale': NO_EQ_NOTE + LOCAL_GUARDS + (
-        'After those checks, unsafe if size, proportions, or shape identifies the selected object; '
-        'if the question asks about position, object type, or identity; or if it mentions size, '
-        'proportions, shape, comparisons of object properties, categories or collections, left/right '
-        'or up/down relations, support, containment, or physical orientation. Otherwise invariant.'
-    ),
 }
 
-
-# (section, text, fill color). Section is bold in column A.
 INSTRUCTIONS = [
     ('About this workbook',
      'You will judge how edits to an image would change the answer to a question. For each question, '
@@ -240,7 +112,7 @@ INSTRUCTIONS = [
      'Cover every possible original answer, and don’t assume “not left” means right. '
      'For invariant or unsafe, leave the mapping blank. A blank mapping next to equivariant turns red.', 'EFF6FF'),
     ('3. Name the target (local edits)',
-     'Fill Red, Fill Blue, Occlude BBox and Asymmetric scale edit one object. Enter it in the Target object '
+     'Fill Red and Occlude BBox edit one object. Enter it in the Target object '
      'column, chosen with the rule below.', 'EFF6FF'),
     ('Every instance is edited',
      'A local edit applies to all objects of the target type in the scene. If the target is “duck”, '
@@ -266,37 +138,34 @@ INSTRUCTIONS = [
      'Answer options. They are possible answers, not things being asked about (“an apple or a banana”).\n'
      'Objects the question doesn’t assume are in the picture. “Is the man holding a cup?” may well have no cup, '
      'so the man is the target, not the cup. (Exception: in an existence question, the object asked about is the target.)', 'F8FAFC'),
-    ('Blur / noise',
-     'Graded once in the Blur / noise column; the same label and mapping apply to both.', 'F8FAFC'),
     ('Tips',
      'Use Alt+Enter (Option+Return on Mac) for a new line inside a cell.', 'F8FAFC'),
 ]
 
 # Complete worked rows in the same column order as the grading sheet:
-# Horizontal flip, Vertical flip, Grayscale, Blur / noise, Fill Red, Fill Blue, Occlude BBox, Asymmetric scale.
+# Horizontal flip, Vertical flip, Grayscale, Fill Red, Occlude BBox.
 EXAMPLES = [
     ('Is the car red or blue?', 'car',
-     ('invariant', 'invariant', 'unsafe', 'invariant', 'equivariant', 'equivariant', 'unsafe', 'invariant'),
-     {'fill_red': 'any -> red', 'fill_blue': 'any -> blue'},
-     'COLOR question. Fills force their color; grayscale and occlusion remove the color, so the answer is unpredictable.'),
+     ('invariant', 'invariant', 'unsafe', 'equivariant', 'unsafe'),
+     {'fill_red': 'any -> red'},
+     'COLOR question. Fill Red forces the answer red; grayscale and occlusion remove the color, so the answer is unpredictable.'),
     ('Is the ball to the left or right of the box?', 'ball',
-     ('equivariant', 'invariant', 'invariant', 'invariant', 'invariant', 'invariant', 'unsafe', 'unsafe'),
+     ('equivariant', 'invariant', 'invariant', 'invariant', 'unsafe'),
      {'hflip': 'left -> right\nright -> left'},
      'LEFT/RIGHT question. The ball is the subject; the box only helps locate it. '
      'Occlusion hides the ball being located.'),
     ('Is there a cat in the image?', 'cat',
-     ('invariant', 'invariant', 'invariant', 'invariant', 'invariant', 'invariant', 'equivariant', 'invariant'),
+     ('invariant', 'invariant', 'invariant', 'invariant', 'equivariant'),
      {'occlude_bbox': 'any -> no'},
-     'EXISTS question. A recolored cat still exists; if there is one cat, covering its box makes the answer no.'),
+     'EXISTS question. A recolored cat still exists; covering every cat makes the answer no.'),
     ('What color is the apple?', 'apple',
-     ('invariant', 'invariant', 'equivariant', 'invariant', 'equivariant', 'equivariant', 'unsafe', 'invariant'),
-     {'grayscale': 'black -> black\nwhite -> white\nany -> gray',
-      'fill_red': 'any -> red', 'fill_blue': 'any -> blue'},
+     ('invariant', 'invariant', 'equivariant', 'equivariant', 'unsafe'),
+     {'grayscale': 'black -> black\nwhite -> white\nany -> gray', 'fill_red': 'any -> red'},
      'OPEN-ENDED COLOR question. The original answer could be almost any color, so any means every original '
      'answer not listed on another line. Grayscale keeps black and white and turns everything else gray. '
      'Occlusion hides the apple rather than turning it black, so its answer is unreliable.'),
     ('Is it sunny?', 'none',
-     ('invariant', 'invariant', 'invariant', 'invariant', 'unsafe', 'unsafe', 'unsafe', 'unsafe'),
+     ('invariant', 'invariant', 'invariant', 'unsafe', 'unsafe'),
      {},
      'NO TARGET question. It is about the whole scene, so no single object can be edited. '
      'Whole-image edits leave the answer alone; local edits have nothing to act on, so they are unsafe.'),
@@ -320,16 +189,15 @@ def example_rows():
 
 
 def transformation_names():
-    return [name for name in GLOBAL if name != 'rot180'] + [
-        name for name in LOCAL if not name.startswith('segment_mr1_')]
+    return list(GRADED)
 
 
 def grading_names():
-    return [name for name in transformation_names() if name != 'noise']
+    return transformation_names()
 
 
 def base_header(name):
-    return 'Blur / noise' if name == 'blur' else DISPLAY_NAMES[name]
+    return DISPLAY_NAMES[name]
 
 
 def label_header(name):
@@ -400,8 +268,6 @@ def create_workbook(path, questions):
     definitions = []
     for name in transformation_names():
         definition = DEFINITIONS[name]
-        if name in {'blur', 'noise'}:
-            definition += ' Graded together in the Blur / noise column; noise always uses the blur label.'
         definitions.append({'Transformation': DISPLAY_NAMES[name], 'Definition': definition,
                             'Summarized Rules': SUMMARIZED_RULES[name]})
     sheets['Transformations'] = (['Transformation', 'Definition', 'Summarized Rules'], definitions)
@@ -515,7 +381,7 @@ def generate(input_path, output_dir, num_workbooks, seed=None):
     manifest = {'input': str(input_path), 'input_sha256': hashlib.sha256(input_path.read_bytes()).hexdigest(),
                 'seed': seed,
                 'question_count': len(questions), 'answer_rule_guidance_version': PROMPT_VERSION,
-                'layout_version': 13, 'derived_labels': {'noise': 'blur'}, 'assignments': assignments}
+                'layout_version': 14, 'assignments': assignments}
     (output_dir / 'manifest.json').write_text(json.dumps(manifest, indent=2) + '\n', encoding='utf-8')
     return manifest
 

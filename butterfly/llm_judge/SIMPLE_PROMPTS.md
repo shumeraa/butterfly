@@ -1,3 +1,4 @@
+
 # GQA metamorphic relations: question-only rules (v2)
 
 One LLM call per question returns a small JSON object. All verdicts and expected answers are then computed deterministically from that JSON. There is no second answer-rule model call: expected answers are encoded in the Equivariant cells of the tables.
@@ -144,18 +145,18 @@ If `target = null`, MR2 has no row.
 
 The model never writes a mapping. Code derives it from the verdict, `color_q`, and `asked_colors`, in the same notation human graders use: one line per original answer, `original -> allowed outputs`. `any` stands for every original answer not listed on another line. Because every instance of the target is edited, these hold however many instances exist.
 
-| Case                                 | Case (Flag version)                                                                   | Mapping                                                                   |
-| ------------------------------------ | ------------------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
-| Horizontal flip, left/right question | `LR_SIDE ∧ ¬LR_ID ∧ ¬MULTI_CONDITION ∧ ¬BODY ∧ ¬TEXT`                                 | `left -> right`, `right -> left`                                          |
-| Vertical flip, top/bottom question   | `UD_SIDE ∧ ¬UD_ID ∧ ¬MULTI_CONDITION ∧ ¬SUPPORT ∧ ¬TEXT`                              | `top -> bottom`, `bottom -> top` (and `above -> below`, `below -> above`) |
-| Fill red, "What color is X?"         | `EQ_GATE ∧ color_q = query`                                                           | `any -> red`                                                              |
-| Fill red, "Is X blue?"               | `EQ_GATE ∧ color_q = verify ∧ asked_colors = [blue]` (any asked color other than red) | `yes -> no`, `no -> no`                                                   |
-| Fill red, "Is X red?"                | `EQ_GATE ∧ color_q = verify ∧ asked_colors = [red]`                                   | `yes -> yes`, `no -> yes`                                                 |
-| Fill red, "Is X blue or red?"        | `EQ_GATE ∧ color_q = choose ∧ red ∈ asked_colors`                                     | `any -> red`                                                              |
-| Occlude bbox, "Is there a cat?"      | `EQ_GATE ∧ EXISTW`                                                                    | `any -> no`                                                               |
-| Grayscale, color query               | `color_q = query ∧ ¬MULTI_CONDITION ∧ ¬COMPARE`                                       | `any -> gray, black, white`                                               |
-| Grayscale, "Is X red?"               | `color_q = verify ∧ asked_colors ∩ GRAY_SET = ∅`                                      | `yes -> no`, `no -> no`                                                   |
-| Any invariant verdict                | Invariant condition for that transformation (Parts 2 and 3)                           | the answer maps to itself                                                 |
+| Case                                 | Case (Flag version)                                                                       | Mapping                                                                           |
+| ------------------------------------ | ----------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| Horizontal flip, left/right question | `LR_SIDE ∧ ¬LR_ID ∧ ¬MULTI_CONDITION ∧ ¬BODY ∧ ¬TEXT`                           | `left -> right`, `right -> left`                                              |
+| Vertical flip, top/bottom question   | `UD_SIDE ∧ ¬UD_ID ∧ ¬MULTI_CONDITION ∧ ¬SUPPORT ∧ ¬TEXT`                        | `top -> bottom`, `bottom -> top` (and `above -> below`, `below -> above`) |
+| Fill red, "What color is X?"         | `EQ_GATE ∧ color_q = query`                                                            | `any -> red`                                                                    |
+| Fill red, "Is X blue?"               | `EQ_GATE ∧ color_q = verify ∧ asked_colors = [blue]` (any asked color other than red) | `yes -> no`, `no -> no`                                                       |
+| Fill red, "Is X red?"                | `EQ_GATE ∧ color_q = verify ∧ asked_colors = [red]`                                   | `yes -> yes`, `no -> yes`                                                     |
+| Fill red, "Is X blue or red?"        | `EQ_GATE ∧ color_q = choose ∧ red ∈ asked_colors`                                    | `any -> red`                                                                    |
+| Occlude bbox, "Is there a cat?"      | `EQ_GATE ∧ EXISTW`                                                                     | `any -> no`                                                                     |
+| Grayscale, color query               | `color_q = query ∧ ¬MULTI_CONDITION ∧ ¬COMPARE`                                     | `any -> gray, black, white`                                                     |
+| Grayscale, "Is X red?"               | `color_q = verify ∧ asked_colors ∩ GRAY_SET = ∅`                                     | `yes -> no`, `no -> no`                                                       |
+| Any invariant verdict                | Invariant condition for that transformation (Parts 2 and 3)                               | the answer maps to itself                                                         |
 
 Most mappings are constants: any original answer maps to one output or a small set. Only the flips swap values. The grayscale rule is deliberately coarse (a human may refine it as `black -> black`, `white -> white`, `any -> gray`).
 
