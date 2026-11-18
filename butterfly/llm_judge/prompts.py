@@ -1,177 +1,116 @@
-"""Versioned, exact question-only templates from plan.md."""
+"""Versioned, exact question-only prompt from SIMPLE_PROMPTS.md (Part 1)."""
 
-PROMPT_VERSION = "gqa-question-only-v4"
+PROMPT_VERSION = "gqa-simple-v5"
 
-CALL1 = """Question: {question}
-
-Can the answer only be one of two things? This includes yes/no, a choice written in the question ("red or green", "an apple or a banana"), and left/right or top/bottom.
-
-Examples:
-Question: Is the bowl to the right of the green apple?
-BINARY
-
-Question: What color is the apple?
-OPEN
-
-Reply with one word: BINARY or OPEN."""
-
-CALL2_BINARY = """Question: {question}
+PROMPT = """Question: {question}
 
 Analyze this visual question using only its wording, not an image or answer.
 
-1. TOPIC: This question has a yes/no or two-choice answer. What does it check? Pick one:
-POSITION: where something is (left/right, above/below, on, in front of)
-COLOR: the color of something
-MATERIAL: what something is made of, its pattern, or its surface (shiny, wet)
-EXISTS: whether something is there at all
-IDENTITY: what kind of thing something is
-ACTION: what someone is doing, holding, wearing, or eating
-SCENE: the weather, the place, or the time of day
-OTHER: none of these
+1. TARGET: Choose the ONE object an image edit would focus on. Apply in order and stop at the first match:
+   a. Asked-about object: if the question asks the color of X, or whether X exists, X is the target.
+   b. Grammatical subject: otherwise, the head noun of the main clause.
+   c. Only named object: if the question names just one object, it is the target.
+   d. Tie: take the first qualifying object in textual order.
+   Never choose: an object used only to identify another object ("to the left of the Z"), an answer option ("an apple or a banana"), or an object whose existence the question does not presuppose ("a cup" in "Is the man holding a cup?"; the man is the target). Exception: for existence questions ("Is there a cup?"), the object asked about is the target.
+   Use null if no object qualifies or the question is about the whole scene.
+   Keep the identifying description ("green apple", "man on the left").
+   The edit applies to every instance of the target in the image, not just one.
 
-2. OBJECTS: List objects in the order they first appear.
-- Keep identifying descriptions ("green apple", "man on the left").
-- Exclude properties the question asks about rather than uses to identify an object.
-- Exclude pronouns and generic words like image, picture, photo.
-- Include object/person answer choices in objects, including alternatives in a final "X or Y?" clause.
-- Give each object a role: REFERENT for an entity the question refers to or asks about; ANSWER_OPTION for an object/person offered as a possible answer. Keep objects in textual order, including answer options.
-- Non-object choices (colors, materials, actions, directions, etc.) belong only in answer_options, not as separate objects.
-- Use an empty list if none exist.
-- For each object, include `id_features`: COLOR if its description uses color to identify it; MATERIAL for material, texture, pattern, or surface appearance; SIZE for size, width, height, length, or proportions; SHAPE for shape or geometric form. Include all applicable features. Properties being asked about are not identifying features. Otherwise use an empty list. Do not infer unmentioned properties.
+2. FLAGS: List all that apply.
 
-3. ANSWER_OPTIONS: List explicit answer choices as strings in textual order, including both object and non-object "X or Y" choices. Use [] if no explicit choices are offered; do not invent yes/no options. Object/person choices must also appear in objects with role ANSWER_OPTION. An AND/OR condition about referents is not an answer-choice list ("Is there either a cat or a dog?" asks about existence; both are REFERENT objects and answer_options is []).
+Color question form. Set one of these only if the question asks the color of the target and contains no other color words (for example, no color word inside an object-identifying clause like "the red car's door"). Never set more than one.
+COLOR_QUERY: "What color is X?"
+COLOR_VERIFY: "Is X <color>?"
+COLOR_CHOOSE: "Is X <c1> or <c2>?"
 
-4. QUESTION_FLAGS: List all applicable features of the question wording:
-LR: Any left/right spatial reference. Include this alongside LR_ID and/or LR_ANSWER when applicable.
-UD: Any up/down spatial reference. Include this alongside UD_ID and/or UD_ANSWER when applicable.
-LR_ID: A left/right relation used to identify or select an object, rather than the relation being asked about. For example, "What is the girl to the left of the frisbee doing?"
-LR_ANSWER: A left/right relation being asked about or supplied as an answer choice. For example, "Is the girl to the left of the frisbee?"
-UD_ID: An up/down relation used to identify or select an object, rather than the relation being asked about. For example, "What color is the ball above the box?"
-UD_ANSWER: An up/down relation being asked about or supplied as an answer choice. For example, "Is the ball above the box?"
-Include both _ID and _ANSWER flags when both roles occur, even for different objects. For example, "Is the girl to the left of the frisbee above the boy?" has LR, LR_ID, UD, and UD_ANSWER.
-SUPPORT: Support, containment, or physical orientation (on, under, inside, sitting, hanging, lying).
-TEXT: Readable text, letters, numbers, signs, or logos.
-BODY: Left/right body parts.
-COLORW: Color words or references to color.
-MATW: Material, texture, pattern, or surface properties.
-SIZEW: References size, width, height, length, or proportions, whether asked about or used to identify an object.
-SHAPEW: References shape or geometric form, whether asked about or used to identify an object.
-COUNTW: Asks about the number of objects, including count comparisons or a specified quantity. Do not flag a numeral used only to identify an object, such as "player number 3".
-EXISTW: Asks whether something exists or is present.
-CATW: References a category, group, or collection of objects.
-COMPARE: Compares properties of multiple objects.
-ACTW: Actions or interactions (wearing, holding, eating, riding).
-MULTI_CONDITION: Requires evaluating multiple conditions joined by AND or OR, including "both"/"either" constructions. Include conjunctions or disjunctions in object-identifying clauses too. Do not flag simple alternative answers such as "red or blue" or "an apple or a banana". The words "both"/"either" count only when they express multiple conditions, not just because they appear.
+Left/right:
+LR_ID: Left/right used to identify or select an object. "What is the girl to the left of the frisbee doing?"
+LR_ANSWER: Left/right being asked about or offered as a choice. "Is the girl to the left of the frisbee?"
+LR_SIDE: Subtype of LR_ANSWER where the answer must be one of the two directions. "Is X on the left or right?", "Which side is X on?" A yes/no "Is X left of Y?" is NOT LR_SIDE.
+LR_YN: Subtype of LR_ANSWER. A yes/no question whose only content is whether ONE left/right relation holds between two objects. "Is the ball to the left of the box?" Also set LR_ANSWER. Do NOT set LR_YN for "left or right" choices, for leftmost/rightmost, or when the question has any other condition or uses left/right to identify an object.
 
-Examples:
-Question: Is the bowl to the right of the green apple?
-{"topic":"POSITION","objects":[{"name":"bowl","role":"REFERENT","id_features":[]},{"name":"green apple","role":"REFERENT","id_features":["COLOR"]}],"answer_options":[],"question_flags":["LR","LR_ANSWER","COLORW"]}
+Up/down:
+UD_ID: Up/down used to identify or select an object. "What color is the ball above the box?"
+UD_ANSWER: Up/down being asked about or offered as a choice. "Is the ball above the box?"
+UD_SIDE: Subtype of UD_ANSWER where the answer must be one of the two directions. "Is X on the top or bottom?"
+UD_YN: Subtype of UD_ANSWER. A yes/no question whose only content is whether ONE up/down relation (above, below, over, under, on top of) holds between two objects. "Is the ball above the box?" Also set UD_ANSWER. Do NOT set UD_YN for "top or bottom" choices, for topmost/bottommost, or when the question has any other condition or uses up/down to identify an object.
+Include both _ID and _ANSWER when both roles occur, even for different objects.
 
-Question: Is the man holding a blue umbrella?
-{"topic":"ACTION","objects":[{"name":"man","role":"REFERENT","id_features":[]},{"name":"blue umbrella","role":"REFERENT","id_features":["COLOR"]}],"answer_options":[],"question_flags":["ACTW","COLORW"]}
+Gravity and orientation (these matter when the image is turned upside down):
+SUPPORT: A support or containment relation between two objects (on, under, inside, resting on, standing on).
+GRAVITY: A posture, motion, or orientation of a single object that only makes sense when the image is upright: sitting, standing, lying, hanging, leaning, kneeling, falling, jumping, flying, floating, pouring, upside down.
+REF_SURFACE: The question mentions a natural reference surface or direction of the scene: sky, ground, floor, ceiling, roof, horizon, or a reflection. Set it even when that surface is the object being asked about.
 
-Question: Is the fruit an apple or a banana?
-{"topic":"IDENTITY","objects":[{"name":"fruit","role":"REFERENT","id_features":[]},{"name":"apple","role":"ANSWER_OPTION","id_features":[]},{"name":"banana","role":"ANSWER_OPTION","id_features":[]}],"answer_options":["apple","banana"],"question_flags":[]}
-
-Question: Is the apple red or green?
-{"topic":"COLOR","objects":[{"name":"apple","role":"REFERENT","id_features":[]}],"answer_options":["red","green"],"question_flags":["COLORW"]}
-
-Question: Is the ball both red and above the box?
-{"topic":"POSITION","objects":[{"name":"ball","role":"REFERENT","id_features":[]},{"name":"box","role":"REFERENT","id_features":[]}],"answer_options":[],"question_flags":["COLORW","UD","UD_ANSWER","MULTI_CONDITION"]}
-
-Question: Is there either a cat or a dog?
-{"topic":"EXISTS","objects":[{"name":"cat","role":"REFERENT","id_features":[]},{"name":"dog","role":"REFERENT","id_features":[]}],"answer_options":[],"question_flags":["EXISTW","MULTI_CONDITION"]}
-
-Question: Is the tall bottle wider than the round jar?
-{"topic":"OTHER","objects":[{"name":"tall bottle","role":"REFERENT","id_features":["SIZE"]},{"name":"round jar","role":"REFERENT","id_features":["SHAPE"]}],"answer_options":[],"question_flags":["SIZEW","SHAPEW","COMPARE"]}
-
-Question: Is the plate round?
-{"topic":"OTHER","objects":[{"name":"plate","role":"REFERENT","id_features":[]}],"answer_options":[],"question_flags":["SHAPEW"]}
-
-Question: Are there three apples?
-{"topic":"EXISTS","objects":[{"name":"apples","role":"REFERENT","id_features":[]}],"answer_options":[],"question_flags":["EXISTW","COUNTW"]}
-
-Return ONLY valid JSON with keys "topic", "objects", "answer_options", and "question_flags". No explanation."""
-
-CALL2_OPEN = """Question: {question}
-
-Analyze this visual question using only its wording, not an image or answer.
-
-1. TOPIC: What kind of word is the answer? Pick one:
-COLOR: a color ("red")
-MATERIAL: a material or pattern ("wood", "striped")
-OBJECT: the name of a thing or person ("umbrella", "man")
-ACTION: an activity ("playing", "sitting")
-POSITION: a side or place in the image ("left", "top")
-SCENE: weather or a place ("sunny", "kitchen")
-OTHER: none of these
-
-2. OBJECTS: List objects in the order they first appear.
-- Keep identifying descriptions ("green apple", "man on the left").
-- Exclude properties the question asks about rather than uses to identify an object.
-- Exclude pronouns and generic words like image, picture, photo.
-- Include object/person answer choices in objects, including alternatives in a final "X or Y?" clause.
-- Give each object a role: REFERENT for an entity the question refers to or asks about; ANSWER_OPTION for an object/person offered as a possible answer. Keep objects in textual order, including answer options.
-- Non-object choices (colors, materials, actions, directions, etc.) belong only in answer_options, not as separate objects.
-- Use an empty list if none exist.
-- For each object, include `id_features`: COLOR if its description uses color to identify it; MATERIAL for material, texture, pattern, or surface appearance; SIZE for size, width, height, length, or proportions; SHAPE for shape or geometric form. Include all applicable features. Properties being asked about are not identifying features. Otherwise use an empty list. Do not infer unmentioned properties.
-
-3. ANSWER_OPTIONS: List explicit answer choices as strings in textual order, including both object and non-object "X or Y" choices. Use [] if no explicit choices are offered; do not invent yes/no options. Object/person choices must also appear in objects with role ANSWER_OPTION. An AND/OR condition about referents is not an answer-choice list ("Is there either a cat or a dog?" asks about existence; both are REFERENT objects and answer_options is []).
-
-4. QUESTION_FLAGS: List all applicable features of the question wording:
-LR: Any left/right spatial reference. Include this alongside LR_ID and/or LR_ANSWER when applicable.
-UD: Any up/down spatial reference. Include this alongside UD_ID and/or UD_ANSWER when applicable.
-LR_ID: A left/right relation used to identify or select an object, rather than the relation being asked about. For example, "What is the girl to the left of the frisbee doing?"
-LR_ANSWER: A left/right relation being asked about or supplied as an answer choice. For example, "Is the girl to the left of the frisbee?"
-UD_ID: An up/down relation used to identify or select an object, rather than the relation being asked about. For example, "What color is the ball above the box?"
-UD_ANSWER: An up/down relation being asked about or supplied as an answer choice. For example, "Is the ball above the box?"
-Include both _ID and _ANSWER flags when both roles occur, even for different objects. For example, "Is the girl to the left of the frisbee above the boy?" has LR, LR_ID, UD, and UD_ANSWER.
-SUPPORT: Support, containment, or physical orientation (on, under, inside, sitting, hanging, lying).
-TEXT: Readable text, letters, numbers, signs, or logos.
-BODY: Left/right body parts.
-COLORW: Color words or references to color.
-MATW: Material, texture, pattern, or surface properties.
-SIZEW: References size, width, height, length, or proportions, whether asked about or used to identify an object.
-SHAPEW: References shape or geometric form, whether asked about or used to identify an object.
-COUNTW: Asks about the number of objects, including count comparisons or a specified quantity. Do not flag a numeral used only to identify an object, such as "player number 3".
-EXISTW: Asks whether something exists or is present.
-CATW: References a category, group, or collection of objects.
-COMPARE: Compares properties of multiple objects.
-ACTW: Actions or interactions (wearing, holding, eating, riding).
-MULTI_CONDITION: Requires evaluating multiple conditions joined by AND or OR, including "both"/"either" constructions. Include conjunctions or disjunctions in object-identifying clauses too. Do not flag simple alternative answers such as "red or blue" or "an apple or a banana". The words "both"/"either" count only when they express multiple conditions, not just because they appear.
+Other:
+TEXT: Readable text, letters, numbers, signs, logos, or an object that normally carries text (poster, license plate, book cover) when its text is relevant.
+MATW: Material, texture, pattern, or surface (wooden, striped, shiny).
+COMPARE: Compares properties of multiple objects ("same color?", "which is bigger?").
+MULTI_CONDITION: Several conditions joined by AND/OR, including "both"/"either" constructions and conjunctions inside object-identifying clauses ("the man or the woman", "the girl who is smiling and wearing a hat"). Do not flag simple alternative answers like "red or blue".
 
 Examples:
 Question: What color is the apple?
-{"topic":"COLOR","objects":[{"name":"apple","role":"REFERENT","id_features":[]}],"answer_options":[],"question_flags":["COLORW"]}
+{"target":"apple","flags":["COLOR_QUERY"]}
 
-Question: What is the small girl wearing?
-{"topic":"OBJECT","objects":[{"name":"small girl","role":"REFERENT","id_features":["SIZE"]}],"answer_options":[],"question_flags":["ACTW","SIZEW"]}
+Question: Is the car red or blue?
+{"target":"car","flags":["COLOR_CHOOSE"]}
 
-Question: What is beside the cup: an apple, a banana, or an orange?
-{"topic":"OBJECT","objects":[{"name":"cup","role":"REFERENT","id_features":[]},{"name":"apple","role":"ANSWER_OPTION","id_features":[]},{"name":"banana","role":"ANSWER_OPTION","id_features":[]},{"name":"orange","role":"ANSWER_OPTION","id_features":[]}],"answer_options":["apple","banana","orange"],"question_flags":[]}
+Question: Is the shirt black?
+{"target":"shirt","flags":["COLOR_VERIFY"]}
 
-Question: What color is the apple: red, green, or blue?
-{"topic":"COLOR","objects":[{"name":"apple","role":"REFERENT","id_features":[]}],"answer_options":["red","green","blue"],"question_flags":["COLORW"]}
+Question: Is the man wearing a red hat?
+{"target":"man","flags":[]}
 
-Question: What is the man who is both wearing a hat and holding a cup doing?
-{"topic":"ACTION","objects":[{"name":"man","role":"REFERENT","id_features":[]},{"name":"hat","role":"REFERENT","id_features":[]},{"name":"cup","role":"REFERENT","id_features":[]}],"answer_options":[],"question_flags":["ACTW","MULTI_CONDITION"]}
+Question: What color is the cup on the left of the plate?
+{"target":"cup","flags":["COLOR_QUERY","LR_ID"]}
 
-Question: What color is the object that is either above the box or below the shelf?
-{"topic":"COLOR","objects":[{"name":"object","role":"REFERENT","id_features":[]},{"name":"box","role":"REFERENT","id_features":[]},{"name":"shelf","role":"REFERENT","id_features":[]}],"answer_options":[],"question_flags":["COLORW","UD","UD_ID","MULTI_CONDITION"]}
+Question: Is there a cat in the image?
+{"target":"cat","flags":[]}
 
-Question: What color is the tall bottle beside the round jar?
-{"topic":"COLOR","objects":[{"name":"tall bottle","role":"REFERENT","id_features":["SIZE"]},{"name":"round jar","role":"REFERENT","id_features":["SHAPE"]}],"answer_options":[],"question_flags":["COLORW","SIZEW","SHAPEW"]}
+Question: Is the ball to the left or right of the box?
+{"target":"ball","flags":["LR_ANSWER","LR_SIDE"]}
 
-Question: What shape is the plate?
-{"topic":"OTHER","objects":[{"name":"plate","role":"REFERENT","id_features":[]}],"answer_options":[],"question_flags":["SHAPEW"]}
+Question: Is the ball to the left of the box?
+{"target":"ball","flags":["LR_ANSWER","LR_YN"]}
 
-Question: How many apples are there?
-{"topic":"OTHER","objects":[{"name":"apples","role":"REFERENT","id_features":[]}],"answer_options":[],"question_flags":["COUNTW"]}
+Question: Is the ball above the box?
+{"target":"ball","flags":["UD_ANSWER","UD_YN"]}
 
-Return ONLY valid JSON with keys "topic", "objects", "answer_options", and "question_flags". No explanation."""
+Question: Is the lamp on the top or bottom shelf?
+{"target":"lamp","flags":["UD_ANSWER","UD_SIDE"]}
 
-TEMPLATES = {"call1": CALL1, "BINARY": CALL2_BINARY, "OPEN": CALL2_OPEN}
+Question: What is the girl to the left of the frisbee holding?
+{"target":"girl","flags":["LR_ID"]}
+
+Question: Is the girl to the left of the frisbee wearing a hat?
+{"target":"girl","flags":["LR_ID"]}
+
+Question: Is the bird sitting on the fence?
+{"target":"bird","flags":["SUPPORT","GRAVITY"]}
+
+Question: Is the man standing?
+{"target":"man","flags":["GRAVITY"]}
+
+Question: What color is the sky?
+{"target":"sky","flags":["COLOR_QUERY","REF_SURFACE"]}
+
+Question: What does the sign say?
+{"target":"sign","flags":["TEXT"]}
+
+Question: Is the wooden table round?
+{"target":"table","flags":["MATW"]}
+
+Question: Are the plate and the cup the same color?
+{"target":"plate","flags":["COMPARE","MULTI_CONDITION"]}
+
+Question: Is the man or the woman holding the umbrella?
+{"target":"man","flags":["MULTI_CONDITION"]}
+
+Question: Is it sunny?
+{"target":null,"flags":[]}
+
+Return ONLY valid JSON with keys "target" and "flags". No explanation."""
 
 
-def render(template, question):
-    return template.replace("{question}", question)
+def render(question):
+    """Substitute only the question; no image, answer, or dataset metadata is sent."""
+    return PROMPT.replace("{question}", question)

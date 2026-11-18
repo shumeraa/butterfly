@@ -5,13 +5,13 @@ from pathlib import Path
 import re
 import tempfile
 
-TOPICS = {
-    'BINARY': {'POSITION', 'COLOR', 'MATERIAL', 'EXISTS', 'IDENTITY', 'ACTION', 'SCENE', 'OTHER'},
-    'OPEN': {'COLOR', 'MATERIAL', 'OBJECT', 'ACTION', 'POSITION', 'SCENE', 'OTHER'},
+FLAGS = {
+    'COLOR_QUERY', 'COLOR_VERIFY', 'COLOR_CHOOSE',
+    'LR_ID', 'LR_ANSWER', 'LR_SIDE', 'LR_YN',
+    'UD_ID', 'UD_ANSWER', 'UD_SIDE', 'UD_YN',
+    'SUPPORT', 'GRAVITY', 'REF_SURFACE',
+    'TEXT', 'MATW', 'COMPARE', 'MULTI_CONDITION',
 }
-FLAGS = {'LR', 'UD', 'LR_ID', 'LR_ANSWER', 'UD_ID', 'UD_ANSWER',
-         'SUPPORT', 'TEXT', 'BODY', 'COLORW', 'MATW', 'EXISTW', 'CATW', 'COMPARE', 'ACTW', 'MULTI_CONDITION',
-         'SIZEW', 'SHAPEW', 'COUNTW'}
 
 
 def atomic_text(path, text):
@@ -42,33 +42,6 @@ def save_jsonl(path, rows):
     atomic_text(path, ''.join(json.dumps(row, ensure_ascii=False) + '\n' for row in rows))
 
 
-def validate_predictions(answer_type, value):
-    if answer_type not in TOPICS:
-        raise ValueError('answer_type must be BINARY or OPEN')
-    if not isinstance(value, dict):
-        raise ValueError('Call 2 must be a JSON object')
-    if not isinstance(value.get('topic'), str) or value['topic'] not in TOPICS[answer_type]:
-        raise ValueError('topic is missing or invalid for answer_type')
-    objects = value.get('objects')
-    if not isinstance(objects, list):
-        raise ValueError('objects must be a list')
-    for obj in objects:
-        if not isinstance(obj, dict) or not isinstance(obj.get('name'), str) or not obj['name'].strip():
-            raise ValueError('each object needs a nonempty string name')
-        if obj.get('role') not in ('REFERENT', 'ANSWER_OPTION'):
-            raise ValueError('each object needs role REFERENT or ANSWER_OPTION')
-        features = obj.get('id_features')
-        if not isinstance(features, list) or any(not isinstance(f, str) or f not in {'COLOR', 'MATERIAL', 'SIZE', 'SHAPE'} for f in features):
-            raise ValueError('id_features must be a list containing only COLOR/MATERIAL/SIZE/SHAPE')
-    options = value.get('answer_options')
-    if not isinstance(options, list) or any(not isinstance(option, str) or not option.strip() for option in options):
-        raise ValueError('answer_options must be a list of nonempty strings')
-    flags = value.get('question_flags')
-    if not isinstance(flags, list) or any(not isinstance(f, str) or f not in FLAGS for f in flags):
-        raise ValueError('question_flags must be a list of declared flags')
-    return value
-
-
 def clean_response(raw):
     text = re.sub(r'<think>.*?</think>', '', raw, flags=re.S)
     # Some chat templates supply the opening tag in the prompt, so only
@@ -84,15 +57,28 @@ def clean_response(raw):
     return text
 
 
-def parse_response(raw, branch=None):
-    """Return (parsed, valid, repaired, error), retaining no invented fields."""
+def validate_prediction(value):
+    """Validate {"target": str|null, "flags": [declared flags]} and return a normalized copy."""
+    if not isinstance(value, dict) or 'target' not in value or 'flags' not in value:
+        raise ValueError('response must be a JSON object with keys "target" and "flags"')
+    target = value['target']
+    if target is not None:
+        if not isinstance(target, str):
+            raise ValueError('target must be a string or null')
+        target = target.strip()
+        if not target or target.lower() in {'null', 'none'}:
+            target = None
+    flags = value['flags']
+    if not isinstance(flags, list) or any(not isinstance(f, str) or f not in FLAGS for f in flags):
+        raise ValueError('flags must be a list of declared flags')
+    return {'target': target, 'flags': list(dict.fromkeys(flags))}
+
+
+def parse_response(raw):
+    """Return (prediction, valid, repaired, error), retaining no invented fields."""
     if not isinstance(raw, str):
         return None, False, False, 'response is not text'
     cleaned = clean_response(raw)
-    if branch is None:
-        if cleaned in TOPICS:
-            return cleaned, True, cleaned != raw.strip(), None
-        return None, False, False, 'Call 1 must be exactly BINARY or OPEN'
     try:
         try:
             value = json.loads(raw)
@@ -106,15 +92,13 @@ def parse_response(raw, branch=None):
                 for match in re.finditer(r'\{', cleaned):
                     try:
                         candidate, _ = decoder.raw_decode(cleaned[match.start():])
-                        validate_predictions(branch, candidate)
-                        candidates.append(candidate)
+                        candidates.append(validate_prediction(candidate))
                     except (ValueError, TypeError):
                         pass
                 if len(candidates) != 1:
                     raise ValueError('expected one unambiguous valid JSON prediction object')
                 value = candidates[0]
             repaired = True
-        validate_predictions(branch, value)
-        return value, True, repaired, None
+        return validate_prediction(value), True, repaired, None
     except (ValueError, TypeError) as exc:
         return None, False, False, str(exc)

@@ -1,288 +1,256 @@
 #!/usr/bin/env python3
-"""Evaluate semantic transformation rules; write canonical and human-review Excel files."""
+"""Deterministic verdicts and expected answers from the LLM's {target, flags} output.
+
+Implements Parts 2-6 of SIMPLE_PROMPTS.md. Standard library only, so it also runs
+inside the inference container. CLI: results.jsonl -> labels.json.
+"""
 import argparse
-import csv
 import json
 from pathlib import Path
+import re
 
-from common import read_jsonl, validate_predictions
-from excel_io import read_workbook, write_workbook
+from common import read_jsonl, save_json, validate_prediction
 
-GLOBAL = ('hflip', 'vflip', 'rot180', 'grayscale', 'blur', 'noise')
-SEGMENT_MR1 = ('segment_mr1_grayscale', 'segment_mr1_blur', 'segment_mr1_noise',
-         'segment_mr1_hflip', 'segment_mr1_vflip', 'segment_mr1_rot180')
-LOCAL_TYPES = ('segment_mr1', 'fill_red', 'fill_blue', 'occlude_bbox', 'asymmetric_scale')
-LOCAL = SEGMENT_MR1 + LOCAL_TYPES[1:]
+GLOBAL = ('hflip', 'vflip', 'grayscale')
+LOCAL = ('fill_color', 'occlude_bbox')
 
+# Lexicons are over-inclusive on purpose: a missed word under a negated gate creates
+# a fake verdict, while an extra word only costs coverage.
+NEGATION = {'not', 'no', 'never', 'none', 'neither', 'nor', 'without', 'nobody', 'nothing'}
+LR_WORDS = {'left', 'right', 'leftmost', 'rightmost'}
+UD_WORDS = {'top', 'bottom', 'above', 'below', 'upper', 'lower', 'over', 'under',
+            'beneath', 'underneath', 'up', 'down'}
+BODY_WORDS = {'hand', 'hands', 'arm', 'arms', 'leg', 'legs', 'foot', 'feet', 'eye', 'eyes',
+              'ear', 'ears', 'shoulder', 'shoulders', 'knee', 'knees', 'elbow', 'elbows',
+              'wrist', 'wrists', 'ankle', 'ankles', 'hip', 'hips', 'cheek', 'cheeks'}
+RED_SET = {'red', 'crimson', 'scarlet'}
+RED_NEAR = {'maroon', 'burgundy', 'pink', 'orange', 'magenta', 'rose'}
+GRAY_SET = {'gray', 'grey', 'black', 'white', 'silver'}
+GRAY_NEAR = {'beige', 'tan', 'cream', 'ivory', 'charcoal'}
+COLOR_WORDS = (RED_SET | RED_NEAR | GRAY_SET | GRAY_NEAR |
+               {'yellow', 'green', 'blue', 'purple', 'brown', 'gold', 'golden', 'teal', 'turquoise',
+                'navy', 'violet', 'cyan', 'khaki', 'olive', 'lavender', 'aqua', 'copper', 'bronze',
+                'lime', 'peach', 'salmon', 'indigo', 'tan', 'cyan', 'mauve', 'fuchsia', 'amber'})
+BRIGHTNESS_WORDS = {'dark', 'bright', 'colorful', 'colourful', 'colored', 'coloured', 'multicolored',
+                    'multicoloured', 'pale', 'light', 'color', 'colors', 'colour', 'colours'}
+# "light" is an object, not a brightness word, after these ("traffic light").
+LIGHT_OBJECT_PREFIXES = {'traffic', 'street', 'head', 'tail', 'stop', 'brake', 'flash', 'spot',
+                         'sun', 'desk', 'signal'}
+CONJ = {'and', 'both', 'either', 'neither'}
+# Colors the fill_color edit is evaluated for: {color: (words meaning it, near-miss words)}.
+# Only red is active; add an entry (e.g. 'blue') to evaluate another fill color.
+FILL_COLORS = {'red': (RED_SET, RED_NEAR)}
 
-def local_type(name):
-    return 'segment_mr1' if name in SEGMENT_MR1 else name
-
-
-LABELS = {'I': 'invariant', 'C': 'equivariant', 'U': 'unsafe'}
-
-
-def read_predictions(path, sheet=None):
-    """Accept inference artifacts or corrected workbooks; retain every source field."""
-    suffix = path.suffix.lower()
-    if suffix == '.xlsx':
-        return read_workbook(path, sheet)
-    if sheet is not None:
-        raise ValueError('--sheet applies only to .xlsx input')
-    if suffix == '.jsonl':
-        rows = read_jsonl(path)
-        if any(not isinstance(row, dict) for row in rows):
-            raise ValueError('JSONL predictions must contain one object per row')
-        # Add flat prediction fields without overwriting manual corrections or
-        # dropping nested call2, full provider responses, and inference diagnostics.
-        for row in rows:
-            row.setdefault('answer_type', row.get('call1'))
-            parsed = row.get('call2')
-            for field in ('topic', 'objects', 'answer_options', 'question_flags'):
-                row.setdefault(field, parsed.get(field) if isinstance(parsed, dict) else None)
-        headers = list(dict.fromkeys(key for row in rows for key in row))
-        return headers, rows
-    if suffix == '.csv':
-        with path.open(encoding='utf-8-sig', newline='') as stream:
-            reader = csv.DictReader(stream)
-            headers = reader.fieldnames
-            if not headers or any(not key for key in headers) or len(set(headers)) != len(headers):
-                raise ValueError('CSV headers must be nonempty and unique')
-            rows = list(reader)
-            if any(None in row for row in rows):
-                raise ValueError('CSV row has more cells than its header')
-        return headers, rows
-    raise ValueError('Input must be a .jsonl, .csv, or .xlsx file')
+SUPPORT_WORDS = {'on', 'under', 'beneath', 'underneath', 'inside', 'hanging', 'sitting', 'lying'}
+MATW_WORDS = {'wooden', 'metal', 'plastic', 'glass', 'leather', 'striped', 'plaid', 'checkered',
+              'shiny', 'brick', 'stone'}
+TEXT_WORDS = {'say', 'says', 'written', 'read', 'letters', 'number', 'word', 'sign', 'logo',
+              'text', 'label', 'brand', 'name'}
+COMPARE_WORDS = {'same', 'different', 'than', 'similar', 'compared', 'bigger', 'larger', 'smaller',
+                 'taller', 'shorter', 'older', 'younger'}
+ON_SIDE = re.compile(r'\bon\s+(?:the\s+)?(?:left|right|top|bottom|side)\b')
 
 
-def evaluate(answer_type, topic, objects, flags, answer_options=()):
-    """Return ordered global and per-object (label, reason) results."""
-    validate_predictions(answer_type, {'topic': topic, 'objects': objects,
-                                       'answer_options': list(answer_options), 'question_flags': flags})
-    b = answer_type == 'BINARY'
-    f = set(flags)
-    def has(*values):
-        return bool(f.intersection(values))
-    g = {}
-    def spatial(name, blockers, identities, answers):
-        if has(*blockers):
-            g[name] = ('U', 'spatial_blocker:' + ','.join(sorted(f.intersection(blockers))))
-        elif has(*identities):
-            g[name] = ('U', 'spatial_identity_change:' + ','.join(sorted(f.intersection(identities))))
-        elif has(*answers):
-            g[name] = ('C' if b else 'U', 'binary_spatial_change' if b else 'open_spatial_unsafe')
-        else:
-            g[name] = ('I', 'no_spatial_dependency')
-    spatial('hflip', ('TEXT', 'BODY'), ('LR_ID',), ('LR_ANSWER',))
-    spatial('vflip', ('TEXT', 'SUPPORT'), ('UD_ID',), ('UD_ANSWER',))
-    for name in ('hflip', 'vflip'):
-        if has('MULTI_CONDITION') and g[name][0] == 'C':
-            g[name] = ('U', 'multi_condition_equivariance_unsafe')
-    flips = (g['hflip'][0], g['vflip'][0])
-    if 'U' in flips:
-        g['rot180'] = ('U', 'flip_component_unsafe')
-    elif flips == ('C', 'C'):
-        g['rot180'] = ('U', 'flip_equivariance_may_cancel')
-    elif 'C' in flips:
-        g['rot180'] = ('C', 'one_equivariant_flip')
-    else:
-        g['rot180'] = ('I', 'both_flips_invariant')
-    gray = has('COLORW', 'COMPARE') or topic == 'COLOR'
-    g['grayscale'] = ('U', 'color_or_comparison_dependency') if gray else ('I', 'no_color_dependency')
-    blur = has('TEXT', 'MATW', 'ACTW', 'COMPARE') or topic in {'MATERIAL', 'ACTION'} or (not b and topic == 'OBJECT')
-    g['blur'] = g['noise'] = ('U', 'detail_sensitive') if blur else ('I', 'no_detail_dependency')
-    local = []
-    for idx, obj in enumerate(objects):
-        edits = {}
-        if obj['role'] != 'REFERENT':
-            local.append(edits)
+def tokenize(question):
+    """Lowercase words; hyphens split, contractions stay whole so "isn't" is detectable."""
+    tokens = []
+    for token in re.findall(r"[a-z0-9']+", question.lower()):
+        token = token.strip("'")
+        if token.endswith("'s"):
+            token = token[:-2]
+        if token:
+            tokens.append(token)
+    return tokens
+
+
+def ish_base(token):
+    """'reddish' -> 'red' (also handles doubled consonants); None if not a color -ish form."""
+    if len(token) > 4 and token.endswith('ish'):
+        base = token[:-3]
+        for candidate in (base, base[:-1]):
+            if candidate in COLOR_WORDS:
+                return candidate
+    return None
+
+
+def derive_flags(question, prediction):
+    """Merge the LLM flags with code-side flags (Part 2). Returns (flags set, derived dict)."""
+    llm = set(prediction['flags'])
+    tokens = tokenize(question)
+    words = set(tokens)
+    support_tokens = set(tokenize(ON_SIDE.sub(' ', question.lower())))
+
+    color_tokens = [t for t in tokens if t in COLOR_WORDS or ish_base(t)]
+    ish = [t for t in tokens if ish_base(t)]
+    plain_colors = {t for t in tokens if t in COLOR_WORDS}
+    brightness = False
+    for i, token in enumerate(tokens):
+        if token == 'light' and i and tokens[i - 1] in LIGHT_OBJECT_PREFIXES:
             continue
-        if b and idx > 0:
-            edits = {name: ('U', 'binary_non_target') for name in LOCAL}
-        elif has('EXISTW', 'TEXT', 'BODY', 'ACTW') or topic == 'ACTION':
-            edits = {name: ('U', 'segment_sensitive') for name in LOCAL}
-        else:
-            for name in SEGMENT_MR1:
-                global_name = name.removeprefix('segment_mr1_')
-                feature = {'grayscale': 'COLOR', 'blur': 'MATERIAL', 'noise': 'MATERIAL'}.get(global_name)
-                if feature in obj['id_features']:
-                    edits[name] = ('U', 'local_' + feature.lower() + '_identity')
-                else:
-                    label, reason = g[global_name]
-                    edits[name] = ('I' if label == 'I' else 'U', 'global_mr1:' + reason)
-            features = set(obj['id_features'])
-            for color in ('red', 'blue'):
-                name = 'fill_' + color
-                options = [option.casefold() for option in answer_options]
-                if features & {'COLOR', 'MATERIAL'}:
-                    edits[name] = ('U', 'fill_identity')
-                elif topic in {'MATERIAL', 'OBJECT', 'IDENTITY'} or has('MATW', 'COMPARE', 'CATW', 'MULTI_CONDITION'):
-                    edits[name] = ('U', 'fill_dependency')
-                elif topic == 'COLOR':
-                    if idx == 0 and ((not b and (not options or color in options)) or (len(options) == 2 and len(set(options)) == 2 and color in options)):
-                        edits[name] = ('C', 'constant_color:' + color)
-                    else:
-                        edits[name] = ('U', 'color_answer_not_determined')
-                elif has('COLORW'):
-                    edits[name] = ('U', 'fill_color_dependency')
-                else:
-                    edits[name] = ('I', 'no_fill_dependency')
-            edits['occlude_bbox'] = ('U', 'bbox_occlusion_removes_object_and_context')
-            if features & {'SIZE', 'SHAPE'}:
-                edits['asymmetric_scale'] = ('U', 'scale_identity')
-            elif topic in {'POSITION', 'OBJECT', 'IDENTITY'} or has(
-                    'SIZEW', 'SHAPEW', 'COMPARE', 'CATW', 'LR', 'UD', 'LR_ID',
-                    'LR_ANSWER', 'UD_ID', 'UD_ANSWER', 'SUPPORT'):
-                edits['asymmetric_scale'] = ('U', 'scale_geometry_or_identification_dependency')
-            else:
-                edits['asymmetric_scale'] = ('I', 'no_scale_dependency')
-        local.append(edits)
-    return g, local
+        if token in BRIGHTNESS_WORDS:
+            brightness = True
+
+    flags = set(llm)
+    if support_tokens & SUPPORT_WORDS:
+        flags.add('SUPPORT')
+    for flag, lexicon in (('MATW', MATW_WORDS), ('TEXT', TEXT_WORDS), ('COMPARE', COMPARE_WORDS)):
+        if words & lexicon:
+            flags.add(flag)
+    if words & CONJ:
+        flags.add('MULTI_CONDITION')
+
+    lr_word = bool(words & LR_WORDS)
+    ud_word = bool(words & UD_WORDS)
+    code = {
+        'COLORW': bool(color_tokens) or brightness,
+        'NEGATION': bool(words & NEGATION) or any(t.endswith("n't") for t in tokens),
+        'LR_WORD': lr_word,
+        'UD_WORD': ud_word,
+        'BODY': lr_word and bool(words & BODY_WORDS),
+    }
+    flags.update(name for name, on in code.items() if on)
+
+    # Direction veto, then subtype consistency.
+    for prefix, present in (('LR', lr_word), ('UD', ud_word)):
+        if not present:
+            flags -= {f'{prefix}_{s}' for s in ('ID', 'ANSWER', 'SIDE', 'YN')}
+        if f'{prefix}_SIDE' in flags:
+            flags.discard(f'{prefix}_YN')
+            flags.add(f'{prefix}_ANSWER')
+        if f'{prefix}_YN' in flags:
+            flags.add(f'{prefix}_ANSWER')
+
+    # Color form must agree with the number of color words in the question.
+    forms = {'COLOR_QUERY': len(color_tokens) == 0, 'COLOR_VERIFY': len(color_tokens) == 1,
+             'COLOR_CHOOSE': len(color_tokens) >= 2}
+    present = [f for f in forms if f in flags]
+    for form in forms:
+        flags.discard(form)
+    if len(present) == 1 and forms[present[0]]:
+        flags.add(present[0])
+
+    derived = {
+        'ASKS': {color: (bool(plain_colors & words), bool(plain_colors & near) or bool(ish))
+                 for color, (words, near) in FILL_COLORS.items()},
+        'ASKS_ACHROMATIC': bool(plain_colors & GRAY_SET),
+        'ASKS_GRAY_NEAR': bool(plain_colors & GRAY_NEAR) or bool(ish),
+        'EXIST': (bool(re.match(r'\s*(?:is|are)\s+there\b|\s*do\s+you\s+see\b', question.lower()))
+                  and not words & (CONJ | {'or'}) and not code['NEGATION']),
+    }
+    return flags, derived
 
 
-def parse_cell(value, name):
-    if isinstance(value, str):
-        try:
-            return json.loads(value)
-        except ValueError as exc:
-            raise ValueError(f'{name}: invalid JSON: {exc}') from exc
-    if value is None:
-        raise ValueError(f'{name}: missing field')
-    return value
+UNSAFE = 'unsafe'
+INVARIANT = 'invariant'
 
 
-def normalize(row):
-    for key in ('id', 'detailed_type', 'question'):
-        if row.get(key) is None or not str(row[key]).strip():
-            raise ValueError(f'{key}: missing field')
-    for key in ('call1_valid', 'call2_valid'):
-        if row.get(key) in (False, 'false', 'False', 0):
-            raise ValueError(f'{key} indicates invalid inference; correct predictions and validity together')
-    answer = row.get('answer_type') if row.get('answer_type') is not None else row.get('call1')
-    data = {'topic': row.get('topic'), 'objects': parse_cell(row.get('objects'), 'objects'),
-            'answer_options': parse_cell(row.get('answer_options'), 'answer_options'),
-            'question_flags': parse_cell(row.get('question_flags'), 'question_flags')}
-    validate_predictions(answer, data)
-    return answer, data
+def equivariant(mapping):
+    return {'equivariant': mapping}
 
 
-def build_outputs(headers, rows):
-    questions, globals_, locals_, warnings, reviews = [], [], [], [], []
-    for number, source in enumerate(rows, 2):
-        provenance = {'source_row': number, 'id': source.get('id'),
-                      'detailed_type': source.get('detailed_type'), 'question': source.get('question')}
-        q = dict(source)
-        q['source_row'] = number
-        r = dict(provenance)
-        notices = []
-        try:
-            answer, data = normalize(source)
-            g, local = evaluate(answer, data['topic'], data['objects'], data['question_flags'], data['answer_options'])
-            q.update({'normalized_answer_type': answer, 'normalized_topic': data['topic'],
-                      'normalized_objects': data['objects'], 'normalized_question_flags': data['question_flags'],
-                      'normalized_answer_options': data['answer_options'],
-                      'evaluation_status': 'evaluated', 'evaluation_error': None})
-            r.update({'answer_type': answer, 'topic': data['topic'],
-                      'objects': '; '.join(f'{i}: {o["name"]} ({o["role"]}) [{", ".join(o["id_features"])}]' for i, o in enumerate(data['objects'])),
-                      'answer_options': data['answer_options'],
-                      'question_flags': ', '.join(data['question_flags']), 'evaluation_status': 'evaluated'})
-            summaries = []
-            for idx, edits in enumerate(local):
-                obj = data['objects'][idx]
-                if not edits:
-                    continue
-                summaries.append(f'{idx}: {obj["name"]}: ' + ', '.join(f'{k}={v[0]}' for k, v in edits.items()))
-                for name in LOCAL:
-                    label, reason = edits[name]
-                    entry = {**provenance, 'object_index': idx, 'object_name': obj['name'],
-                             'object_role': obj['role'],
-                             'id_features': obj['id_features'], 'is_target': idx == 0,
-                             'allowed_for_edit': not (answer == 'BINARY' and idx > 0),
-                             'transformation_type': local_type(name), 'transformation': name, 'label': LABELS[label], 'reason_code': reason,
-                             'evaluation_status': 'evaluated'}
-                    locals_.append(entry)
-            r['local_summary'] = '; '.join(summaries) or 'No REFERENT objects: local edits not applicable'
-        except (ValueError, TypeError) as exc:
-            g = {name: (None, 'invalid_input') for name in GLOBAL}
-            q.update({'evaluation_status': 'evaluation_error', 'evaluation_error': str(exc)})
-            r.update({'evaluation_status': 'evaluation_error', 'local_summary': '',
-                      'objects': source.get('objects'), 'answer_options': source.get('answer_options'),
-                      'question_flags': source.get('question_flags')})
-            # Preserve identifiable object targets even when the prediction cannot be evaluated.
-            try:
-                error_objects = parse_cell(source.get('objects'), 'objects')
-            except ValueError:
-                error_objects = []
-            if isinstance(error_objects, list):
-                for idx, obj in enumerate(error_objects):
-                    if isinstance(obj, dict) and obj.get('role') == 'ANSWER_OPTION':
-                        continue
-                    for name in LOCAL:
-                        locals_.append({**provenance, 'object_index': idx,
-                            'object_name': obj.get('name') if isinstance(obj, dict) else None,
-                            'object_role': obj.get('role') if isinstance(obj, dict) else None,
-                            'id_features': obj.get('id_features') if isinstance(obj, dict) else None,
-                            'is_target': idx == 0, 'allowed_for_edit': None,
-                            'transformation_type': local_type(name), 'transformation': name, 'label': None, 'reason_code': 'invalid_input',
-                            'evaluation_status': 'evaluation_error'})
-            notices.append(str(exc))
-            warnings.append({**provenance, 'warning_code': 'invalid_input', 'message': str(exc), 'source_record': source})
+def judge(question, prediction):
+    """Return the Part 6 record body for one question."""
+    f, d = derive_flags(question, prediction)
+    target = prediction['target']
+    has = lambda name: name in f
+    eq_gate = not has('MULTI_CONDITION') and not has('COMPARE') and target is not None
+
+    def spatial(prefix, blockers, invariant, swap):
+        _id, side, yn = has(prefix + '_ID'), has(prefix + '_SIDE'), has(prefix + '_YN')
+        clear = not _id and not has('MULTI_CONDITION') and not any(has(b) for b in blockers)
+        if side and clear:
+            return equivariant(swap)
+        if yn and clear and not has('NEGATION'):
+            return equivariant({'yes': 'no', 'no': 'unchecked'})
+        return INVARIANT if invariant else UNSAFE
+
+    # The direction veto already cleared every LR_*/UD_* flag when no direction word exists.
+    hflip = spatial('LR', ('BODY', 'TEXT'),
+                    not has('LR_WORD') and not has('BODY') and not has('TEXT'),
+                    {'left': 'right', 'right': 'left'})
+    vflip = spatial('UD', ('SUPPORT', 'TEXT'),
+                    not has('UD_WORD') and not any(has(x) for x in ('SUPPORT', 'GRAVITY', 'REF_SURFACE', 'TEXT')),
+                    {'top': 'bottom', 'bottom': 'top', 'above': 'below', 'below': 'above'})
+
+    plain = not has('MULTI_CONDITION') and not has('COMPARE')
+    if has('COLOR_QUERY') and plain:
+        grayscale = equivariant({'any': ['gray', 'black', 'white']})
+    elif (has('COLOR_VERIFY') and not d['ASKS_ACHROMATIC'] and not d['ASKS_GRAY_NEAR']
+          and not has('NEGATION') and plain):
+        grayscale = equivariant({'yes': 'no', 'no': 'no'})
+    elif not has('COLORW'):
+        grayscale = INVARIANT
+    else:
+        grayscale = UNSAFE
+
+    record = {'hflip': hflip, 'vflip': vflip, 'grayscale': grayscale, 'mr2': None}
+    if target is None:
+        return record
+
+    neg = has('NEGATION')
+
+    def fill(color):
+        asks, near = d['ASKS'][color]
+        if eq_gate and has('COLOR_QUERY'):
+            return equivariant({'any': color})
+        if eq_gate and has('COLOR_VERIFY') and asks and not neg:
+            return equivariant({'yes': 'yes', 'no': 'yes'})
+        if eq_gate and has('COLOR_VERIFY') and not asks and not near and not neg:
+            return equivariant({'yes': 'no', 'no': 'no'})
+        if eq_gate and has('COLOR_CHOOSE') and asks:
+            return equivariant({'any': color})
+        if not has('COLORW') and not has('MATW') and not has('TEXT'):
+            return INVARIANT
+        return UNSAFE
+
+    occlude = equivariant({'any': 'no'}) if eq_gate and d['EXIST'] else UNSAFE
+    record['mr2'] = {target: {'fill_color': {c: fill(c) for c in FILL_COLORS}, 'occlude_bbox': occlude}}
+    return record
+
+
+def build_labels(rows):
+    """[[question_id, record], ...] for every row with a valid prediction, in input order."""
+    labels = []
+    for row in rows:
+        prediction = row.get('prediction')
+        if not row.get('valid') or prediction is None:
+            continue
+        labels.append([row['id'], judge(row['question'], validate_prediction(prediction))])
+    return labels
+
+
+def verdict_name(value):
+    return value if isinstance(value, str) else 'equivariant'
+
+
+def count_verdicts(labels):
+    """{transformation: {verdict: count}} over global edits and MR2 edits."""
+    counts = {name: {} for name in (*GLOBAL, *(f'fill_color:{c}' for c in FILL_COLORS), 'occlude_bbox')}
+    for _, record in labels:
         for name in GLOBAL:
-            code, reason = g[name]
-            status = 'evaluation_error' if q['evaluation_status'] == 'evaluation_error' else 'not_applicable' if code is None else 'evaluated'
-            q[name] = r[name] = LABELS.get(code)
-            globals_.append({**provenance, 'transformation': name, 'label': LABELS.get(code),
-                             'reason_code': reason, 'evaluation_status': status})
-        r.update({'warnings': '\n'.join(notices), 'correct?': None, 'review_notes': None})
-        questions.append(q)
-        reviews.append(r)
-    # Source columns retain their original names even if they collide with computed fields.
-    computed = ['source_row', 'normalized_answer_type', 'normalized_topic', 'normalized_objects',
-                'normalized_question_flags', 'normalized_answer_options', *GLOBAL, 'evaluation_status', 'evaluation_error']
-    collisions = set(headers).intersection(computed)
-    for q, source in zip(questions, rows):
-        for key in collisions:
-            backup = 'source_' + key
-            while backup in headers or backup in q:
-                backup = 'source_' + backup
-            q[backup] = source[key]
-    question_headers = list(dict.fromkeys(headers + computed + [k for q in questions for k in q]))
-    gh = ['source_row', 'id', 'detailed_type', 'question', 'transformation', 'label', 'reason_code', 'evaluation_status']
-    lh = ['source_row', 'id', 'detailed_type', 'question', 'object_index', 'object_name', 'object_role', 'id_features', 'is_target',
-          'allowed_for_edit', 'transformation_type', 'transformation', 'label', 'reason_code', 'evaluation_status']
-    wh = ['source_row', 'id', 'detailed_type', 'question', 'object_index', 'transformation', 'warning_code', 'message', 'source_record']
-    rh = ['source_row', 'id', 'detailed_type', 'question', 'answer_type', 'topic', 'objects', 'answer_options', 'question_flags', *GLOBAL,
-          'local_summary', 'evaluation_status', 'warnings', 'correct?', 'review_notes']
-    legend = [{'meaning': 'Labels are predicted by rules, not visually verified.'},
-              {'meaning': 'I = invariant; C = equivariant (predicted answer change); U = unsafe.'},
-              {'meaning': 'Blank labels: evaluation error; inspect status and Warnings.'},
-              {'meaning': 'MR2: segment_mr1, fill_red, fill_blue, occlude_bbox, asymmetric_scale. REFERENT only; shared BINARY and segmentation guards apply. Fills allow constant-answer equivariance; segment_mr1 and asymmetric_scale remain I/U. BBox occlusion is conservatively unsafe.'}]
-    raw = {'Questions': (question_headers, questions), 'GlobalLabels': (gh, globals_),
-           'LocalEdits': (lh, locals_), 'Warnings': (wh, warnings)}
-    review = {'Review': (rh, reviews), 'LocalEditReview': (lh + ['correct?', 'review_notes'], locals_),
-              'Legend': (['meaning'], legend)}
-    return raw, review
+            verdict = verdict_name(record[name])
+            counts[name][verdict] = counts[name].get(verdict, 0) + 1
+        for edits in (record['mr2'] or {}).values():
+            verdicts = {f'fill_color:{c}': v for c, v in edits['fill_color'].items()}
+            verdicts['occlude_bbox'] = edits['occlude_bbox']
+            for name, value in verdicts.items():
+                verdict = verdict_name(value)
+                counts.setdefault(name, {})
+                counts[name][verdict] = counts[name].get(verdict, 0) + 1
+    return counts
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--input', required=True, type=Path, help='results.jsonl, review.csv, or corrected .xlsx predictions')
-    parser.add_argument('--sheet', help='Excel input sheet name; default is the first sheet')
-    parser.add_argument('--output-dir', type=Path, default=Path('.'))
-    parser.add_argument('--raw-output', type=Path)
-    parser.add_argument('--review-output', type=Path)
+    parser.add_argument('--input', required=True, type=Path, help='results.jsonl from run_inference.py')
+    parser.add_argument('--output', type=Path, help='default: labels.json next to the input')
     args = parser.parse_args()
-    raw_path = args.raw_output or args.output_dir / 'transformation_labels_raw.xlsx'
-    review_path = args.review_output or args.output_dir / 'transformation_labels_review.xlsx'
     try:
-        paths = [args.input.resolve(), raw_path.resolve(), review_path.resolve()]
-        if len(set(paths)) != 3:
-            raise ValueError('Input, raw output, and review output must be distinct paths')
-        headers, rows = read_predictions(args.input, args.sheet)
-        raw, review = build_outputs(headers, rows)
-        write_workbook(raw_path, raw)
-        write_workbook(review_path, review, review=True)
-        print(f'Saved {raw_path} and {review_path}; {len(raw["Warnings"][1])} warnings')
+        rows = read_jsonl(args.input)
+        labels = build_labels(rows)
+        output = args.output or args.input.with_name('labels.json')
+        save_json(output, labels)
+        print(f'Saved {len(labels)} records to {output} ({len(rows) - len(labels)} questions skipped: no valid prediction)')
     except (ValueError, OSError, KeyError) as exc:
         parser.exit(1, f'Error: {exc}\n')
 

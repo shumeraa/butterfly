@@ -8,12 +8,13 @@ import random
 import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from answer_rule_prompts import PROMPT_VERSION, TRANSFORMATIONS
 from evaluate_rules import GLOBAL
 from excel_io import write_workbook
+from prompts import PROMPT_VERSION
 
 DEFINITIONS = {
-    **TRANSFORMATIONS,
+    'hflip': 'Reflect the entire image horizontally.',
+    'vflip': 'Reflect the entire image vertically.',
     'grayscale': 'Convert the entire image to grayscale, preserving geometry.',
     'fill_red': 'Segment one object referred to by the question and fill its mask uniformly red, preserving shape and location.',
     'occlude_bbox': 'Cover the selected object’s whole bounding box with an opaque black rectangle, including background inside the box. This hides the object; it does not turn the object black.',

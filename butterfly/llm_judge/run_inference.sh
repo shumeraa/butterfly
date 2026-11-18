@@ -4,7 +4,7 @@
 #SBATCH -N 1
 #SBATCH -n 1
 #SBATCH -A CCR26069
-#SBATCH -t 00:40:00
+#SBATCH -t 00:30:00
 #SBATCH -o gqa-llm-judge.%j.out
 #SBATCH -e gqa-llm-judge.%j.out
 #SBATCH --cpus-per-task=8
@@ -15,8 +15,8 @@
 # Set IMAGE for a different container and REPO_ROOT when submitting elsewhere.
 # Use gpu-a100-dev's two-hour maximum for the full pilot.
 # If the run reaches the limit, continue with the same settings and --resume.
-# Calls 1/2 and eligible Call 3 requests share one model and run directory.
-# Use --call3-max-tokens to tune Call 3 or --skip-answer-rules to disable it.
+# One model call per question; verdicts and expected answers are derived in code.
+# Use --max-tokens to tune the output budget.
 # All arguments are forwarded; repeated Python options use the last value.
 
 : "${WORK:?Set WORK to the execution-machine work directory containing containers/}"
@@ -75,7 +75,7 @@ for i in range(torch.cuda.device_count()):
     print(f"GPU {i} computation successful: {result}", flush=True)
 ' || exit $?
 
-echo '=== Running classification and integrated answer-rule inference ==='
+echo '=== Running question-only inference ==='
 exec "${container[@]}" "$PYTHON_BIN" "$SCRIPT" \
     --model "${MODEL:-Qwen/Qwen3.8-27B}" \
     --dtype "${DTYPE:-bfloat16}" \

@@ -1,14 +1,13 @@
+# GQA metamorphic relations: question-only rules (v5)
 
-# GQA metamorphic relations: question-only rules (v2)
-
-One LLM call per question returns a small JSON object. All verdicts and expected answers are then computed deterministically from that JSON. There is no second answer-rule model call: expected answers are encoded in the Equivariant cells of the tables.
+One LLM call per question returns a small JSON object, `{"target": ..., "flags": [...]}`. Code adds its own lexicon-based flags, then computes all verdicts and expected answers deterministically and writes one JSON record per question (Part 6). There is no second answer-rule model call: expected answers are encoded in the Equivariant cells of the tables.
 
 Verdicts: **I** = invariant (answer unchanged), **E** = equivariant (answer changes deterministically, including to a constant), **U** = unsafe (no reliable expectation).
 
 Transformations covered:
 
 - **MR1** (whole image, no models): horizontal flip, vertical flip, grayscale
-- **MR2** (segment one target object, then edit it): occlude bbox (hides the object behind an opaque black box; it does not recolor the object), fill red
+- **MR2** (segment one target object, then edit it): occlude bbox (hides the object behind an opaque black box; it does not recolor the object), fill color (currently red only; the schema is keyed by color so others can be added)
 
 MR2 uses a **single target per question**, and the edit is applied to **every instance** of that target in the image (the target "duck" means all ducks), so every question gets at most one verdict per transformation.
 
@@ -28,74 +27,104 @@ Analyze this visual question using only its wording, not an image or answer.
    b. Grammatical subject: otherwise, the head noun of the main clause.
    c. Only named object: if the question names just one object, it is the target.
    d. Tie: take the first qualifying object in textual order.
-   Never choose: an object used only to identify another object ("to the left of the Z"), an answer option ("an apple or a banana"), or an object whose existence the question does not presuppose ("a cup" in "Is the man holding a cup?"; the man is the target). Exception: for existence questions, the object asked about is the target.
+   Never choose: an object used only to identify another object ("to the left of the Z"), an answer option ("an apple or a banana"), or an object whose existence the question does not presuppose ("a cup" in "Is the man holding a cup?"; the man is the target). Exception: for existence questions ("Is there a cup?"), the object asked about is the target.
    Use null if no object qualifies or the question is about the whole scene.
    Keep the identifying description ("green apple", "man on the left").
    The edit applies to every instance of the target in the image, not just one.
 
-2. COLOR_Q: Set only if the question asks the color of the target and contains no other color words.
-   - "query": "What color is X?"
-   - "verify": "Is X <color>?"
-   - "choose": "Is X <c1> or <c2>?"
-   - null otherwise.
+2. FLAGS: List all that apply.
 
-3. ASKED_COLORS: Colors named in a verify or choose question, lowercase. [] otherwise.
+Color question form. Set one of these only if the question asks the color of the target and contains no other color words (for example, no color word inside an object-identifying clause like "the red car's door"). Never set more than one.
+COLOR_QUERY: "What color is X?"
+COLOR_VERIFY: "Is X <color>?"
+COLOR_CHOOSE: "Is X <c1> or <c2>?"
 
-4. FLAGS: List all that apply.
+Left/right:
 LR_ID: Left/right used to identify or select an object. "What is the girl to the left of the frisbee doing?"
 LR_ANSWER: Left/right being asked about or offered as a choice. "Is the girl to the left of the frisbee?"
 LR_SIDE: Subtype of LR_ANSWER where the answer must be one of the two directions. "Is X on the left or right?", "Which side is X on?" A yes/no "Is X left of Y?" is NOT LR_SIDE.
+LR_YN: Subtype of LR_ANSWER. A yes/no question whose only content is whether ONE left/right relation holds between two objects. "Is the ball to the left of the box?" Also set LR_ANSWER. Do NOT set LR_YN for "left or right" choices, for leftmost/rightmost, or when the question has any other condition or uses left/right to identify an object.
+
+Up/down:
 UD_ID: Up/down used to identify or select an object. "What color is the ball above the box?"
 UD_ANSWER: Up/down being asked about or offered as a choice. "Is the ball above the box?"
 UD_SIDE: Subtype of UD_ANSWER where the answer must be one of the two directions. "Is X on the top or bottom?"
+UD_YN: Subtype of UD_ANSWER. A yes/no question whose only content is whether ONE up/down relation (above, below, over, under, on top of) holds between two objects. "Is the ball above the box?" Also set UD_ANSWER. Do NOT set UD_YN for "top or bottom" choices, for topmost/bottommost, or when the question has any other condition or uses up/down to identify an object.
 Include both _ID and _ANSWER when both roles occur, even for different objects.
-SUPPORT: on, under, inside, sitting, hanging, lying.
-TEXT: Readable text, letters, numbers, signs, logos.
-BODY: Left/right body parts.
-COLORW: Any color word or reference to color or brightness (dark, bright, colorful).
-MATW: Material, texture, pattern, surface (wooden, striped, shiny).
-EXISTW: Asks whether something exists or is present.
-COMPARE: Compares properties of multiple objects.
-MULTI_CONDITION: Several conditions joined by AND/OR, including "both"/"either" constructions and conjunctions inside object-identifying clauses. Do not flag simple alternative answers like "red or blue".
+
+Gravity and orientation (these matter when the image is turned upside down):
+SUPPORT: A support or containment relation between two objects (on, under, inside, resting on, standing on).
+GRAVITY: A posture, motion, or orientation of a single object that only makes sense when the image is upright: sitting, standing, lying, hanging, leaning, kneeling, falling, jumping, flying, floating, pouring, upside down.
+REF_SURFACE: The question mentions a natural reference surface or direction of the scene: sky, ground, floor, ceiling, roof, horizon, or a reflection. Set it even when that surface is the object being asked about.
+
+Other:
+TEXT: Readable text, letters, numbers, signs, logos, or an object that normally carries text (poster, license plate, book cover) when its text is relevant.
+MATW: Material, texture, pattern, or surface (wooden, striped, shiny).
+COMPARE: Compares properties of multiple objects ("same color?", "which is bigger?").
+MULTI_CONDITION: Several conditions joined by AND/OR, including "both"/"either" constructions and conjunctions inside object-identifying clauses ("the man or the woman", "the girl who is smiling and wearing a hat"). Do not flag simple alternative answers like "red or blue".
 
 Examples:
 Question: What color is the apple?
-{"target":"apple","color_q":"query","asked_colors":[],"flags":["COLORW"]}
+{"target":"apple","flags":["COLOR_QUERY"]}
 
 Question: Is the car red or blue?
-{"target":"car","color_q":"choose","asked_colors":["red","blue"],"flags":["COLORW"]}
+{"target":"car","flags":["COLOR_CHOOSE"]}
 
 Question: Is the shirt black?
-{"target":"shirt","color_q":"verify","asked_colors":["black"],"flags":["COLORW"]}
-
-Question: Is there a cat in the image?
-{"target":"cat","color_q":null,"asked_colors":[],"flags":["EXISTW"]}
-
-Question: Are there any dogs?
-{"target":"dogs","color_q":null,"asked_colors":[],"flags":["EXISTW"]}
-
-Question: Is the ball to the left or right of the box?
-{"target":"ball","color_q":null,"asked_colors":[],"flags":["LR_ANSWER","LR_SIDE"]}
-
-Question: Is the ball above the box?
-{"target":"ball","color_q":null,"asked_colors":[],"flags":["UD_ANSWER"]}
-
-Question: What is the girl to the left of the frisbee holding?
-{"target":"girl","color_q":null,"asked_colors":[],"flags":["LR_ID"]}
+{"target":"shirt","flags":["COLOR_VERIFY"]}
 
 Question: Is the man wearing a red hat?
-{"target":"man","color_q":null,"asked_colors":[],"flags":["COLORW"]}
+{"target":"man","flags":[]}
 
-Question: Is the man holding a cup?
-{"target":"man","color_q":null,"asked_colors":[],"flags":[]}
+Question: What color is the cup on the left of the plate?
+{"target":"cup","flags":["COLOR_QUERY","LR_ID"]}
+
+Question: Is there a cat in the image?
+{"target":"cat","flags":[]}
+
+Question: Is the ball to the left or right of the box?
+{"target":"ball","flags":["LR_ANSWER","LR_SIDE"]}
+
+Question: Is the ball to the left of the box?
+{"target":"ball","flags":["LR_ANSWER","LR_YN"]}
+
+Question: Is the ball above the box?
+{"target":"ball","flags":["UD_ANSWER","UD_YN"]}
+
+Question: Is the lamp on the top or bottom shelf?
+{"target":"lamp","flags":["UD_ANSWER","UD_SIDE"]}
+
+Question: What is the girl to the left of the frisbee holding?
+{"target":"girl","flags":["LR_ID"]}
+
+Question: Is the girl to the left of the frisbee wearing a hat?
+{"target":"girl","flags":["LR_ID"]}
+
+Question: Is the bird sitting on the fence?
+{"target":"bird","flags":["SUPPORT","GRAVITY"]}
+
+Question: Is the man standing?
+{"target":"man","flags":["GRAVITY"]}
+
+Question: What color is the sky?
+{"target":"sky","flags":["COLOR_QUERY","REF_SURFACE"]}
 
 Question: What does the sign say?
-{"target":"sign","color_q":null,"asked_colors":[],"flags":["TEXT"]}
+{"target":"sign","flags":["TEXT"]}
+
+Question: Is the wooden table round?
+{"target":"table","flags":["MATW"]}
+
+Question: Are the plate and the cup the same color?
+{"target":"plate","flags":["COMPARE","MULTI_CONDITION"]}
+
+Question: Is the man or the woman holding the umbrella?
+{"target":"man","flags":["MULTI_CONDITION"]}
 
 Question: Is it sunny?
-{"target":null,"color_q":null,"asked_colors":[],"flags":[]}
+{"target":null,"flags":[]}
 
-Return ONLY valid JSON with keys "target", "color_q", "asked_colors", and "flags". No explanation.
+Return ONLY valid JSON with keys "target" and "flags". No explanation.
 ````
 
 ## Output schema
@@ -103,78 +132,195 @@ Return ONLY valid JSON with keys "target", "color_q", "asked_colors", and "flags
 ```json
 {
   "target": "apple | null",
-  "color_q": "query | verify | choose | null",
-  "asked_colors": ["..."],
-  "flags": ["..."]
+  "flags": ["COLOR_QUERY", "LR_ID", "..."]
 }
 ```
 
-## Derived values (computed in code)
+---
 
-- `LR = LR_ID ∨ LR_ANSWER`
-- `UD = UD_ID ∨ UD_ANSWER`
-- If both `_ID` and `_ANSWER` are set for a direction, treat the question as `_ID` (unsafe).
-- `GRAY_SET = {gray, grey, black, white}`
-- `EQ_GATE = ¬MULTI_CONDITION ∧ ¬COMPARE ∧ target ≠ null`
-- Normalize answers before comparing: lowercase, and treat `gray` and `grey` as the same.
+# Part 2: Code-side derivation
+
+Tokenize the lowercased question into words, splitting hyphens and contractions (`isn't`, `right-hand`). Lists are over-inclusive on purpose: for a negated gate (`¬X`), a missed word creates a fake verdict, while an extra word only costs coverage. Complete the lists with a one-time audit of the unique tokens in your question set.
+
+## Lexicons (code only)
+
+| Lexicon | Words | Used for |
+| --- | --- | --- |
+| `NEGATION` | not, no, never, none, neither, nor, without, nobody, nothing, any token ending in `n't` | gate on every yes/no mapping |
+| `LR_WORDS` | left, right, leftmost, rightmost | `LR_WORD` |
+| `UD_WORDS` | top, bottom, above, below, upper, lower, over, under, beneath, underneath, up, down | `UD_WORD` |
+| `BODY_WORDS` | hand(s), arm(s), leg(s), foot, feet, eye(s), ear(s), shoulder(s), knee(s), elbow(s), wrist(s), ankle(s), hip(s), cheek(s) | `BODY`, only when `LR_WORD` is also present |
+| `COLOR_WORDS` | all color names including shades (beige, tan, maroon, teal, ...) | `COLORW`, color token count |
+| `BRIGHTNESS_WORDS` | dark, bright, colorful, colored, multicolored, pale, `-ish` forms | `COLORW` |
+| `RED_SET` | red, crimson, scarlet | `ASKS_RED` (the fill color's own word set) |
+| `RED_NEAR` | maroon, burgundy, pink, orange, magenta, rose | `ASKS_RED_NEAR` (fill-red verify becomes Unsafe) |
+| `GRAY_SET` | gray, grey, black, white, silver | `ASKS_ACHROMATIC` |
+| `GRAY_NEAR` | beige, tan, cream, ivory, charcoal | `ASKS_GRAY_NEAR` (grayscale verify becomes Unsafe) |
+| `CONJ` | and, both, either, neither | `MULTI_CONDITION` |
+
+## Tier B lexicons (unioned with the LLM flag)
+
+| Flag | Code lexicon |
+| --- | --- |
+| `SUPPORT` | on, under, beneath, underneath, inside, hanging, sitting, lying |
+| `MATW` | wooden, metal, plastic, glass, leather, striped, plaid, checkered, shiny, brick, stone |
+| `TEXT` | say, says, written, read, letters, number, word, sign, logo, text, label, brand, name |
+| `COMPARE` | same, different, than, similar, compared, bigger, larger, smaller, taller, shorter, older, younger |
+
+Before matching `SUPPORT`, remove "on the left / right / top / bottom / side", or every "on the left" question gets a false support flag. Do not use an `-er` regex for `COMPARE` (it matches water, flower, player). Exclude "light" from `BRIGHTNESS_WORDS` in "traffic light", "street light", and similar.
+
+## Merge rules
+
+| Step | Rule |
+| --- | --- |
+| Gate flags | `SUPPORT`, `MATW`, `TEXT`, `COMPARE` are set if the LLM sets them or a Tier B word appears. |
+| `MULTI_CONDITION` | Set if the LLM sets it or any `CONJ` word appears. |
+| Code-only flags | `COLORW` (any color or brightness word), `NEGATION`, `LR_WORD`, `UD_WORD`, `BODY` (body word and `LR_WORD`). |
+| Direction veto | If no `LR_WORD`, remove all `LR_*` flags. If no `UD_WORD`, remove all `UD_*` flags. |
+| Subtype consistency | `LR_SIDE` removes `LR_YN`; `LR_YN` adds `LR_ANSWER`. Same for `UD_*`. |
+| Color consistency | `COLOR_QUERY` needs 0 color tokens, `COLOR_VERIFY` exactly 1, `COLOR_CHOOSE` 2 or more; otherwise the flag is dropped. More than one `COLOR_*` flag drops all of them. |
+
+## Derived values
+
+| Value | Definition |
+| --- | --- |
+| `LR`, `UD` | `LR_ID ∨ LR_ANSWER`, `UD_ID ∨ UD_ANSWER`. If both `_ID` and `_ANSWER` are set, treat as `_ID` (unsafe). |
+| `EQ_GATE` | `¬MULTI_CONDITION ∧ ¬COMPARE ∧ target ≠ null` |
+| `ASKS_RED` | a color token is in `RED_SET` |
+| `ASKS_RED_NEAR` | a color token is in `RED_NEAR` |
+| `ASKS_ACHROMATIC` | a color token is in `GRAY_SET` |
+| `ASKS_GRAY_NEAR` | a color token is in `GRAY_NEAR` |
+| `EXIST` | question starts with "is/are there" or "do you see", has no and/or/both/either/neither, and `¬NEGATION` |
+| Answer normalization | lowercase; treat `gray` and `grey` as the same |
 
 ---
 
-# Part 2: MR1 rule table (whole image)
+# Part 3: MR1 rule table (whole image)
 
-| Transformation            | Invariant                       | Equivariant                                                                                                                             | Unsafe                                                                   |
-| ------------------------- | ------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
-| **Horizontal flip** | `¬LR ∧ ¬BODY ∧ ¬TEXT`    | `LR_SIDE ∧ ¬LR_ID ∧ ¬MULTI_CONDITION ∧ ¬BODY ∧ ¬TEXT`Answer: swap left↔right                                                 | Anything else                                                            |
-| **Vertical flip**   | `¬UD ∧ ¬SUPPORT ∧ ¬TEXT` | `UD_SIDE ∧ ¬UD_ID ∧ ¬MULTI_CONDITION ∧ ¬SUPPORT ∧ ¬TEXT`Answer: swap top↔bottom, above↔below                                | Anything else                                                            |
-| **Grayscale**       | `¬COLORW`                    | `color_q = query ∧ ¬MULTI_CONDITION ∧ ¬COMPARE`Answer: in `GRAY_SETcolor_q = verify ∧ asked_colors ∩ GRAY_SET = ∅`Answer: no | Anything else (includes `choose`, and verify with an achromatic color) |
+| Transformation | Invariant | Equivariant | Unsafe | In English |
+| --- | --- | --- | --- | --- |
+| **Horizontal flip** | `¬LR_WORD ∧ ¬LR ∧ ¬BODY ∧ ¬TEXT` | `LR_SIDE ∧ ¬LR_ID ∧ ¬MULTI_CONDITION ∧ ¬BODY ∧ ¬TEXT` Answer: swap left↔right<br><br>`LR_YN ∧ ¬LR_ID ∧ ¬MULTI_CONDITION ∧ ¬NEGATION ∧ ¬BODY ∧ ¬TEXT` Answer: `yes → no` | Anything else | **I:** no left/right word anywhere, and no body part or text.<br>**E:** asks left or right with no left/right identification, body part, text, or extra conditions (swap); or a non-negated yes/no question about one left/right relation (`yes` becomes `no`).<br>**U:** everything else. |
+| **Vertical flip** | `¬UD_WORD ∧ ¬UD ∧ ¬SUPPORT ∧ ¬GRAVITY ∧ ¬REF_SURFACE ∧ ¬TEXT` | `UD_SIDE ∧ ¬UD_ID ∧ ¬MULTI_CONDITION ∧ ¬SUPPORT ∧ ¬TEXT` Answer: swap top↔bottom, above↔below<br><br>`UD_YN ∧ ¬UD_ID ∧ ¬MULTI_CONDITION ∧ ¬NEGATION ∧ ¬SUPPORT ∧ ¬TEXT` Answer: `yes → no` | Anything else | **I:** no up/down word, support relation, posture or motion, sky/ground/floor-type surface, or text.<br>**E:** asks top or bottom with no up/down identification, support relation, text, or extra conditions (swap); or a non-negated yes/no question about one above/below relation with no support relation (`yes` becomes `no`).<br>**U:** everything else. |
+| **Grayscale** | `¬COLORW` | `COLOR_QUERY ∧ ¬MULTI_CONDITION ∧ ¬COMPARE` Answer: in `{gray, black, white}`<br><br>`COLOR_VERIFY ∧ ¬ASKS_ACHROMATIC ∧ ¬ASKS_GRAY_NEAR ∧ ¬NEGATION ∧ ¬MULTI_CONDITION ∧ ¬COMPARE` Answer: no | Anything else (includes `COLOR_CHOOSE`) | **I:** no color or brightness word in the question.<br>**E:** asks the color of the target (answer is gray, black, or white); or asks, without negation, whether the target is a clearly chromatic color (answer is `no`).<br>**U:** everything else, including two-color choice questions. |
+
+Notes:
+
+- **Yes→no only maps `yes`.** If the ball was left of the box it is right of it after the flip, but a gold `no` could mean right, in front, or overlapping, so it is not checked.
+- **`GRAVITY` and `REF_SURFACE` apply only to the vertical invariant row.** "Is the sky at the top or bottom?" still has a clean swapped answer, so the equivariant rows keep only `SUPPORT`. Drop `REF_SURFACE` from the invariant row if coverage falls too far, since "What color is the sky?" has a well-defined answer and only the image is unnatural.
 
 ---
 
-# Part 3: MR2 rule table (single target object)
+# Part 4: MR2 rule table (single target object)
 
 If `target = null`, MR2 has no row.
 
-| Transformation                            | Invariant                                                                                                   | Equivariant                                                                                                                                                        | Unsafe                                                                                                                                 |
-| ----------------------------------------- | ----------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------- |
-| **Occlude bbox** (opaque black box) | Never(the target is named in the question, so hiding it cannot be shown irrelevant from the question alone) | `EQ_GATE ∧ EXISTW` → no                                                                                                                                        | Anything else (this includes every color question: the object is hidden, not recolored, so the visible color is not a reliable answer) |
-| **Fill red** (mask only)            | `target ≠ null ∧ ¬COLORW ∧ ¬MATW ∧ ¬TEXT`                                                          | `EQ_GATE` plus one of:`color_q = query` → red`color_q = verify` → yes if the asked color is red, else no`color_q = choose ∧ red ∈ asked_colors` → red | Anything else                                                                                                                          |
+| Transformation | Invariant | Equivariant | Unsafe | In English |
+| --- | --- | --- | --- | --- |
+| **Occlude bbox** (opaque black box) | Never (the target is named in the question, so hiding it cannot be shown irrelevant from the question alone) | `EQ_GATE ∧ EXIST` → no | Anything else (this includes every color question: the object is hidden, not recolored, so the visible color is not a reliable answer) | **I:** never.<br>**E:** a plain "is there X" question about one object, with no and/or and no negation (answer is `no`).<br>**U:** everything else, including every color question. |
+| **Fill color** (mask only; shown for red, one row per color in `FILL_COLORS`) | `target ≠ null ∧ ¬COLORW ∧ ¬MATW ∧ ¬TEXT` | `EQ_GATE` plus one of:<br>`COLOR_QUERY` → red<br>`COLOR_VERIFY ∧ ASKS_RED ∧ ¬NEGATION` → yes<br>`COLOR_VERIFY ∧ ¬ASKS_RED ∧ ¬ASKS_RED_NEAR ∧ ¬NEGATION` → no<br>`COLOR_CHOOSE ∧ ASKS_RED` → red | Anything else | **I:** one target, and no color, material, or text word in the question.<br>**E:** one target with no comparison or extra conditions, and the question asks its color (red), asks if it is red (yes), asks if it is a clearly non-red color (no), or offers two colors including red (red). Verify questions must not be negated.<br>**U:** everything else. |
 
 ---
 
-# Part 4: Expected-answer mappings
+# Part 5: Expected-answer mappings
 
-The model never writes a mapping. Code derives it from the verdict, `color_q`, and `asked_colors`, in the same notation human graders use: one line per original answer, `original -> allowed outputs`. `any` stands for every original answer not listed on another line. Because every instance of the target is edited, these hold however many instances exist.
+The model never writes a mapping. Code derives it from the verdict and flags, in the notation human graders use: one line per original answer, `original -> allowed outputs`. `any` stands for every original answer not listed on another line. `unchecked` means the case is skipped. Because every instance of the target is edited, these hold however many instances exist.
 
-| Case                                 | Case (Flag version)                                                                       | Mapping                                                                           |
-| ------------------------------------ | ----------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
-| Horizontal flip, left/right question | `LR_SIDE ∧ ¬LR_ID ∧ ¬MULTI_CONDITION ∧ ¬BODY ∧ ¬TEXT`                           | `left -> right`, `right -> left`                                              |
-| Vertical flip, top/bottom question   | `UD_SIDE ∧ ¬UD_ID ∧ ¬MULTI_CONDITION ∧ ¬SUPPORT ∧ ¬TEXT`                        | `top -> bottom`, `bottom -> top` (and `above -> below`, `below -> above`) |
-| Fill red, "What color is X?"         | `EQ_GATE ∧ color_q = query`                                                            | `any -> red`                                                                    |
-| Fill red, "Is X blue?"               | `EQ_GATE ∧ color_q = verify ∧ asked_colors = [blue]` (any asked color other than red) | `yes -> no`, `no -> no`                                                       |
-| Fill red, "Is X red?"                | `EQ_GATE ∧ color_q = verify ∧ asked_colors = [red]`                                   | `yes -> yes`, `no -> yes`                                                     |
-| Fill red, "Is X blue or red?"        | `EQ_GATE ∧ color_q = choose ∧ red ∈ asked_colors`                                    | `any -> red`                                                                    |
-| Occlude bbox, "Is there a cat?"      | `EQ_GATE ∧ EXISTW`                                                                     | `any -> no`                                                                     |
-| Grayscale, color query               | `color_q = query ∧ ¬MULTI_CONDITION ∧ ¬COMPARE`                                     | `any -> gray, black, white`                                                     |
-| Grayscale, "Is X red?"               | `color_q = verify ∧ asked_colors ∩ GRAY_SET = ∅`                                     | `yes -> no`, `no -> no`                                                       |
-| Any invariant verdict                | Invariant condition for that transformation (Parts 2 and 3)                               | the answer maps to itself                                                         |
+| Case | Condition | In English | Mapping |
+| --- | --- | --- | --- |
+| Horizontal flip, left/right choice | `LR_SIDE ∧ ¬LR_ID ∧ ¬MULTI_CONDITION ∧ ¬BODY ∧ ¬TEXT` | Asks whether something is on the left or the right, with no left/right identification, body part, text, or extra conditions. | `left -> right`, `right -> left` |
+| Horizontal flip, yes/no relation | `LR_YN ∧ ¬LR_ID ∧ ¬MULTI_CONDITION ∧ ¬NEGATION ∧ ¬BODY ∧ ¬TEXT` | Yes/no question about one left/right relation, not negated, with no other conditions. | `yes -> no`, `no -> unchecked` |
+| Vertical flip, top/bottom choice | `UD_SIDE ∧ ¬UD_ID ∧ ¬MULTI_CONDITION ∧ ¬SUPPORT ∧ ¬TEXT` | Asks top or bottom, with no up/down identification, support relation, text, or extra conditions. | `top -> bottom`, `bottom -> top`, `above -> below`, `below -> above` |
+| Vertical flip, yes/no relation | `UD_YN ∧ ¬UD_ID ∧ ¬MULTI_CONDITION ∧ ¬NEGATION ∧ ¬SUPPORT ∧ ¬TEXT` | Yes/no question about one above/below relation, not negated, no support relation or other conditions. | `yes -> no`, `no -> unchecked` |
+| Fill color (red), "What color is X?" | `EQ_GATE ∧ COLOR_QUERY` | Asks the color of the single target, with no comparison or extra conditions. | `any -> red` |
+| Fill color (red), "Is X blue?" | `EQ_GATE ∧ COLOR_VERIFY ∧ ¬ASKS_RED ∧ ¬ASKS_RED_NEAR ∧ ¬NEGATION` | Asks if the target is a color that is not red or red-like, not negated. | `yes -> no`, `no -> no` |
+| Fill color (red), "Is X red?" | `EQ_GATE ∧ COLOR_VERIFY ∧ ASKS_RED ∧ ¬NEGATION` | Asks if the target is red, not negated. | `yes -> yes`, `no -> yes` |
+| Fill color (red), "Is X blue or red?" | `EQ_GATE ∧ COLOR_CHOOSE ∧ ASKS_RED` | Asks which of two colors the target is, and one of them is red. | `any -> red` |
+| Occlude bbox, "Is there a cat?" | `EQ_GATE ∧ EXIST` | Plain "is there X" question about one object, with no and/or and no negation. | `any -> no` |
+| Grayscale, color query | `COLOR_QUERY ∧ ¬MULTI_CONDITION ∧ ¬COMPARE` | Asks the color of the target, with no other color words. | `any -> gray, black, white` |
+| Grayscale, "Is X red?" | `COLOR_VERIFY ∧ ¬ASKS_ACHROMATIC ∧ ¬ASKS_GRAY_NEAR ∧ ¬NEGATION ∧ ¬MULTI_CONDITION ∧ ¬COMPARE` | Asks if the target is a clearly chromatic color (not gray, black, white, or close to them), not negated. | `yes -> no`, `no -> no` |
+| Any invariant verdict | Invariant condition for that transformation (Parts 3 and 4) | The question has nothing that depends on the edit, such as direction, color, material, or text. | the answer maps to itself |
 
-Most mappings are constants: any original answer maps to one output or a small set. Only the flips swap values. The grayscale rule is deliberately coarse (a human may refine it as `black -> black`, `white -> white`, `any -> gray`).
+Most mappings are constants. Only the flips swap values or map just `yes`. The grayscale rule is deliberately coarse (a human may refine it as `black -> black`, `white -> white`, `any -> gray`).
 
 ---
 
-# Evaluation order
+# Part 6: Output JSON
 
-1. For each transformation, check **Equivariant**, then **Invariant**, then default to **Unsafe**.
-2. For flips, `TEXT` (and `BODY` for the horizontal flip) force Unsafe before anything else.
-3. For MR2, evaluate once per question using the single target.
+Code writes one record per question, as `[question_id, {...}]`, and the full output is a list of these records. The `question_id` comes from your dataset, not from the LLM. `fill_color` is keyed by fill color. Only `red` is evaluated now; adding a color to `FILL_COLORS` in `evaluate_rules.py` adds its key with the same rules (its own `ASKS`/`NEAR` word sets replace `RED_SET`/`RED_NEAR`, and "red" in the answers becomes that color).
+
+```json
+[
+  [
+    "006108",
+    {
+      "hflip": "invariant",
+      "vflip": "invariant",
+      "grayscale": {"equivariant": {"yes": "no", "no": "no"}},
+      "mr2": {
+        "bag": {
+          "fill_color": {"red": {"equivariant": {"yes": "yes", "no": "yes"}}},
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "006149",
+    {
+      "hflip": {"equivariant": {"left": "right", "right": "left"}},
+      "vflip": "invariant",
+      "grayscale": "invariant",
+      "mr2": {
+        "bag": {
+          "fill_color": {"red": "invariant"},
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "006201",
+    {
+      "hflip": "invariant",
+      "vflip": "invariant",
+      "grayscale": "invariant",
+      "mr2": {
+        "cat": {
+          "fill_color": {"red": "invariant"},
+          "occlude_bbox": {"equivariant": {"any": "no"}}
+        }
+      }
+    }
+  ]
+]
+```
+
+The three records above come from "Is the bag red?", "Is the bag on the left or right?", and "Is there a cat in the image?".
+
+| Field | Value |
+| --- | --- |
+| `hflip`, `vflip`, `grayscale` | `"invariant"`, `"unsafe"`, or `{"equivariant": mapping}` |
+| `mr2` | `null` if `target = null`; otherwise `{target: {"fill_color": {color: verdict}, "occlude_bbox": verdict}}`, with the target text as returned by the LLM and each verdict in the same form as above |
+| `mapping` | Object of `original answer: expected answer`, using the Part 5 notation |
+| `"any"` key | Every original answer not listed in the mapping |
+| List value | Several allowed outputs, e.g. `{"any": ["gray", "black", "white"]}` |
+| `"unchecked"` value | The harness skips this case, e.g. `{"yes": "no", "no": "unchecked"}` |
+| `"invariant"` | The answer maps to itself, so there is no mapping object |
+
+---
+
+# Part 7: Evaluation notes
+
+- **Check order:** for each transformation, check Equivariant, then Invariant, then default to Unsafe. For flips, `TEXT` (and `BODY` for the horizontal flip) force Unsafe first.
+- **Yes→no cases:** run them only when the model's answer on the original image is `yes` and matches gold. Otherwise an always-no model passes trivially, and a wrong original answer creates a false failure. Skip `unchecked` cases and report how many cases were actually tested.
+- **Segmentation:** send the segmenter the singular head noun ("dog", not "dogs" or "man on the left"). If no mask is found or the mask is tiny, drop the case instead of scoring it, since a segmenter miss would look like a model violation (occlude-existence is the most exposed).
+- **Classifier quality:** hand-label about 100 questions and measure precision of the I and E verdicts. A false "safe" creates a fake bug report, while a false "unsafe" only costs coverage. Check `LR_YN`, `UD_YN`, `GRAVITY`, and `REF_SURFACE` first, since they come only from the LLM.
 
 ---
 
 # Caveats that change a label
 
-- **Grayscale query:** white and black objects stay white and black, so the accepted answer set is `GRAY_SET`. The `verify → no` rule is safe because a chromatic color cannot survive grayscale.
-- **Occlude existence → no:** assumes the edit covers every instance of the target. If the segmenter misses an instance the answer stays yes. Drop this rule if you see false positives.
-- **All instances are edited:** this is why there is no single-instance guess. Fill color answers (red) hold however many instances exist, and occlude existence → no holds for "a cat" and "any dogs" alike.
-- **Occlude hides, it does not recolor:** the black box covers the object, so the object's color becomes unknown rather than black. Color questions are therefore Unsafe for occlusion. Only existence has a reliable answer.
-- **Flip yes/no questions:** these stay Unsafe because a yes→no flip needs the original answer. If you have the ground truth, add `one relation ∧ answer = yes → Equivariant (no)`.
-- **Cases that would need a map:** "same color?", "how many?", and wooden/metal fill questions have several allowed outputs or depend on the original answer. They stay Unsafe. If you later use the gold answer at evaluation time, encode them as small code rules rather than a model call.
+- **Occlude existence → no** assumes the edit covers every instance of the target. If the segmenter misses an instance the answer stays yes. Drop this rule if you see false positives.
+- **Occlude hides, it does not recolor,** so color questions are Unsafe for occlusion. Only existence has a reliable answer.
+- **Grayscale query:** white and black objects stay white and black, so the accepted set is `{gray, black, white}`. Verify → no is safe because a chromatic color cannot survive grayscale.
+- **Cases that need a map** ("same color?", "how many?", wooden/metal fill questions) stay Unsafe. If you later use the gold answer at evaluation time, encode them as small code rules rather than a model call.
