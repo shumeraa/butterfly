@@ -1,20 +1,21 @@
 '''
 Takes in json output from LLM and runs the specified transformations on the image
 
-TODO: need to hand over transformed image and expected answer to next step, what is the format that the next step expects?
-Also, need to implement other transforms, but currently do not have the llm output to support that
-will need to implement masking when we get the llm output for that
+TODO: 
 Need "correct" answers, different for test and for inference
 
-what i did:
- - wrote code to add our custom unit tests to the ones created by Viunit
- - no need to mess with sampling part
- - just need clarification on llm output specifics
+next steps:
+1. test apply_transformations function (done, generates a correct test_out.json file, using dummy input values for now)
+2. look at how to turn correct answers into actual correct answers
+3. see if we can run generate.py
+
+don't have occlude bbox code yet?
 '''
 
 import json
 import sys
 from pathlib import Path
+import traceback
 
 if __package__ in (None, ""):
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -88,50 +89,133 @@ def append_custom_unit_tests(dataset_data: list, tests_by_question_id: dict) -> 
     return added
 
 # still needs a bit of fixing
-def apply_transformations(j: str, img: str, out: str, out_json: str) -> dict:
+def apply_transformations(json_string: str, img: str, out: str, out_json: str) -> dict:
     try:
-        obj = json.loads(j)
+        obj = json.loads(json_string) # obj is a list
         root_out_dir = Path(out)
         img_Path = Path(img)
         res = dict() # questionID: list of tests
         for q in obj:
-            # figure out which transforms are valid
-            parsed = q["parsed"]
-            image_id = q['image_id']
-            question_id = q['question_id']
-            valid_transformations = []
-            for transformation, d in parsed.items():
-                if d["relation"] != "unsafe":
-                    valid_transformations.append(transformation)
+            # q is a list
+            question_id = q[0]
+            llm_output = q[1]
 
-            subset = random.sample(valid_transformations, k=2)
             with Image.open(img) as source:
                 image = ImageOps.exif_transpose(source)
-                # if args.transform == 'apply':
-                #     result = apply_transform(image, args.name, seed=args.seed)
-                for transformation in subset:
-                    result = apply_transform(image, transformation)
+                for transformation_name, effect in llm_output.items():
+                    # if the transformation is unsafe, skip this transformation
+                    if effect == 'unsafe' or not effect: # not effect checks for empty mr2 dict
+                        continue
+                    # mr2 transformation
+                    if transformation_name == 'mr2':
+                        # for each item
+                        for item_name, d in effect.items():
+                            # apply the transformations
+                            # do fill_color first
+                            for color, color_effect in d['fill_color'].items():
+                                # skip if transformation is unsafe
+                                if color_effect == 'unsafe':
+                                    continue
 
-                    save_path = root_out_dir / f'{img_Path.stem}_{transformation}{img_Path.suffix}'
-                    result.save(save_path)
+                                # do and save transformation
+                                # result = mask_objects(image, item_name, color)
+                                save_path = root_out_dir / f'{img_Path.stem}_{item_name}_{color}{img_Path.suffix}'
+                                # result.save(save_path)
 
-                    d = {
-                        'description': transformation,
-                        'image_paths': [str(save_path)],
-                        'answer': None
-                    }
-                    if question_id in res:
-                        res[question_id].append(d)
+                                # figure out correct answer
+                                if color_effect == 'invariant':
+                                    # leave correct answer as blank, to be filled in later?
+                                    correct_answer = ''
+                                else:
+                                    # pass through the mapping, "create" correct answer later?
+                                    correct_answer = color_effect['equivariant']
+
+                                # create unit test
+                                unit_test_dict = {
+                                    'description': f'{item_name} turned {color}',
+                                    'image_paths': [str(save_path)],
+                                    'answer': correct_answer
+                                }
+
+                                # add unit test to list, do be saved to json later
+                                if question_id in res:
+                                    res[question_id].append(unit_test_dict)
+                                else:
+                                    res[question_id] = [unit_test_dict]
+
+                            # then do occlude bounding box
+                            if d['occlude_bbox'] != 'unsafe':
+                                bbox_effect = d['occlude_bbox']
+                                # do and save transformation
+                                # result = something
+                                save_path = root_out_dir / f'{img_Path.stem}_{item_name}_occlude_bbox{img_Path.suffix}'
+                                # result.save(save_path)
+                            
+                                # figure out correct answer
+                                if bbox_effect == 'invariant':
+                                    # leave correct answer as blank, to be filled in later?
+                                    correct_answer = ''
+                                else:
+                                    # pass through the mapping, "create" correct answer later?
+                                    correct_answer = bbox_effect['equivariant']
+
+                                # create unit test dict
+                                unit_test_dict = {
+                                    'description': f'{item_name}, occluded bounding box',
+                                    'image_paths': [str(save_path)],
+                                    'answer': correct_answer
+                                }
+                                # add unit test to list, do be saved to json later
+                                if question_id in res:
+                                    res[question_id].append(unit_test_dict)
+                                else:
+                                    res[question_id] = [unit_test_dict]
+
+
+                    # mr1 transformation
                     else:
-                        res[question_id] = [d]
+                        # apply transformation
+                        if transformation_name == 'hflip':
+                            # result = flip(image, 'left')
+                            pass
+                        elif transformation_name == 'vflip':
+                            # result = flip(image, 'up')
+                            pass
+                        elif transformation_name == 'grayscale':
+                            # result = color_filter(image, 'grayscale')
+                            pass
+                        # save transformed image
+                        save_path = root_out_dir / f'{img_Path.stem}_{transformation_name}{img_Path.suffix}'
+                        # result.save(save_path)
+
+                        # figure out correct answer
+                        if effect == 'invariant':
+                            # leave correct answer as blank, to be filled in later?
+                            correct_answer = ''
+                        else:
+                            # pass through the mapping, "create" correct answer later?
+                            correct_answer = effect['equivariant']
+
+                        # create unit test dict
+                        unit_test_dict = {
+                            'description': transformation_name,
+                            'image_paths': [str(save_path)],
+                            'answer': correct_answer
+                        }
+                        # add unit test to list, do be saved to json later
+                        if question_id in res:
+                            res[question_id].append(unit_test_dict)
+                        else:
+                            res[question_id] = [unit_test_dict]
         with open(out_json, "w", encoding='utf-8') as f:
             json.dump(res, f, indent=2)
         return res
-    except Exception as e:
-        print(e)
+    except Exception:
+        traceback.print_exc()
+        print(color_effect)
         exit(1)
 
 
 if __name__ == '__main__':
-    json_text = Path("C:/Users/jnche/Downloads/predictions.json").read_text(encoding="utf-8")
-    apply_transformations(json_text, "./test/1.png", "./outputDir")
+    json_text = Path("C:/Users/jnche/Downloads/sample_llm_output.json").read_text(encoding="utf-8")
+    apply_transformations(json_text, "C:/Users/jnche/Pictures/Screenshots/Screenshot 2026-11-15 213810.png", "./outputDir", './test_out.json')
