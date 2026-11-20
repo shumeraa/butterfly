@@ -301,11 +301,14 @@ unit_test_suite:
 `viunit` remains the default and uses the existing caption generation, sampling,
 and image generation/retrieval pipeline. `metamorphic` calls
 `unit_test_generation/metamorphic/generator.py:generate_tests` once per question.
-Implement that interface before selecting `metamorphic` or `hybrid`; its default
-implementation raises `NotImplementedError`. It receives the original image,
-question, answer, count, seed, output directory, and `metamorphic` settings.
-It must return nonempty tests with existing absolute transformed-image paths and
-explicit expected answers. Answer-changing transformations need new answers.
+The generator uses the merged `apply_transformations` / `image_transforms` code.
+By default it samples up to `metamorphic_count` of the six high-level transforms.
+Set `unit_test_suite.metamorphic.predictions_path` to an LLM prediction JSON file
+(`question_id`, `parsed`), or `tests_path` to a pre-generated custom-test JSON
+mapping. Generated `""` answers mean invariance when
+`execution.metamorphic_baselines: true`: candidates first run on the original
+image, then custom answer mappings resolve against each candidate’s output. See
+[`butterfly/metamorphic_tests.md`](butterfly/metamorphic_tests.md) for configuration.
 
 `hybrid` combines independently budgeted ViUniT and metamorphic tests. For an
 equal-budget comparison, use 6 ViUniT tests, 6 metamorphic tests, or 3 of each.

@@ -128,7 +128,7 @@ unit_test_suite:
   mode: viunit # viunit | metamorphic | hybrid
   viunit_count: null # null inherits unit_test_sampling.num_unit_tests
   metamorphic_count: 5
-  metamorphic: {} # Settings passed to your custom generator
+  metamorphic: {} # Optional predictions_path, tests_path, or transformations (six prompt keys by default)
 
 unit_test_sampling:
   strategy: 'coverage_by_answer' # 'coverage_by_answer', 'coverage', 'random', 'answer_only'
@@ -138,6 +138,7 @@ unit_test_sampling:
 
 
 execution:
+  metamorphic_baselines: False # Resolve custom answer rules using each candidate on the original image
   pass_threshold: 0.7
   feedback_max_iters: 2
   image_agg: 'max' #max,mean, majority

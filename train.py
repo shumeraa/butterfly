@@ -36,6 +36,9 @@ from my_datasets import get_dataset_class
 from unit_test_generation.processing import extract_unit_tests, get_unit_test_prompt, get_grounded_diffusion_prompt
 from unit_test_generation.unit_test_sampling import TextSampler
 from unit_test_generation.suites import build_suite, invalidate_suite_cache, suite_settings, uses_viunit
+from unit_test_generation.metamorphic.baselines import (
+    collect_baselines, instrument_tests, failed_baseline_test,
+)
 from accuracy_fns import get_accuracy_fn
 
 
@@ -77,6 +80,7 @@ this_config = load_config(
     args.base_path, args.config_path, args.config_options)
 
 suite_settings(this_config)  # Validate the suite before loading models.
+baseline_enabled = this_config['execution'].get('metamorphic_baselines', False)
 set_seed(this_config['seed'])
 
 ## TASK SETUP ## 
@@ -229,6 +233,16 @@ for iter in range(start_iter, this_config['execution']['feedback_max_iters']):
         pickle.dump(dataset.data, open(save_file, 'wb'))
     
     
+    # Optionally run each candidate on its original image before creating tests.
+    # Rules/images stay shared; the dictionary holds each candidate's own answer.
+    original_answers = {}
+    if this_config['do_unit_test'] and baseline_enabled:
+        original_answers = collect_baselines(
+            dataset, iter, this_config, code_execution, extract_python_code,
+        )
+        with open(save_file, 'wb') as baseline_file:
+            pickle.dump(dataset.data, baseline_file)
+
     if this_config['do_unit_test']:
         def build_viunit_suite():
             ### Generate candidate unit tests ###
@@ -463,8 +477,16 @@ for iter in range(start_iter, this_config['execution']['feedback_max_iters']):
                     if this_config['unit_test_generation']['use_program']:
                         unit_tests = unit_tests[iter][code_index]
                         images = dataset.data[idx]['unit_test_images'][iter][code_index]
+                    # Resolve only metamorphic rules against this candidate's baseline.
+                    unit_tests, baseline_errors = instrument_tests(
+                        dataset.data[idx], unit_tests, iter, code_index,
+                        baseline_enabled, original_answers,
+                    )
                     unit_test_results = []
                     for ut_index, ut in enumerate(unit_tests):
+                        if ut_index in baseline_errors:
+                            unit_test_results.append(failed_baseline_test(baseline_errors[ut_index]))
+                            continue
                         curr_unit_test = []
                         if isinstance(images[ut_index], tuple):
                             try:
@@ -481,6 +503,7 @@ for iter in range(start_iter, this_config['execution']['feedback_max_iters']):
                                 continue
                             
                             res = unit_test_pre[code_index]['results'][ut_index]['results'][im_idx]
+                            res['expected_answer'] = ut[1]
                             penalty = get_penalty(res['error'], this_config['execution']['error_penalty']['syntax'], this_config['execution']['error_penalty']['runtime'])
                             if res['error'] is not None:
                                 res['acc'] = -penalty
@@ -522,6 +545,11 @@ for iter in range(start_iter, this_config['execution']['feedback_max_iters']):
                     if this_config['unit_test_generation']['use_program']:
                         unit_tests = unit_tests[iter][code_index]
                         images = dataset.data[idx]['unit_test_images'][iter][code_index]
+                    # Resolve only metamorphic rules against this candidate's baseline.
+                    unit_tests, baseline_errors = instrument_tests(
+                        dataset.data[idx], unit_tests, iter, code_index,
+                        baseline_enabled, original_answers,
+                    )
                     generated_code = extract_python_code(code)
                     if len(generated_code.split('def execute_command(image) -> str:\n')) > 1:
                         generated_code = generated_code.split('def execute_command(image) -> str:\n')[1]
@@ -529,6 +557,8 @@ for iter in range(start_iter, this_config['execution']['feedback_max_iters']):
                         generated_code = generated_code.split('def execute_command(image):\n')[1]
                     unit_test_results = []
                     for ut_index, ut in enumerate(unit_tests):
+                        if ut_index in baseline_errors:
+                            continue
                         curr_unit_test = []
                         if isinstance(images[ut_index], tuple):
                             try:
@@ -550,7 +580,8 @@ for iter in range(start_iter, this_config['execution']['feedback_max_iters']):
                                                         })
             
 
-            code_execution_results = code_execution(code_execution_data, this_config, use_fixed_code=None)
+            code_execution_results = (code_execution(code_execution_data, this_config, use_fixed_code=None)
+                                      if code_execution_data else {})
             
             for idx in tqdm(range(0, len(dataset.data))):
                 if iter > 0 and iter not in dataset.data[idx]['generated_code']:
@@ -564,8 +595,16 @@ for iter in range(start_iter, this_config['execution']['feedback_max_iters']):
                     if this_config['unit_test_generation']['use_program']:
                         unit_tests = unit_tests[iter][code_index]
                         images = dataset.data[idx]['unit_test_images'][iter][code_index]
+                    # Resolve only metamorphic rules against this candidate's baseline.
+                    unit_tests, baseline_errors = instrument_tests(
+                        dataset.data[idx], unit_tests, iter, code_index,
+                        baseline_enabled, original_answers,
+                    )
                     unit_test_results = []
                     for ut_index, ut in enumerate(unit_tests):
+                        if ut_index in baseline_errors:
+                            unit_test_results.append(failed_baseline_test(baseline_errors[ut_index]))
+                            continue
                         curr_unit_test = []
                         if isinstance(images[ut_index], tuple):
                             try:
@@ -581,6 +620,7 @@ for iter in range(start_iter, this_config['execution']['feedback_max_iters']):
                                 continue
                             
                             res = code_execution_results[f"{idx}_{code_index}_{ut_index}_{im_idx}"]
+                            res['expected_answer'] = ut[1]
                             penalty = get_penalty(res['error'], this_config['execution']['error_penalty']['syntax'], this_config['execution']['error_penalty']['runtime'])
                             if res['error'] is not None:
                                 res['acc'] = -penalty

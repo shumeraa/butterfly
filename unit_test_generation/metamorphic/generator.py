@@ -1,4 +1,5 @@
-"""Contract for the future metamorphic generator; no model calls are made here."""
+"""Per-question adapters for the merged image transformation pipeline."""
+import json
 
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -10,12 +11,13 @@ class MetamorphicTest:
     """One materialized test, reused across all programs for a question.
 
     image_path points to the transformed image, not the original image.
-    expected_answer must be supplied explicitly even for answer-changing tests.
+    expected_answer holds a string or answer mapping until candidate instrumentation.
+    An empty string preserves the candidate baseline; a mapping changes it.
     metadata can hold the transformation name, parameters, and generation details.
     """
 
     image_path: Path
-    expected_answer: str
+    expected_answer: Union[str, Dict[str, str]]
     description: str
     metadata: Dict[str, Any] = field(default_factory=dict)
 
@@ -31,22 +33,47 @@ def generate_tests(
     seed: int,
     config: Mapping[str, Any],
 ) -> List[MetamorphicTest]:
-    """Generate up to num_tests materialized tests for one question.
+    """Materialize transformations or load custom tests for one question.
 
-    The future implementation should select and apply transformations to the
-    original image, save transformed images under output_dir, and return their
-    paths with expected answers. Returned paths should be absolute. The seed
-    controls random choices; config contains generator-specific settings.
-
-    Reuse original_answer only when a transformation preserves the answer.
-    Answer-changing transformations require a derived or verified new answer.
-    Never mutate the original image. The caller shares this suite across all
-    candidate programs; generation does not receive a program or iteration.
-
-    This interface does not yet adapt results to ViUniT's image groups or wire
-    suite selection into generate.py/train.py.
+    predictions_path reads the merged LLM format (question_id and parsed).
+    tests_path reads the custom-test JSON mapping produced by apply_transformations.
+    Otherwise transformations selects prompt keys, defaulting to all six.
+    Blank answers and mapping rules are retained for candidate instrumentation.
     """
-    raise NotImplementedError(
-        "Implement per-question metamorphic test generation in "
-        "unit_test_generation/metamorphic/generator.py."
-    )
+    from apply_transformations.apply import eligible_transformations, materialize_tests
+    from image_transforms import HIGH_LEVEL_TRANSFORMS
+
+    predictions_path = config.get('predictions_path')
+    tests_path = config.get('tests_path')
+    if predictions_path and tests_path:
+        raise ValueError('Choose predictions_path or tests_path, not both')
+    if tests_path:
+        cases = json.loads(Path(tests_path).read_text(encoding='utf-8'))[str(question_id)]
+        tests = []
+        for case in cases[:num_tests]:
+            paths = case['image_paths']
+            if not isinstance(paths, list) or len(paths) != 1:
+                raise ValueError('Metamorphic tests require exactly one transformed image per test')
+            tests.append(MetamorphicTest(
+                image_path=Path(paths[0]).resolve(), expected_answer=case.get('answer', ''),
+                description=case['description'], metadata={'input': 'tests_path'},
+            ))
+        return tests
+
+    transformations = config.get('transformations', HIGH_LEVEL_TRANSFORMS)
+    if predictions_path:
+        predictions = json.loads(Path(predictions_path).read_text(encoding='utf-8'))
+        matches = [record for record in predictions
+                   if str(record['question_id']) == str(question_id)]
+        if len(matches) != 1:
+            raise ValueError(f'Expected one prediction for question {question_id}; found {len(matches)}')
+        transformations = eligible_transformations(matches[0]['parsed'])
+    if isinstance(transformations, str):
+        raise ValueError('transformations must be a list of prompt keys')
+    cases = materialize_tests(original_image_path, transformations, output_dir,
+                              num_tests=num_tests, seed=seed)
+    return [MetamorphicTest(
+        image_path=Path(case['image_paths'][0]), expected_answer='',
+        description=case['description'],
+        metadata={'transformation': case['description'], 'seed': seed},
+    ) for case in cases]

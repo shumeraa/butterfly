@@ -4,10 +4,11 @@ import json
 from pathlib import Path
 
 from .metamorphic import generator as metamorphic
+from .metamorphic.baselines import validate_answer_rule
 
 CACHE_FIELDS = (
     'unit_tests', 'unit_test_prompt', 'selected_unit_tests', 'unit_test_images',
-    'unit_test_results', 'unit_test_metadata', 'unit_test_suite_key',
+    'unit_test_results', 'unit_test_metadata', 'unit_test_suite_key', 'candidate_unit_tests',
 )
 
 
@@ -18,6 +19,8 @@ def suite_settings(config):
         raise ValueError(f'Unknown unit_test_suite.mode: {mode}')
     if mode != 'viunit' and config['unit_test_generation']['use_program']:
         raise ValueError('Metamorphic and hybrid suites require use_program: false')
+    if config.get('execution', {}).get('metamorphic_baselines', False) and config['unit_test_generation']['use_program']:
+        raise ValueError('Metamorphic baselines require use_program: false')
     default_count = config['unit_test_sampling']['num_unit_tests']
     settings.update(mode=mode)
     for name in ('viunit_count', 'metamorphic_count'):
@@ -55,7 +58,13 @@ def _fingerprint(record, config, settings):
         for key, value in section.get('generation', {}).items():
             if key.endswith('_file') and value and Path(value).is_file():
                 prompt_contents[str(value)] = Path(value).read_text()
-    payload = dict(version=1, settings=_plain(settings), seed=config['seed'],
+    metamorphic_inputs = {}
+    if settings['mode'] in {'metamorphic', 'hybrid'}:
+        for name in ('predictions_path', 'tests_path'):
+            value = settings.get('metamorphic', {}).get(name)
+            if value:
+                metamorphic_inputs[name] = Path(value).read_text(encoding='utf-8')
+    payload = dict(version=3, metamorphic_inputs=metamorphic_inputs, settings=_plain(settings), seed=config['seed'],
                    sections=sections, prompts=prompt_contents,
                    question_id=str(record.get('sample_id', record['index'])),
                    question=record.get('text', record.get('question')),
@@ -97,7 +106,7 @@ def build_suite(dataset, config, viunit_provider):
         for field in CACHE_FIELDS:
             d.pop(field, None)
 
-    # Build custom tests first so an unimplemented generator fails before diffusion.
+    # Validate and materialize custom tests before starting ViUniT image generation.
     custom = []
     if settings['mode'] in {'metamorphic', 'hybrid'}:
         for record, key in zip(records, keys):
@@ -116,8 +125,7 @@ def build_suite(dataset, config, viunit_provider):
             for test in tests:
                 if not Path(test.image_path).is_absolute() or not Path(test.image_path).is_file():
                     raise ValueError(f'Metamorphic image must be an existing absolute path: {test.image_path}')
-                if not isinstance(test.expected_answer, str):
-                    raise ValueError('Metamorphic expected_answer must be a string')
+                validate_answer_rule(test.expected_answer)
             custom.append(tests)
 
     if uses_viunit(config):
