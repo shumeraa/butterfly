@@ -1,7 +1,0 @@
-openai
-datasets
-pandas
-matplotlib
-tqdm
-Pillow
-python-dotenv

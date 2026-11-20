@@ -46,7 +46,7 @@ else:
 # Shared suite selection, validation, cache invalidation, and ViUniT setup checks.
 from unit_test_generation.suites import build_suite, invalidate_suite_cache, suite_settings, uses_viunit
 from unit_test_generation.metamorphic.baselines import (
-    collect_baselines, instrument_tests, failed_baseline_test,
+    collect_baselines, instrument_tests, failed_baseline_test, answer_options, score_expected,
 )
 if not DUMMY_EXECUTION:
     from accuracy_fns import get_accuracy_fn
@@ -759,9 +759,9 @@ for iter in range(start_iter, this_config['execution']['feedback_max_iters']):
                                 res['acc'] = -penalty
                             else:
                                 if this_config['execution']['synonym_checker']:
-                                    res['acc'] = checker.are_synonymous(res['output'], ut[1])
+                                    res['acc'] = score_expected(res['output'], ut[1], acc_fn, checker)
                                 else:
-                                    res['acc'] = acc_fn([res['output']], [ut[1]])
+                                    res['acc'] = score_expected(res['output'], ut[1], acc_fn)
                             curr_unit_test.append(res)
                         if len(curr_unit_test) == 0:
                             print(f"No images for unit test {dataset.data[idx]['index']}-{code_index}-{ut_index}")
@@ -824,7 +824,7 @@ for iter in range(start_iter, this_config['execution']['feedback_max_iters']):
                                 continue
                             code_execution_data.append({'sample_id': f"{idx}_{code_index}_{ut_index}_{im_idx}", 
                                                         'answer': ut[1], 
-                                                        'possible_answers': [ut[1]], 
+                                                        'possible_answers': answer_options(ut[1]),
                                                         'query_type': 'image', 
                                                         'codes': generated_code,
                                                         'query': dataset.data[idx]['question'], 
@@ -878,9 +878,9 @@ for iter in range(start_iter, this_config['execution']['feedback_max_iters']):
                                 res['acc'] = -penalty
                             else:
                                 if this_config['execution']['synonym_checker']:
-                                    res['acc'] = checker.are_synonymous(res['output'], ut[1])
+                                    res['acc'] = score_expected(res['output'], ut[1], acc_fn, checker)
                                 else:
-                                    res['acc'] = acc_fn([res['output']], [ut[1]])
+                                    res['acc'] = score_expected(res['output'], ut[1], acc_fn)
                             curr_unit_test.append(res)
                         if len(curr_unit_test) == 0:
                             print(f"No images for unit test {dataset.data[idx]['index']}-{code_index}-{ut_index}")

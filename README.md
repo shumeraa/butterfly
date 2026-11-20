@@ -303,7 +303,10 @@ and image generation/retrieval pipeline. `metamorphic` calls
 `unit_test_generation/metamorphic/generator.py:generate_tests` once per question.
 The generator uses the merged `apply_transformations` / `image_transforms` code.
 By default it samples up to `metamorphic_count` of the six high-level transforms.
-Set `unit_test_suite.metamorphic.predictions_path` to an LLM prediction JSON file
+Set `unit_test_suite.metamorphic.labels_path` to raw MR1/MR2 LLM labels to select
+and apply transformations to each question image automatically. Saved PNGs and
+test manifests live under `output_dir/metamorphic/<cache-key>/`. Alternatively,
+set `unit_test_suite.metamorphic.predictions_path` to an LLM prediction JSON file
 (`question_id`, `parsed`), or `tests_path` to a pre-generated custom-test JSON
 mapping. Generated `""` answers mean invariance when
 `execution.metamorphic_baselines: true`: candidates first run on the original

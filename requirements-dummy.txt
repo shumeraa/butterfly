@@ -1,3 +1,0 @@
-Pillow>=9.4
-numpy>=1.23
-omegaconf>=2.3

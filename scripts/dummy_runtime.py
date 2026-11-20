@@ -63,7 +63,7 @@ def code_execution(tasks, config, use_fixed_code=None):
             result = dict(output=_literal_output(task['codes']), error=None)
         except Exception as error:
             result = dict(output=None, error=f'{type(error).__name__}: {error}')
-        result['acc'] = (float(result['output'] == task['answer'])
+        result['acc'] = (float(result['output'] in (task['answer'] if isinstance(task['answer'], list) else [task['answer']]))
                          if result['error'] is None else 0.)
         results[task['sample_id']] = result
     audit = Path(config['output_dir']) / 'dummy_execution.jsonl'

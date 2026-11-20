@@ -128,7 +128,7 @@ unit_test_suite:
   mode: viunit # viunit | metamorphic | hybrid
   viunit_count: null # null inherits unit_test_sampling.num_unit_tests
   metamorphic_count: 5
-  metamorphic: {} # Optional predictions_path, tests_path, or transformations (six prompt keys by default)
+  metamorphic: {} # Optional labels_path, tests_path, predictions_path, or transformations; real images are saved by default
 
 unit_test_sampling:
   strategy: 'coverage_by_answer' # 'coverage_by_answer', 'coverage', 'random', 'answer_only'

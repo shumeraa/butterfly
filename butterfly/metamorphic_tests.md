@@ -1,170 +1,194 @@
-# Using custom metamorphic tests with the full pipeline
+# Running the metamorphic test pipeline
 
-`generate.py` can generate ViperGPT-style candidate programs and evaluate them
-with native ViUniT tests, custom metamorphic tests, or both. `train.py` supports
-the same suite configuration and baseline-answer rules.
+The normal pipeline generates visual programs, runs each on its original image,
+creates transformed-image tests, and scores each program against those tests.
+**MR1 and MR2 image operations run when the custom tests are created.** You do
+not need to create the transformed images separately.
 
-## 1. Prepare the real inputs
+## Choose what to run
 
-Use the project's normal model-backed environment and experiment configuration:
-original question images, dataset annotations, visual-program generator, and
-ViperGPT execution models. The lightweight `requirements-dummy.txt` environment
-is only for the offline example. Install `requirements-transforms.txt` as well
-if your production environment does not already include Pillow and NumPy.
+| Run | What it verifies | Environment |
+| --- | --- | --- |
+| Local transformation checks | Real pixel operations and saved paths; MR2 detections are mocked | CPU test dependencies |
+| Real pipeline, MR1 only | Generated visual programs evaluated on flips/grayscale | Production ViperGPT/model environment |
+| Real pipeline, MR1 + MR2 | Also applies object color fill and bounding-box occlusion | Production environment plus Grounding DINO/SAM |
 
-Run your custom-test generation step and save its output as JSON. Each key must
-match a dataset question ID (`sample_id`; GQA uses `questionId`). Keep IDs as
-strings, including leading zeros.
+Skipping MR2 does **not** remove the visual-program models or their dependencies.
+The lightweight test environment cannot run the normal model-backed pipeline.
 
-```json
-{
-  "006149": [
-    {
-      "description": "horizontal flip",
-      "image_paths": ["/path/to/transformed/image_flipped.png"],
-      "answer": {"left": "right", "right": "left"}
-    },
-    {
-      "description": "grayscale",
-      "image_paths": ["/path/to/transformed/image_gray.png"],
-      "answer": ""
-    }
-  ]
-}
+## 1. Check image creation locally
+
+From the repository root, in a local Python environment:
+
+```bash
+python -m pip install -r requirements-metamorphic-tests.txt
+python -m unittest discover -s tests -p 'test_materialized_tests.py' -v
 ```
 
-Supply a nonempty test list for every question in the run. Each test currently
-needs one existing transformed image. Paths may be absolute or relative to the
-working directory; run the commands below from the repository root.
+These checks apply and save real transformations to small synthetic images,
+verify the unit-test paths and answer rules, and check cache reuse. MR2 uses
+mocked masks/boxes, so no model weights or GPU are needed. This does not evaluate
+real visual programs or the quality of object detections.
 
-The JSON describes the tests; loading it does not create missing images. Your
-upstream generation step must actually save the transformed images. In
-particular, the recently merged MR1/MR2 manifest exporter still contains
-commented-out image-saving operations. The dummy photo copies are only suitable
-for checking the workflow, not a real transformation experiment.
+## 2. Prepare real questions and images
 
-## 2. Configure the experiment
+The source labels live in `examples/metamorphic/labels.json`. Replace that file
+or change `labels_path` in your experiment config to use your own LLM output.
+The format is a list of question-ID/effect pairs:
 
-Add these settings to your existing experiment YAML, retaining its dataset,
-model, prompt, and execution settings:
+```json
+[
+  ["q1", {
+    "hflip": {"equivariant": {"left": "right", "right": "left"}},
+    "vflip": "invariant",
+    "grayscale": "invariant",
+    "mr2": {
+      "cup": {
+        "fill_color": {"red": "invariant"},
+        "occlude_bbox": "unsafe"
+      }
+    }
+  }]
+]
+```
+
+IDs must match dataset question IDs exactly, including leading zeros. Labels
+specify transformation rules; the question text, original image, and real answer
+come from the dataset annotations.
+
+For the supplied 200 GQA labels, download only the 198 corresponding images:
+
+```bash
+python scripts/download_gqa_subset.py --dry-run
+python scripts/download_gqa_subset.py --output-dir output/gqa_subset
+```
+
+The downloader uses local validation annotations and selective ZIP requests.
+It saves `annotations.json`, `tuples.json`, and `images/` under `output/gqa_subset`
+and reuses existing downloads. Use `--labels` and `--annotations` for other inputs.
+The example pipeline configs already point to these downloaded originals.
+
+## 3. Configure the production environment
+
+Follow the project's [installation instructions](../README.md#installation) for
+the visual-program generator and ViperGPT execution models. Adjust the model
+names/paths inherited from `viunit_configs/base.yaml` for your environment.
+The existing production setup targets Linux/CUDA; installing the CPU test
+requirements alone is not sufficient.
+
+For MR2, also install its detection/segmentation dependencies in that environment:
+
+```bash
+python -m pip install -r requirements-masking.txt
+```
+
+Grounding DINO/SAM weights load on first use and are reused. They support CPU,
+but a GPU is recommended for a full dataset. To force CPU, set
+`unit_test_suite.metamorphic.segmenter.device: cpu` in the experiment YAML.
+
+## 4. Run the pipeline
+
+Start with MR1 only:
+
+```bash
+python generate.py --config_path viunit_configs/GQA/eval/metamorphic_mr1_only.yaml
+```
+
+Then include MR2:
+
+```bash
+python generate.py --config_path viunit_configs/GQA/eval/metamorphic_labels.yaml
+```
+
+Run from the repository root. These commands generate and execute real visual
+programs. Their output directories are `output/gqa_metamorphic_mr1_only` and
+`output/gqa_metamorphic_labels`, respectively.
+
+Both configs enable baseline execution and consume raw labels. The key settings
+for adapting your own experiment are:
 
 ```yaml
-output_dir: ./output/metamorphic_experiment
-
-do_unit_test: true
-run_fixed_code: false
-
 unit_test_generation:
   use_program: false
-
 unit_test_suite:
-  mode: hybrid
-  viunit_count: 3
+  mode: metamorphic # viunit | metamorphic | hybrid
   metamorphic_count: 3
   metamorphic:
-    tests_path: /path/to/custom_tests.json
-
+    labels_path: ./examples/metamorphic/labels.json
+    # mr2_enabled: false  # Exclude MR2 before selecting tests.
 execution:
   metamorphic_baselines: true
 ```
 
-| Setting | Behavior |
-| --- | --- |
-| `mode: viunit` | Native ViUniT tests only. |
-| `mode: metamorphic` | Custom tests only; skips native caption/image generation. |
-| `mode: hybrid` | Combines native ViUniT and custom tests. |
-| `viunit_count` | Native test budget; `null` inherits `unit_test_sampling.num_unit_tests`. |
-| `metamorphic_count` | Custom test limit per question; pre-generated lists use the first N tests. |
-| `metamorphic_baselines: true` | Executes each candidate on the original image to resolve custom answer rules. |
+`hybrid` adds native ViUniT tests, whose budget is controlled by `viunit_count`.
+Native test sampling remains controlled by `unit_test_sampling`. `train.py`
+supports the same suite settings in your training experiment configuration.
 
-Set `metamorphic_count` high enough to include all supplied tests if that is your
-intention. Native test sampling remains controlled by `unit_test_sampling`.
-Custom/hybrid suites and baseline instrumentation require `use_program: false`.
+### What happens during a run
 
-## 3. Generate programs and evaluate them
+1. Generate candidate visual programs and execute each on the original image.
+2. Select up to three valid transformations per question: equivariant first,
+   then seeded random invariant choices. Unsafe/null effects are excluded.
+3. Apply each selected operation independently to the original image and save a PNG.
+4. Resolve the answer rule against each candidate's own baseline output.
+5. Run that candidate on the saved transformed images and score its outputs.
+6. Select programs by test score, then measure correctness against dataset answers.
 
-```bash
-python generate.py --config_path /path/to/experiment.yaml \
-  --execute_unit_tests 1 --recompute_unit_tests 1
-```
+Color fill edits matched segmentation-mask pixels. Box occlusion fills matching
+rectangles with white. A missing object detection fails test creation instead of
+silently recording an unchanged image.
 
-For a fresh run, use a new output directory and omit `--dummy_execution`,
-`--code_path`, `--data_path`, and `--reload 1`. Candidate programs are generated
-by the configured model. Custom-test creation is a separate upstream step;
-`tests_path` is the integration point for its generated dictionary.
+An empty answer rule preserves the baseline. A mapping changes it; exact keys
+win over `any`, and list values are acceptable alternatives. Without a matching
+key or `any`, the baseline stays unchanged. A failed baseline fails that
+candidate's custom tests with an error message. Native ViUniT answers stay fixed.
 
-The evaluation flow is:
+## Results and reruns
 
-1. Generate candidate visual programs for each question.
-2. Run each candidate on the original image and store its baseline output/error.
-3. Load custom test rules and images; in hybrid mode, also generate/sample native tests.
-4. Resolve custom expectations separately for each candidate using its baseline.
-5. Execute candidates on the test images, score them, and select the highest-scoring programs.
-6. Evaluate the selected programs on the original questions against dataset answers.
+Transformed PNGs and their `tests.json` manifest are stored under
+`<output_dir>/metamorphic/<cache-key>/`. The manifest records actual image paths
+and transformation/answer rules. Original images are left intact.
 
-For training, use the same suite settings in your training experiment YAML,
-retain the project's training/model settings, and enable `do_train: true`:
+`<output_dir>/data.p` stores programs, baselines, test scores, and selected
+programs (`max_accuracy_code`). `Iteration accuracy` compares selected outputs
+with dataset answers; it is not the metamorphic test score. A consistently wrong
+program can score well on metamorphic tests.
 
-```bash
-python train.py --config_path /path/to/training_experiment.yaml \
-  --execute_unit_tests 1 --recompute_unit_tests 1
-```
-
-## How custom answers are resolved
-
-| Test's `answer` | Expected answer for a candidate |
-| --- | --- |
-| `""` | That candidate's original output, unchanged. |
-| Mapping containing the original output | The mapped value. |
-| Mapping without the original output | The original output, unchanged. |
-| Nonempty string | That explicit answer. |
-
-Mappings use exact string keys; `"any"` is not a wildcard. A failed baseline
-marks all custom tests for that candidate as failed, with score zero and its
-error message. Those custom executions are skipped; native ViUniT tests still run.
-Native ViUniT expected answers remain independent of candidate baselines.
-
-Shared custom rules are not overwritten. For example, two candidates originally
-answering `left` and `right` receive flip expectations of `right` and `left`,
-respectively, from the same test dictionary.
-
-## Results and cached runs
-
-The run's `output_dir/data.p` contains candidate programs, baseline outputs,
-candidate-specific expectations, test scores/errors, and selected programs
-(`max_accuracy_code`). `Iteration accuracy` measures selected-program correctness
-against the dataset answers; it is separate from the unit-test score used for selection.
-
-Metamorphic consistency does not guarantee correctness. In particular, an
-unsupported answer can score well because missing mapping entries assume
-invariance. Interpret custom-test scores alongside original-question accuracy.
-
-To reuse saved execution results with the same experiment configuration:
+To reuse cached execution results with the same config:
 
 ```bash
-python generate.py --config_path /path/to/experiment.yaml \
+python generate.py --config_path viunit_configs/GQA/eval/metamorphic_labels.yaml \
   --reload 1 --execute_unit_tests 0 --recompute_unit_tests 0
 ```
 
-To recompute scores from cached outputs, change `--recompute_unit_tests` to `1`.
-Changed inputs/settings can invalidate caches and trigger execution. Keep the
-original and transformed images with the run. Use a fresh output directory after
-changing generator code or when retrying cached baseline failures.
+Set `--recompute_unit_tests 1` to rescore saved outputs. Changed inputs/settings
+or missing transformed images can invalidate caches and trigger execution.
+Use a new output directory after changing generation code or retrying unchanged
+baseline failures. To reuse real cached programs on a fresh run, pass
+`--code_path /path/to/cached_data.p`; question order must match the current dataset.
 
-Prefer YAML `tests_path` for these workflows. The evaluation-only shortcut
-`--custom_unit_tests_path` requires execution and recomputation enabled, and turns
-`viunit` mode into `hybrid` when custom tests are supplied.
+## Optional: exercise cache branches without models
 
-## Offline example and validation
-
-The [dummy cached-workflow guide](../fixtures/cached_workflow/README.md) includes
-ready-to-run commands using one photo and hard-coded programs, without model
-calls. It exercises baseline execution, answer mappings, errors, and cache reuse.
+This separate smoke mode uses constant-return programs and one shared photo.
+It checks orchestration and caching, **not image transformations or visual reasoning**.
+All generated smoke inputs go under `output/`; none are source fixtures.
 
 ```bash
-python -m unittest discover -s tests -v
+python scripts/prepare_cached_workflow.py --image /path/to/any.jpg
+python generate.py --dummy_execution \
+  --config_path output/metamorphic_smoke/inputs/config.yaml \
+  --code_path output/metamorphic_smoke/inputs/cached_programs.p
 ```
 
-The CPU checks and dummy workflow have been exercised. Full model-backed
-ViperGPT evaluation/training has not yet been verified end to end. The standalone
-`butterfly/demo.py` and `butterfly/demo_simple.py` do not use this suite configuration.
+Replay with the same config, `--dummy_execution --reload 1`, and
+`--execute_unit_tests 0 --recompute_unit_tests 0`. This mode explicitly sets
+`materialize_images: false`. Do not carry that setting or `--dummy_execution`
+into a real transformation run.
+
+To use an already selected test dictionary instead of raw labels, set `tests_path`
+in place of `labels_path`. Records with `transformation` and `parameters` create
+images automatically; path-only records must supply existing `image_paths`.
+
+Pixel-level transformation tests, mocked MR2 integration, and cache-smoke runs
+have been verified. Full model-backed ViperGPT and real MR2 inference have not
+yet been verified end to end.

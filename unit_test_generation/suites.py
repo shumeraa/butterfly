@@ -60,11 +60,11 @@ def _fingerprint(record, config, settings):
                 prompt_contents[str(value)] = Path(value).read_text()
     metamorphic_inputs = {}
     if settings['mode'] in {'metamorphic', 'hybrid'}:
-        for name in ('predictions_path', 'tests_path'):
+        for name in ('labels_path', 'predictions_path', 'tests_path'):
             value = settings.get('metamorphic', {}).get(name)
             if value:
                 metamorphic_inputs[name] = Path(value).read_text(encoding='utf-8')
-    payload = dict(version=3, metamorphic_inputs=metamorphic_inputs, settings=_plain(settings), seed=config['seed'],
+    payload = dict(version=5, metamorphic_inputs=metamorphic_inputs, settings=_plain(settings), seed=config['seed'],
                    sections=sections, prompts=prompt_contents,
                    question_id=str(record.get('sample_id', record['index'])),
                    question=record.get('text', record.get('question')),
@@ -73,15 +73,30 @@ def _fingerprint(record, config, settings):
     return hashlib.sha256(json.dumps(payload, sort_keys=True).encode()).hexdigest()
 
 
+def _suite_cached(record, key):
+    if (record.get('unit_test_suite_key') != key or 'selected_unit_tests' not in record
+            or 'unit_test_images' not in record):
+        return False
+    images = record['unit_test_images']
+    if len(record['selected_unit_tests']) != len(images):
+        return False
+    for index, metadata in enumerate(record.get('unit_test_metadata', [])):
+        if metadata.get('source') == 'metamorphic':
+            if index >= len(images) or not images[index]:
+                return False
+            if any(not isinstance(path, (str, Path)) or not Path(path).is_file()
+                   for path in images[index]):
+                return False
+    return True
+
+
 def invalidate_suite_cache(dataset, config):
     """Drop incompatible suites before cached feedback can influence programs."""
     settings = suite_settings(config)
     if config['unit_test_generation']['use_program']:
         return  # Preserve the existing program-conditioned ViUniT path.
     keys = [_fingerprint(dataset[i], config, settings) for i in range(len(dataset))]
-    if any(d.get('unit_test_suite_key') != key or
-           'selected_unit_tests' not in d or 'unit_test_images' not in d
-           for d, key in zip(dataset.data, keys)):
+    if any(not _suite_cached(d, key) for d, key in zip(dataset.data, keys)):
         for d in dataset.data:
             for field in CACHE_FIELDS:
                 d.pop(field, None)
@@ -97,9 +112,7 @@ def build_suite(dataset, config, viunit_provider):
     settings = suite_settings(config)
     records = [dataset[i] for i in range(len(dataset))]
     keys = [_fingerprint(record, config, settings) for record in records]
-    if all(d.get('unit_test_suite_key') == key and
-           'selected_unit_tests' in d and 'unit_test_images' in d
-           for d, key in zip(dataset.data, keys)):
+    if all(_suite_cached(d, key) for d, key in zip(dataset.data, keys)):
         return
 
     for d in dataset.data:

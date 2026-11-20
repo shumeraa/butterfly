@@ -6,21 +6,35 @@ from collections.abc import Mapping
 from pathlib import Path
 
 
+def answer_options(expected):
+    """A list represents alternatives, rather than one literal list-valued answer."""
+    return expected if isinstance(expected, list) else [expected]
+
+
 def validate_answer_rule(rule):
     if isinstance(rule, str):
         return
     if isinstance(rule, Mapping) and all(
-        isinstance(key, str) and isinstance(value, str) for key, value in rule.items()
+        isinstance(key, str) and (
+            isinstance(value, str) or (isinstance(value, list) and value
+                                      and all(isinstance(item, str) for item in value))
+        ) for key, value in rule.items()
     ):
         return
-    raise ValueError('Custom answer must be a string or a string-to-string mapping')
+    raise ValueError('Custom answer must be a string or a mapping to strings/nonempty string lists')
 
 
 def resolve_answer(rule, original_output):
     validate_answer_rule(rule)
     if isinstance(rule, Mapping):
-        return rule.get(original_output, original_output)
+        return copy.deepcopy(rule.get(original_output, rule.get('any', original_output)))
     return original_output if rule == '' else rule
+
+
+def score_expected(output, expected, accuracy, checker=None):
+    """Accept any mapped alternative, using the existing scalar scorer for each."""
+    return max((checker.are_synonymous(output, option) if checker else accuracy([output], [option]))
+               for option in answer_options(expected))
 
 
 def execution_body(code, extract_code):

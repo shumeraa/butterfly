@@ -48,12 +48,8 @@ class GroundedSAM:
         """Return the union of matching object masks as a boolean [H, W] array."""
         return self.segment_instances(image, word).any(axis=0)
 
-    def segment_instances(self, image, word):
-        """Return boolean [N, H, W] masks in detector order, before unioning.
-
-        Indices are not semantic identities; inspect masks to select an instance.
-        No detections return an empty [0, H, W] array.
-        """
+    def detect_boxes(self, image, word):
+        """Return matching [x0, y0, x1, y1] boxes in original-image coordinates."""
         import torch
 
         caption = _word(word)
@@ -69,6 +65,18 @@ class GroundedSAM:
         boxes[:, [0, 2]] = boxes[:, [0, 2]].clip(0, image.width)
         boxes[:, [1, 3]] = boxes[:, [1, 3]].clip(0, image.height)
         boxes = boxes[(boxes[:, 2] > boxes[:, 0]) & (boxes[:, 3] > boxes[:, 1])]
+        return boxes
+
+    def segment_instances(self, image, word):
+        """Return boolean [N, H, W] masks in detector order, before unioning.
+
+        Indices are not semantic identities; inspect masks to select an instance.
+        No detections return an empty [0, H, W] array.
+        """
+        import torch
+
+        image = image.convert('RGB')
+        boxes = self.detect_boxes(image, word)
         if len(boxes) == 0:
             return np.zeros((0, image.height, image.width), dtype=bool)
 
@@ -105,4 +113,60 @@ def mask_objects(image, word, fill='white', *, segmenter=None):
     mask = _validate_mask(segmenter.segment(source.convert('RGB'), word), source)
     pixels = np.array(source)
     pixels[mask, :3] = 255 if fill == 'white' else 0
+    return Image.fromarray(pixels)
+
+
+def fill_objects(image, word, color, *, segmenter=None):
+    """Fill the matching segmentation mask with a color, preserving alpha.
+
+    Raise if no target is found instead of recording an unchanged custom test.
+    All objects matched by the supplied phrase are filled.
+    """
+    _word(word)
+    rgb = Image.new('RGB', (1, 1), color).getpixel((0, 0))
+    source = _prepare_image(image)
+    backend = segmenter if segmenter is not None else _default_segmenter()
+    mask = _validate_mask(backend.segment(source.convert('RGB'), word), source)
+    if not mask.any():
+        raise ValueError(f'No object matched {word!r} for color fill')
+    pixels = np.array(source)
+    pixels[mask, :3] = rgb
+    return Image.fromarray(pixels)
+
+
+def occlude_objects(image, word, fill='white', *, segmenter=None):
+    """Fill each matching detection box (including its background) with a color.
+
+    Custom backends without detection boxes may supply instance masks; their
+    tight bounding boxes are used instead. Empty detections are an error.
+    """
+    _word(word)
+    rgb = Image.new('RGB', (1, 1), fill).getpixel((0, 0))
+    source = _prepare_image(image)
+    backend = segmenter if segmenter is not None else _default_segmenter()
+    if callable(getattr(backend, 'detect_boxes', None)):
+        boxes = np.asarray(backend.detect_boxes(source.convert('RGB'), word), dtype=float)
+    else:
+        if callable(getattr(backend, 'segment_instances', None)):
+            masks = backend.segment_instances(source.convert('RGB'), word)
+        else:
+            masks = [backend.segment(source.convert('RGB'), word)]
+        boxes = []
+        for mask in masks:
+            mask = _validate_mask(mask, source)
+            y, x = np.nonzero(mask)
+            if len(x):
+                boxes.append([x.min(), y.min(), x.max() + 1, y.max() + 1])
+        boxes = np.asarray(boxes, dtype=float)
+    if boxes.size == 0:
+        raise ValueError(f'No object matched {word!r} for bounding-box occlusion')
+    if boxes.ndim != 2 or boxes.shape[1] != 4 or not np.isfinite(boxes).all():
+        raise ValueError('Detector must return finite [N, 4] bounding boxes')
+    pixels = np.array(source)
+    for x0, y0, x1, y1 in boxes:
+        x0, y0 = max(0, int(np.floor(x0))), max(0, int(np.floor(y0)))
+        x1, y1 = min(source.width, int(np.ceil(x1))), min(source.height, int(np.ceil(y1)))
+        if x1 <= x0 or y1 <= y0:
+            raise ValueError('Detector returned an empty bounding box')
+        pixels[y0:y1, x0:x1, :3] = rgb
     return Image.fromarray(pixels)

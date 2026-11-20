@@ -1,0 +1,3509 @@
+[
+  [
+    "18641068",
+    {
+      "hflip": "unsafe",
+      "vflip": "invariant",
+      "grayscale": "invariant",
+      "mr2": {
+        "duck to the left of the other duck": {
+          "fill_color": {
+            "red": "invariant"
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "02754884",
+    {
+      "hflip": "invariant",
+      "vflip": "unsafe",
+      "grayscale": "invariant",
+      "mr2": null
+    }
+  ],
+  [
+    "00963262",
+    {
+      "hflip": "invariant",
+      "vflip": "invariant",
+      "grayscale": "invariant",
+      "mr2": {
+        "furniture": {
+          "fill_color": {
+            "red": "invariant"
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "08921701",
+    {
+      "hflip": "invariant",
+      "vflip": "invariant",
+      "grayscale": "invariant",
+      "mr2": {
+        "appliance": {
+          "fill_color": {
+            "red": "invariant"
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "06434297",
+    {
+      "hflip": "invariant",
+      "vflip": "invariant",
+      "grayscale": "unsafe",
+      "mr2": {
+        "item of furniture": {
+          "fill_color": {
+            "red": "unsafe"
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "03128994",
+    {
+      "hflip": "invariant",
+      "vflip": "invariant",
+      "grayscale": "invariant",
+      "mr2": {
+        "animals": {
+          "fill_color": {
+            "red": "invariant"
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "04273667",
+    {
+      "hflip": "invariant",
+      "vflip": "invariant",
+      "grayscale": "invariant",
+      "mr2": {
+        "man": {
+          "fill_color": {
+            "red": "invariant"
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "06934981",
+    {
+      "hflip": "invariant",
+      "vflip": "invariant",
+      "grayscale": "invariant",
+      "mr2": {
+        "vehicle": {
+          "fill_color": {
+            "red": "invariant"
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "17397283",
+    {
+      "hflip": "invariant",
+      "vflip": "unsafe",
+      "grayscale": "invariant",
+      "mr2": {
+        "piece of furniture": {
+          "fill_color": {
+            "red": "invariant"
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "01944818",
+    {
+      "hflip": "invariant",
+      "vflip": "invariant",
+      "grayscale": "invariant",
+      "mr2": {
+        "girl": {
+          "fill_color": {
+            "red": "invariant"
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "00803824",
+    {
+      "hflip": "invariant",
+      "vflip": "invariant",
+      "grayscale": "invariant",
+      "mr2": {
+        "vehicle": {
+          "fill_color": {
+            "red": "invariant"
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "00915726",
+    {
+      "hflip": "unsafe",
+      "vflip": "invariant",
+      "grayscale": "invariant",
+      "mr2": {
+        "vehicle": {
+          "fill_color": {
+            "red": "invariant"
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "00965304",
+    {
+      "hflip": "invariant",
+      "vflip": "unsafe",
+      "grayscale": "unsafe",
+      "mr2": {
+        "device": {
+          "fill_color": {
+            "red": "unsafe"
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "02698632",
+    {
+      "hflip": "unsafe",
+      "vflip": "unsafe",
+      "grayscale": "invariant",
+      "mr2": {
+        "fruit": {
+          "fill_color": {
+            "red": "invariant"
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "05643244",
+    {
+      "hflip": "invariant",
+      "vflip": "unsafe",
+      "grayscale": "invariant",
+      "mr2": {
+        "food": {
+          "fill_color": {
+            "red": "invariant"
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "06111168",
+    {
+      "hflip": "invariant",
+      "vflip": "unsafe",
+      "grayscale": "unsafe",
+      "mr2": {
+        "fruit": {
+          "fill_color": {
+            "red": "unsafe"
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "06156121",
+    {
+      "hflip": "unsafe",
+      "vflip": "unsafe",
+      "grayscale": "invariant",
+      "mr2": {
+        "piece of furniture": {
+          "fill_color": {
+            "red": "invariant"
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "06423860",
+    {
+      "hflip": "unsafe",
+      "vflip": "invariant",
+      "grayscale": "invariant",
+      "mr2": {
+        "food": {
+          "fill_color": {
+            "red": "invariant"
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "11534718",
+    {
+      "hflip": "invariant",
+      "vflip": "invariant",
+      "grayscale": "invariant",
+      "mr2": {
+        "animal": {
+          "fill_color": {
+            "red": "invariant"
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "11576796",
+    {
+      "hflip": "unsafe",
+      "vflip": "invariant",
+      "grayscale": "invariant",
+      "mr2": {
+        "furniture": {
+          "fill_color": {
+            "red": "invariant"
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "13727152",
+    {
+      "hflip": "unsafe",
+      "vflip": "invariant",
+      "grayscale": "invariant",
+      "mr2": {
+        "piece of furniture": {
+          "fill_color": {
+            "red": "invariant"
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "14933834",
+    {
+      "hflip": "invariant",
+      "vflip": "unsafe",
+      "grayscale": "invariant",
+      "mr2": {
+        "food": {
+          "fill_color": {
+            "red": "invariant"
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "15492227",
+    {
+      "hflip": "invariant",
+      "vflip": "unsafe",
+      "grayscale": "unsafe",
+      "mr2": {
+        "device": {
+          "fill_color": {
+            "red": "unsafe"
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "16240016",
+    {
+      "hflip": "invariant",
+      "vflip": "unsafe",
+      "grayscale": "invariant",
+      "mr2": {
+        "baked good": {
+          "fill_color": {
+            "red": "invariant"
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "16654520",
+    {
+      "hflip": "unsafe",
+      "vflip": "invariant",
+      "grayscale": "invariant",
+      "mr2": {
+        "furniture": {
+          "fill_color": {
+            "red": "invariant"
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "17878016",
+    {
+      "hflip": "unsafe",
+      "vflip": "invariant",
+      "grayscale": "invariant",
+      "mr2": {
+        "vegetable": {
+          "fill_color": {
+            "red": "invariant"
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "19209426",
+    {
+      "hflip": "unsafe",
+      "vflip": "unsafe",
+      "grayscale": "invariant",
+      "mr2": {
+        "food": {
+          "fill_color": {
+            "red": "invariant"
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "19540145",
+    {
+      "hflip": "unsafe",
+      "vflip": "invariant",
+      "grayscale": "invariant",
+      "mr2": {
+        "baked good": {
+          "fill_color": {
+            "red": "invariant"
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "00293632",
+    {
+      "hflip": "invariant",
+      "vflip": "invariant",
+      "grayscale": "invariant",
+      "mr2": {
+        "device": {
+          "fill_color": {
+            "red": "invariant"
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "061022771",
+    {
+      "hflip": "invariant",
+      "vflip": "invariant",
+      "grayscale": "unsafe",
+      "mr2": {
+        "appliance": {
+          "fill_color": {
+            "red": "unsafe"
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "10646843",
+    {
+      "hflip": "invariant",
+      "vflip": "invariant",
+      "grayscale": "invariant",
+      "mr2": {
+        "food": {
+          "fill_color": {
+            "red": "invariant"
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "13151299",
+    {
+      "hflip": "invariant",
+      "vflip": "invariant",
+      "grayscale": "unsafe",
+      "mr2": {
+        "animal": {
+          "fill_color": {
+            "red": {
+              "equivariant": {
+                "yes": "no",
+                "no": "no"
+              }
+            }
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "16415588",
+    {
+      "hflip": "invariant",
+      "vflip": "invariant",
+      "grayscale": "unsafe",
+      "mr2": {
+        "vehicle": {
+          "fill_color": {
+            "red": "unsafe"
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "17694378",
+    {
+      "hflip": "invariant",
+      "vflip": "invariant",
+      "grayscale": "invariant",
+      "mr2": {
+        "furniture": {
+          "fill_color": {
+            "red": "unsafe"
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "10106025",
+    {
+      "hflip": "invariant",
+      "vflip": "invariant",
+      "grayscale": "invariant",
+      "mr2": {
+        "sofa": {
+          "fill_color": {
+            "red": "unsafe"
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "04784943",
+    {
+      "hflip": "unsafe",
+      "vflip": "unsafe",
+      "grayscale": "invariant",
+      "mr2": {
+        "vegetable": {
+          "fill_color": {
+            "red": "unsafe"
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "02132942",
+    {
+      "hflip": "invariant",
+      "vflip": "invariant",
+      "grayscale": "invariant",
+      "mr2": {
+        "bench": {
+          "fill_color": {
+            "red": "invariant"
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "02301645",
+    {
+      "hflip": "invariant",
+      "vflip": "invariant",
+      "grayscale": "invariant",
+      "mr2": {
+        "planter": {
+          "fill_color": {
+            "red": "invariant"
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "04642586",
+    {
+      "hflip": "invariant",
+      "vflip": "invariant",
+      "grayscale": "unsafe",
+      "mr2": {
+        "life vest": {
+          "fill_color": {
+            "red": "unsafe"
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "07557134",
+    {
+      "hflip": "invariant",
+      "vflip": "invariant",
+      "grayscale": "unsafe",
+      "mr2": {
+        "hair": {
+          "fill_color": {
+            "red": "unsafe"
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "0847539",
+    {
+      "hflip": "invariant",
+      "vflip": "invariant",
+      "grayscale": "unsafe",
+      "mr2": {
+        "ladder": {
+          "fill_color": {
+            "red": "unsafe"
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "16811715",
+    {
+      "hflip": "invariant",
+      "vflip": "unsafe",
+      "grayscale": "invariant",
+      "mr2": {
+        "sky": {
+          "fill_color": {
+            "red": "invariant"
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "01666311",
+    {
+      "hflip": "invariant",
+      "vflip": "invariant",
+      "grayscale": {
+        "equivariant": {
+          "any": [
+            "gray",
+            "black",
+            "white"
+          ]
+        }
+      },
+      "mr2": {
+        "cup": {
+          "fill_color": {
+            "red": {
+              "equivariant": {
+                "any": "red"
+              }
+            }
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "03609513",
+    {
+      "hflip": "invariant",
+      "vflip": "invariant",
+      "grayscale": {
+        "equivariant": {
+          "any": [
+            "gray",
+            "black",
+            "white"
+          ]
+        }
+      },
+      "mr2": {
+        "uniform": {
+          "fill_color": {
+            "red": {
+              "equivariant": {
+                "any": "red"
+              }
+            }
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "09740850",
+    {
+      "hflip": "unsafe",
+      "vflip": "invariant",
+      "grayscale": {
+        "equivariant": {
+          "any": [
+            "gray",
+            "black",
+            "white"
+          ]
+        }
+      },
+      "mr2": {
+        "fruit": {
+          "fill_color": {
+            "red": {
+              "equivariant": {
+                "any": "red"
+              }
+            }
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "1262920",
+    {
+      "hflip": "invariant",
+      "vflip": "invariant",
+      "grayscale": {
+        "equivariant": {
+          "any": [
+            "gray",
+            "black",
+            "white"
+          ]
+        }
+      },
+      "mr2": {
+        "tie": {
+          "fill_color": {
+            "red": {
+              "equivariant": {
+                "any": "red"
+              }
+            }
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "13202507",
+    {
+      "hflip": "invariant",
+      "vflip": "invariant",
+      "grayscale": {
+        "equivariant": {
+          "any": [
+            "gray",
+            "black",
+            "white"
+          ]
+        }
+      },
+      "mr2": {
+        "sticker": {
+          "fill_color": {
+            "red": {
+              "equivariant": {
+                "any": "red"
+              }
+            }
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "16933964",
+    {
+      "hflip": "unsafe",
+      "vflip": "invariant",
+      "grayscale": {
+        "equivariant": {
+          "any": [
+            "gray",
+            "black",
+            "white"
+          ]
+        }
+      },
+      "mr2": {
+        "bag on the right side of the picture": {
+          "fill_color": {
+            "red": {
+              "equivariant": {
+                "any": "red"
+              }
+            }
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "19880565",
+    {
+      "hflip": "invariant",
+      "vflip": "invariant",
+      "grayscale": {
+        "equivariant": {
+          "any": [
+            "gray",
+            "black",
+            "white"
+          ]
+        }
+      },
+      "mr2": {
+        "statue": {
+          "fill_color": {
+            "red": {
+              "equivariant": {
+                "any": "red"
+              }
+            }
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "01819592",
+    {
+      "hflip": "invariant",
+      "vflip": "invariant",
+      "grayscale": {
+        "equivariant": {
+          "any": [
+            "gray",
+            "black",
+            "white"
+          ]
+        }
+      },
+      "mr2": {
+        "cow": {
+          "fill_color": {
+            "red": {
+              "equivariant": {
+                "any": "red"
+              }
+            }
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "02806504",
+    {
+      "hflip": "invariant",
+      "vflip": "invariant",
+      "grayscale": {
+        "equivariant": {
+          "any": [
+            "gray",
+            "black",
+            "white"
+          ]
+        }
+      },
+      "mr2": {
+        "jacket": {
+          "fill_color": {
+            "red": {
+              "equivariant": {
+                "any": "red"
+              }
+            }
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "06271489",
+    {
+      "hflip": "invariant",
+      "vflip": "invariant",
+      "grayscale": {
+        "equivariant": {
+          "any": [
+            "gray",
+            "black",
+            "white"
+          ]
+        }
+      },
+      "mr2": {
+        "necktie": {
+          "fill_color": {
+            "red": {
+              "equivariant": {
+                "any": "red"
+              }
+            }
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "07755285",
+    {
+      "hflip": "invariant",
+      "vflip": "unsafe",
+      "grayscale": {
+        "equivariant": {
+          "any": [
+            "gray",
+            "black",
+            "white"
+          ]
+        }
+      },
+      "mr2": {
+        "tank top": {
+          "fill_color": {
+            "red": {
+              "equivariant": {
+                "any": "red"
+              }
+            }
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "11341403",
+    {
+      "hflip": "unsafe",
+      "vflip": "invariant",
+      "grayscale": {
+        "equivariant": {
+          "any": [
+            "gray",
+            "black",
+            "white"
+          ]
+        }
+      },
+      "mr2": {
+        "curtain": {
+          "fill_color": {
+            "red": {
+              "equivariant": {
+                "any": "red"
+              }
+            }
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "1927106",
+    {
+      "hflip": "invariant",
+      "vflip": "invariant",
+      "grayscale": {
+        "equivariant": {
+          "any": [
+            "gray",
+            "black",
+            "white"
+          ]
+        }
+      },
+      "mr2": {
+        "liquid": {
+          "fill_color": {
+            "red": {
+              "equivariant": {
+                "any": "red"
+              }
+            }
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "16404972",
+    {
+      "hflip": "invariant",
+      "vflip": "invariant",
+      "grayscale": "invariant",
+      "mr2": {
+        "women": {
+          "fill_color": {
+            "red": "invariant"
+          },
+          "occlude_bbox": {
+            "equivariant": {
+              "any": "no"
+            }
+          }
+        }
+      }
+    }
+  ],
+  [
+    "09270633",
+    {
+      "hflip": "invariant",
+      "vflip": "invariant",
+      "grayscale": "unsafe",
+      "mr2": {
+        "banana": {
+          "fill_color": {
+            "red": "unsafe"
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "16148859",
+    {
+      "hflip": "invariant",
+      "vflip": "invariant",
+      "grayscale": "invariant",
+      "mr2": {
+        "bears": {
+          "fill_color": {
+            "red": "invariant"
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "05522218",
+    {
+      "hflip": "invariant",
+      "vflip": "invariant",
+      "grayscale": "invariant",
+      "mr2": {
+        "rhino": {
+          "fill_color": {
+            "red": "invariant"
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "17205878",
+    {
+      "hflip": "invariant",
+      "vflip": "invariant",
+      "grayscale": "invariant",
+      "mr2": {
+        "cat": {
+          "fill_color": {
+            "red": "invariant"
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "01423136",
+    {
+      "hflip": "invariant",
+      "vflip": "invariant",
+      "grayscale": "unsafe",
+      "mr2": {
+        "can": {
+          "fill_color": {
+            "red": "unsafe"
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "02381156",
+    {
+      "hflip": "invariant",
+      "vflip": "invariant",
+      "grayscale": "unsafe",
+      "mr2": {
+        "green sandals": {
+          "fill_color": {
+            "red": "unsafe"
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "08286",
+    {
+      "hflip": "invariant",
+      "vflip": "invariant",
+      "grayscale": "unsafe",
+      "mr2": {
+        "table": {
+          "fill_color": {
+            "red": "unsafe"
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "10452282",
+    {
+      "hflip": "invariant",
+      "vflip": "invariant",
+      "grayscale": "unsafe",
+      "mr2": {
+        "dolls or teddy bears": {
+          "fill_color": {
+            "red": "unsafe"
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "02307883",
+    {
+      "hflip": "invariant",
+      "vflip": "invariant",
+      "grayscale": "invariant",
+      "mr2": {
+        "television": {
+          "fill_color": {
+            "red": "invariant"
+          },
+          "occlude_bbox": {
+            "equivariant": {
+              "any": "no"
+            }
+          }
+        }
+      }
+    }
+  ],
+  [
+    "0263146",
+    {
+      "hflip": "invariant",
+      "vflip": "invariant",
+      "grayscale": "invariant",
+      "mr2": {
+        "horse": {
+          "fill_color": {
+            "red": "invariant"
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "05947079",
+    {
+      "hflip": "invariant",
+      "vflip": "invariant",
+      "grayscale": "invariant",
+      "mr2": {
+        "cages": {
+          "fill_color": {
+            "red": "invariant"
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "07152375",
+    {
+      "hflip": "invariant",
+      "vflip": "invariant",
+      "grayscale": "invariant",
+      "mr2": {
+        "children": {
+          "fill_color": {
+            "red": "invariant"
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "09810617",
+    {
+      "hflip": "invariant",
+      "vflip": "invariant",
+      "grayscale": "invariant",
+      "mr2": {
+        "fence": {
+          "fill_color": {
+            "red": "invariant"
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "11942352",
+    {
+      "hflip": "invariant",
+      "vflip": "invariant",
+      "grayscale": "invariant",
+      "mr2": {
+        "zebras": {
+          "fill_color": {
+            "red": "invariant"
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "04336361",
+    {
+      "hflip": "invariant",
+      "vflip": "invariant",
+      "grayscale": "invariant",
+      "mr2": {
+        "shampoos": {
+          "fill_color": {
+            "red": "invariant"
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "09277136",
+    {
+      "hflip": "invariant",
+      "vflip": "invariant",
+      "grayscale": "invariant",
+      "mr2": {
+        "breads": {
+          "fill_color": {
+            "red": "invariant"
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "09555497",
+    {
+      "hflip": "invariant",
+      "vflip": "invariant",
+      "grayscale": "invariant",
+      "mr2": {
+        "men": {
+          "fill_color": {
+            "red": "invariant"
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "09700691",
+    {
+      "hflip": "invariant",
+      "vflip": "invariant",
+      "grayscale": "invariant",
+      "mr2": {
+        "tissue boxes": {
+          "fill_color": {
+            "red": "invariant"
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "17206054",
+    {
+      "hflip": "invariant",
+      "vflip": "invariant",
+      "grayscale": "invariant",
+      "mr2": {
+        "dogs": {
+          "fill_color": {
+            "red": "invariant"
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "04897342",
+    {
+      "hflip": {
+        "equivariant": {
+          "yes": "no",
+          "no": "unchecked"
+        }
+      },
+      "vflip": "unsafe",
+      "grayscale": "invariant",
+      "mr2": {
+        "mugs": {
+          "fill_color": {
+            "red": "invariant"
+          },
+          "occlude_bbox": {
+            "equivariant": {
+              "any": "no"
+            }
+          }
+        }
+      }
+    }
+  ],
+  [
+    "06123202",
+    {
+      "hflip": {
+        "equivariant": {
+          "yes": "no",
+          "no": "unchecked"
+        }
+      },
+      "vflip": "invariant",
+      "grayscale": "unsafe",
+      "mr2": {
+        "mirrors": {
+          "fill_color": {
+            "red": "unsafe"
+          },
+          "occlude_bbox": {
+            "equivariant": {
+              "any": "no"
+            }
+          }
+        }
+      }
+    }
+  ],
+  [
+    "14143626",
+    {
+      "hflip": {
+        "equivariant": {
+          "yes": "no",
+          "no": "unchecked"
+        }
+      },
+      "vflip": "invariant",
+      "grayscale": "unsafe",
+      "mr2": {
+        "bottles": {
+          "fill_color": {
+            "red": "unsafe"
+          },
+          "occlude_bbox": {
+            "equivariant": {
+              "any": "no"
+            }
+          }
+        }
+      }
+    }
+  ],
+  [
+    "14555564",
+    {
+      "hflip": {
+        "equivariant": {
+          "yes": "no",
+          "no": "unchecked"
+        }
+      },
+      "vflip": "invariant",
+      "grayscale": "invariant",
+      "mr2": {
+        "banana": {
+          "fill_color": {
+            "red": "invariant"
+          },
+          "occlude_bbox": {
+            "equivariant": {
+              "any": "no"
+            }
+          }
+        }
+      }
+    }
+  ],
+  [
+    "14856333",
+    {
+      "hflip": "unsafe",
+      "vflip": "invariant",
+      "grayscale": "invariant",
+      "mr2": {
+        "fences": {
+          "fill_color": {
+            "red": "invariant"
+          },
+          "occlude_bbox": {
+            "equivariant": {
+              "any": "no"
+            }
+          }
+        }
+      }
+    }
+  ],
+  [
+    "15311089",
+    {
+      "hflip": "unsafe",
+      "vflip": "invariant",
+      "grayscale": "invariant",
+      "mr2": {
+        "chair": {
+          "fill_color": {
+            "red": "invariant"
+          },
+          "occlude_bbox": {
+            "equivariant": {
+              "any": "no"
+            }
+          }
+        }
+      }
+    }
+  ],
+  [
+    "02307891",
+    {
+      "hflip": "invariant",
+      "vflip": "invariant",
+      "grayscale": "invariant",
+      "mr2": {
+        "phones": {
+          "fill_color": {
+            "red": "invariant"
+          },
+          "occlude_bbox": {
+            "equivariant": {
+              "any": "no"
+            }
+          }
+        }
+      }
+    }
+  ],
+  [
+    "05199541",
+    {
+      "hflip": {
+        "equivariant": {
+          "yes": "no",
+          "no": "unchecked"
+        }
+      },
+      "vflip": "invariant",
+      "grayscale": "unsafe",
+      "mr2": {
+        "glasses": {
+          "fill_color": {
+            "red": "unsafe"
+          },
+          "occlude_bbox": {
+            "equivariant": {
+              "any": "no"
+            }
+          }
+        }
+      }
+    }
+  ],
+  [
+    "18192052",
+    {
+      "hflip": {
+        "equivariant": {
+          "yes": "no",
+          "no": "unchecked"
+        }
+      },
+      "vflip": "invariant",
+      "grayscale": "invariant",
+      "mr2": {
+        "curtains": {
+          "fill_color": {
+            "red": "invariant"
+          },
+          "occlude_bbox": {
+            "equivariant": {
+              "any": "no"
+            }
+          }
+        }
+      }
+    }
+  ],
+  [
+    "1896656",
+    {
+      "hflip": "invariant",
+      "vflip": "unsafe",
+      "grayscale": "invariant",
+      "mr2": {
+        "motorcycles": {
+          "fill_color": {
+            "red": "invariant"
+          },
+          "occlude_bbox": {
+            "equivariant": {
+              "any": "no"
+            }
+          }
+        }
+      }
+    }
+  ],
+  [
+    "09187778",
+    {
+      "hflip": {
+        "equivariant": {
+          "yes": "no",
+          "no": "unchecked"
+        }
+      },
+      "vflip": "invariant",
+      "grayscale": "invariant",
+      "mr2": {
+        "skateboards": {
+          "fill_color": {
+            "red": "invariant"
+          },
+          "occlude_bbox": {
+            "equivariant": {
+              "any": "no"
+            }
+          }
+        }
+      }
+    }
+  ],
+  [
+    "19535771",
+    {
+      "hflip": {
+        "equivariant": {
+          "yes": "no",
+          "no": "unchecked"
+        }
+      },
+      "vflip": "invariant",
+      "grayscale": "invariant",
+      "mr2": {
+        "boys": {
+          "fill_color": {
+            "red": "invariant"
+          },
+          "occlude_bbox": {
+            "equivariant": {
+              "any": "no"
+            }
+          }
+        }
+      }
+    }
+  ],
+  [
+    "05527580",
+    {
+      "hflip": "invariant",
+      "vflip": "invariant",
+      "grayscale": "invariant",
+      "mr2": {
+        "doors or windows": {
+          "fill_color": {
+            "red": "invariant"
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "17853007",
+    {
+      "hflip": "invariant",
+      "vflip": "invariant",
+      "grayscale": "unsafe",
+      "mr2": {
+        "horse": {
+          "fill_color": {
+            "red": "unsafe"
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "0878247",
+    {
+      "hflip": "invariant",
+      "vflip": "invariant",
+      "grayscale": "invariant",
+      "mr2": {
+        "shirt": {
+          "fill_color": {
+            "red": "invariant"
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "12526294",
+    {
+      "hflip": "invariant",
+      "vflip": "invariant",
+      "grayscale": "invariant",
+      "mr2": {
+        "hair": {
+          "fill_color": {
+            "red": "invariant"
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "18224761",
+    {
+      "hflip": "invariant",
+      "vflip": "invariant",
+      "grayscale": "invariant",
+      "mr2": null
+    }
+  ],
+  [
+    "17867588",
+    {
+      "hflip": "invariant",
+      "vflip": "invariant",
+      "grayscale": "invariant",
+      "mr2": null
+    }
+  ],
+  [
+    "06451624",
+    {
+      "hflip": "invariant",
+      "vflip": "invariant",
+      "grayscale": "invariant",
+      "mr2": {
+        "gate": {
+          "fill_color": {
+            "red": "unsafe"
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "09245286",
+    {
+      "hflip": "invariant",
+      "vflip": "invariant",
+      "grayscale": "invariant",
+      "mr2": {
+        "fence": {
+          "fill_color": {
+            "red": "unsafe"
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "01889074",
+    {
+      "hflip": "unsafe",
+      "vflip": "invariant",
+      "grayscale": "invariant",
+      "mr2": {
+        "container": {
+          "fill_color": {
+            "red": "unsafe"
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "06589230",
+    {
+      "hflip": "invariant",
+      "vflip": "invariant",
+      "grayscale": "invariant",
+      "mr2": null
+    }
+  ],
+  [
+    "0127234",
+    {
+      "hflip": "invariant",
+      "vflip": "invariant",
+      "grayscale": "invariant",
+      "mr2": null
+    }
+  ],
+  [
+    "09530356",
+    {
+      "hflip": "invariant",
+      "vflip": "invariant",
+      "grayscale": "invariant",
+      "mr2": null
+    }
+  ],
+  [
+    "11138705",
+    {
+      "hflip": "invariant",
+      "vflip": "invariant",
+      "grayscale": "invariant",
+      "mr2": null
+    }
+  ],
+  [
+    "13964105",
+    {
+      "hflip": "invariant",
+      "vflip": "invariant",
+      "grayscale": "invariant",
+      "mr2": null
+    }
+  ],
+  [
+    "02490189",
+    {
+      "hflip": {
+        "equivariant": {
+          "left": "right",
+          "right": "left"
+        }
+      },
+      "vflip": "unsafe",
+      "grayscale": "invariant",
+      "mr2": {
+        "fence": {
+          "fill_color": {
+            "red": "invariant"
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "07642345",
+    {
+      "hflip": {
+        "equivariant": {
+          "left": "right",
+          "right": "left"
+        }
+      },
+      "vflip": "invariant",
+      "grayscale": "invariant",
+      "mr2": {
+        "chair": {
+          "fill_color": {
+            "red": "invariant"
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "07676742",
+    {
+      "hflip": {
+        "equivariant": {
+          "left": "right",
+          "right": "left"
+        }
+      },
+      "vflip": "invariant",
+      "grayscale": "invariant",
+      "mr2": {
+        "man": {
+          "fill_color": {
+            "red": "invariant"
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "11517436",
+    {
+      "hflip": "invariant",
+      "vflip": {
+        "equivariant": {
+          "top": "bottom",
+          "bottom": "top",
+          "above": "below",
+          "below": "above"
+        }
+      },
+      "grayscale": "invariant",
+      "mr2": {
+        "phone": {
+          "fill_color": {
+            "red": "invariant"
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "14532302",
+    {
+      "hflip": {
+        "equivariant": {
+          "left": "right",
+          "right": "left"
+        }
+      },
+      "vflip": "invariant",
+      "grayscale": "invariant",
+      "mr2": {
+        "lady": {
+          "fill_color": {
+            "red": "invariant"
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "17184712",
+    {
+      "hflip": "invariant",
+      "vflip": {
+        "equivariant": {
+          "top": "bottom",
+          "bottom": "top",
+          "above": "below",
+          "below": "above"
+        }
+      },
+      "grayscale": "invariant",
+      "mr2": {
+        "couch": {
+          "fill_color": {
+            "red": "invariant"
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "18802371",
+    {
+      "hflip": "invariant",
+      "vflip": {
+        "equivariant": {
+          "top": "bottom",
+          "bottom": "top",
+          "above": "below",
+          "below": "above"
+        }
+      },
+      "grayscale": "invariant",
+      "mr2": {
+        "telephone": {
+          "fill_color": {
+            "red": "invariant"
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "03738771",
+    {
+      "hflip": "invariant",
+      "vflip": "invariant",
+      "grayscale": "invariant",
+      "mr2": {
+        "people": {
+          "fill_color": {
+            "red": "invariant"
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "03823936",
+    {
+      "hflip": "invariant",
+      "vflip": "unsafe",
+      "grayscale": "invariant",
+      "mr2": {
+        "spectators": {
+          "fill_color": {
+            "red": "invariant"
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "06459438",
+    {
+      "hflip": "invariant",
+      "vflip": "unsafe",
+      "grayscale": "invariant",
+      "mr2": {
+        "woman": {
+          "fill_color": {
+            "red": "invariant"
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "06792734",
+    {
+      "hflip": "invariant",
+      "vflip": "unsafe",
+      "grayscale": "unsafe",
+      "mr2": {
+        "rug": {
+          "fill_color": {
+            "red": "unsafe"
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "06846243",
+    {
+      "hflip": "invariant",
+      "vflip": "unsafe",
+      "grayscale": "invariant",
+      "mr2": {
+        "lady": {
+          "fill_color": {
+            "red": "invariant"
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "13529780",
+    {
+      "hflip": "invariant",
+      "vflip": "unsafe",
+      "grayscale": "unsafe",
+      "mr2": {
+        "white cheese": {
+          "fill_color": {
+            "red": "unsafe"
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "141031470",
+    {
+      "hflip": "invariant",
+      "vflip": "unsafe",
+      "grayscale": "unsafe",
+      "mr2": {
+        "white towel": {
+          "fill_color": {
+            "red": "unsafe"
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "1463279",
+    {
+      "hflip": "invariant",
+      "vflip": "unsafe",
+      "grayscale": "invariant",
+      "mr2": {
+        "happy person": {
+          "fill_color": {
+            "red": "invariant"
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "18660334",
+    {
+      "hflip": "invariant",
+      "vflip": "unsafe",
+      "grayscale": "unsafe",
+      "mr2": {
+        "white toothpaste": {
+          "fill_color": {
+            "red": "unsafe"
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "18719752",
+    {
+      "hflip": "invariant",
+      "vflip": "unsafe",
+      "grayscale": "invariant",
+      "mr2": {
+        "man": {
+          "fill_color": {
+            "red": "invariant"
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "12189759",
+    {
+      "hflip": {
+        "equivariant": {
+          "left": "right",
+          "right": "left"
+        }
+      },
+      "vflip": "invariant",
+      "grayscale": "invariant",
+      "mr2": {
+        "fence": {
+          "fill_color": {
+            "red": "invariant"
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "1665130",
+    {
+      "hflip": {
+        "equivariant": {
+          "left": "right",
+          "right": "left"
+        }
+      },
+      "vflip": "invariant",
+      "grayscale": "invariant",
+      "mr2": {
+        "towel": {
+          "fill_color": {
+            "red": "invariant"
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "1055286",
+    {
+      "hflip": {
+        "equivariant": {
+          "left": "right",
+          "right": "left"
+        }
+      },
+      "vflip": "invariant",
+      "grayscale": "invariant",
+      "mr2": {
+        "bike": {
+          "fill_color": {
+            "red": "invariant"
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "11476642",
+    {
+      "hflip": "invariant",
+      "vflip": {
+        "equivariant": {
+          "yes": "no",
+          "no": "unchecked"
+        }
+      },
+      "grayscale": "invariant",
+      "mr2": {
+        "knife": {
+          "fill_color": {
+            "red": "invariant"
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "01583530",
+    {
+      "hflip": "unsafe",
+      "vflip": "invariant",
+      "grayscale": "invariant",
+      "mr2": {
+        "woman": {
+          "fill_color": {
+            "red": "invariant"
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "02752291",
+    {
+      "hflip": "unsafe",
+      "vflip": "invariant",
+      "grayscale": "unsafe",
+      "mr2": {
+        "green book": {
+          "fill_color": {
+            "red": "unsafe"
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "03297708",
+    {
+      "hflip": "unsafe",
+      "vflip": "invariant",
+      "grayscale": "unsafe",
+      "mr2": {
+        "orange couch": {
+          "fill_color": {
+            "red": "unsafe"
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "04128402",
+    {
+      "hflip": "unsafe",
+      "vflip": "invariant",
+      "grayscale": "unsafe",
+      "mr2": {
+        "green car": {
+          "fill_color": {
+            "red": "unsafe"
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "04583976",
+    {
+      "hflip": {
+        "equivariant": {
+          "left": "right",
+          "right": "left"
+        }
+      },
+      "vflip": "unsafe",
+      "grayscale": "invariant",
+      "mr2": {
+        "plastic bottle": {
+          "fill_color": {
+            "red": "unsafe"
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "06618367",
+    {
+      "hflip": {
+        "equivariant": {
+          "left": "right",
+          "right": "left"
+        }
+      },
+      "vflip": "unsafe",
+      "grayscale": "invariant",
+      "mr2": {
+        "pillow": {
+          "fill_color": {
+            "red": "invariant"
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "15159996",
+    {
+      "hflip": {
+        "equivariant": {
+          "left": "right",
+          "right": "left"
+        }
+      },
+      "vflip": "invariant",
+      "grayscale": "invariant",
+      "mr2": {
+        "food": {
+          "fill_color": {
+            "red": "invariant"
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "1571782",
+    {
+      "hflip": {
+        "equivariant": {
+          "left": "right",
+          "right": "left"
+        }
+      },
+      "vflip": "invariant",
+      "grayscale": "invariant",
+      "mr2": {
+        "paddle": {
+          "fill_color": {
+            "red": "invariant"
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "00390706",
+    {
+      "hflip": "invariant",
+      "vflip": "invariant",
+      "grayscale": "invariant",
+      "mr2": {
+        "tractor": {
+          "fill_color": {
+            "red": "invariant"
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "0185620",
+    {
+      "hflip": "invariant",
+      "vflip": "unsafe",
+      "grayscale": "invariant",
+      "mr2": {
+        "sticker": {
+          "fill_color": {
+            "red": "invariant"
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "031057909",
+    {
+      "hflip": "invariant",
+      "vflip": "invariant",
+      "grayscale": "invariant",
+      "mr2": {
+        "glass": {
+          "fill_color": {
+            "red": "unsafe"
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "04232668",
+    {
+      "hflip": "invariant",
+      "vflip": "invariant",
+      "grayscale": "invariant",
+      "mr2": {
+        "net": {
+          "fill_color": {
+            "red": "invariant"
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "06635743",
+    {
+      "hflip": "invariant",
+      "vflip": "invariant",
+      "grayscale": "invariant",
+      "mr2": {
+        "guy": {
+          "fill_color": {
+            "red": "invariant"
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "10202341",
+    {
+      "hflip": "invariant",
+      "vflip": "invariant",
+      "grayscale": "invariant",
+      "mr2": {
+        "girl": {
+          "fill_color": {
+            "red": "invariant"
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "10306187",
+    {
+      "hflip": "invariant",
+      "vflip": "invariant",
+      "grayscale": "invariant",
+      "mr2": {
+        "trunk": {
+          "fill_color": {
+            "red": "invariant"
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "1132099",
+    {
+      "hflip": "invariant",
+      "vflip": "unsafe",
+      "grayscale": "invariant",
+      "mr2": {
+        "bucket": {
+          "fill_color": {
+            "red": "invariant"
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "12605085",
+    {
+      "hflip": "invariant",
+      "vflip": "unsafe",
+      "grayscale": "invariant",
+      "mr2": {
+        "person": {
+          "fill_color": {
+            "red": "invariant"
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "14251605",
+    {
+      "hflip": "invariant",
+      "vflip": "unsafe",
+      "grayscale": "invariant",
+      "mr2": {
+        "person": {
+          "fill_color": {
+            "red": "invariant"
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "14938920",
+    {
+      "hflip": "unsafe",
+      "vflip": "unsafe",
+      "grayscale": "invariant",
+      "mr2": {
+        "letters": {
+          "fill_color": {
+            "red": "unsafe"
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "16160414",
+    {
+      "hflip": "invariant",
+      "vflip": "unsafe",
+      "grayscale": "invariant",
+      "mr2": {
+        "people": {
+          "fill_color": {
+            "red": "invariant"
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "1616417",
+    {
+      "hflip": "invariant",
+      "vflip": "unsafe",
+      "grayscale": "invariant",
+      "mr2": {
+        "wires": {
+          "fill_color": {
+            "red": "invariant"
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "16921947",
+    {
+      "hflip": "invariant",
+      "vflip": "unsafe",
+      "grayscale": "invariant",
+      "mr2": {
+        "television": {
+          "fill_color": {
+            "red": "invariant"
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "18464194",
+    {
+      "hflip": "invariant",
+      "vflip": "invariant",
+      "grayscale": "invariant",
+      "mr2": {
+        "man": {
+          "fill_color": {
+            "red": "invariant"
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "18471305",
+    {
+      "hflip": "invariant",
+      "vflip": "invariant",
+      "grayscale": "invariant",
+      "mr2": {
+        "dog": {
+          "fill_color": {
+            "red": "invariant"
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "18529910",
+    {
+      "hflip": "invariant",
+      "vflip": "unsafe",
+      "grayscale": "invariant",
+      "mr2": {
+        "plant": {
+          "fill_color": {
+            "red": "invariant"
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "1969548",
+    {
+      "hflip": "invariant",
+      "vflip": "invariant",
+      "grayscale": "invariant",
+      "mr2": {
+        "woman": {
+          "fill_color": {
+            "red": "invariant"
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "00147588",
+    {
+      "hflip": "invariant",
+      "vflip": "invariant",
+      "grayscale": "invariant",
+      "mr2": {
+        "bag": {
+          "fill_color": {
+            "red": "invariant"
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "02693762",
+    {
+      "hflip": "invariant",
+      "vflip": "unsafe",
+      "grayscale": "invariant",
+      "mr2": {
+        "animal": {
+          "fill_color": {
+            "red": "invariant"
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "02813108",
+    {
+      "hflip": "invariant",
+      "vflip": "unsafe",
+      "grayscale": "invariant",
+      "mr2": null
+    }
+  ],
+  [
+    "03963670",
+    {
+      "hflip": "invariant",
+      "vflip": "invariant",
+      "grayscale": "invariant",
+      "mr2": {
+        "animal": {
+          "fill_color": {
+            "red": "invariant"
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "04462628",
+    {
+      "hflip": "invariant",
+      "vflip": "unsafe",
+      "grayscale": "invariant",
+      "mr2": {
+        "person": {
+          "fill_color": {
+            "red": "unsafe"
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "06599103",
+    {
+      "hflip": "invariant",
+      "vflip": "invariant",
+      "grayscale": "invariant",
+      "mr2": {
+        "glove": {
+          "fill_color": {
+            "red": "invariant"
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "06624681",
+    {
+      "hflip": "invariant",
+      "vflip": "invariant",
+      "grayscale": "invariant",
+      "mr2": {
+        "tshirt": {
+          "fill_color": {
+            "red": "invariant"
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "0727721",
+    {
+      "hflip": "invariant",
+      "vflip": "invariant",
+      "grayscale": "invariant",
+      "mr2": {
+        "glove": {
+          "fill_color": {
+            "red": "invariant"
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "08438457",
+    {
+      "hflip": "invariant",
+      "vflip": "unsafe",
+      "grayscale": "invariant",
+      "mr2": {
+        "animal": {
+          "fill_color": {
+            "red": "invariant"
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "10749446",
+    {
+      "hflip": "invariant",
+      "vflip": "invariant",
+      "grayscale": "invariant",
+      "mr2": {
+        "animal": {
+          "fill_color": {
+            "red": "invariant"
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "11260618",
+    {
+      "hflip": "invariant",
+      "vflip": "invariant",
+      "grayscale": "unsafe",
+      "mr2": {
+        "black animal": {
+          "fill_color": {
+            "red": "unsafe"
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "12432017",
+    {
+      "hflip": "invariant",
+      "vflip": "invariant",
+      "grayscale": "unsafe",
+      "mr2": null
+    }
+  ],
+  [
+    "1259983",
+    {
+      "hflip": "invariant",
+      "vflip": "invariant",
+      "grayscale": "invariant",
+      "mr2": null
+    }
+  ],
+  [
+    "133023",
+    {
+      "hflip": "unsafe",
+      "vflip": "invariant",
+      "grayscale": "invariant",
+      "mr2": {
+        "tongs": {
+          "fill_color": {
+            "red": "invariant"
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "15797498",
+    {
+      "hflip": "invariant",
+      "vflip": "invariant",
+      "grayscale": "invariant",
+      "mr2": {
+        "helmet": {
+          "fill_color": {
+            "red": "invariant"
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "17587563",
+    {
+      "hflip": "invariant",
+      "vflip": "unsafe",
+      "grayscale": "unsafe",
+      "mr2": {
+        "shelf": {
+          "fill_color": {
+            "red": "unsafe"
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "17699646",
+    {
+      "hflip": "invariant",
+      "vflip": "unsafe",
+      "grayscale": "invariant",
+      "mr2": {
+        "hurdle": {
+          "fill_color": {
+            "red": "invariant"
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "18433755",
+    {
+      "hflip": "invariant",
+      "vflip": "invariant",
+      "grayscale": "invariant",
+      "mr2": null
+    }
+  ],
+  [
+    "18659336",
+    {
+      "hflip": "invariant",
+      "vflip": "invariant",
+      "grayscale": "invariant",
+      "mr2": {
+        "buildings": {
+          "fill_color": {
+            "red": "invariant"
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "18885932",
+    {
+      "hflip": "unsafe",
+      "vflip": "invariant",
+      "grayscale": "invariant",
+      "mr2": {
+        "drink": {
+          "fill_color": {
+            "red": "invariant"
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "06143979",
+    {
+      "hflip": {
+        "equivariant": {
+          "yes": "no",
+          "no": "unchecked"
+        }
+      },
+      "vflip": "invariant",
+      "grayscale": "invariant",
+      "mr2": {
+        "batter": {
+          "fill_color": {
+            "red": "invariant"
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "10513400",
+    {
+      "hflip": "unsafe",
+      "vflip": "invariant",
+      "grayscale": "invariant",
+      "mr2": {
+        "purse": {
+          "fill_color": {
+            "red": "invariant"
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "13152061",
+    {
+      "hflip": "invariant",
+      "vflip": "unsafe",
+      "grayscale": "invariant",
+      "mr2": {
+        "elephants": {
+          "fill_color": {
+            "red": "invariant"
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "13385225",
+    {
+      "hflip": "invariant",
+      "vflip": "unsafe",
+      "grayscale": "unsafe",
+      "mr2": {
+        "red tomato": {
+          "fill_color": {
+            "red": "unsafe"
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "17596723",
+    {
+      "hflip": "invariant",
+      "vflip": "unsafe",
+      "grayscale": "invariant",
+      "mr2": {
+        "bushes": {
+          "fill_color": {
+            "red": "invariant"
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "18167301",
+    {
+      "hflip": "invariant",
+      "vflip": "unsafe",
+      "grayscale": "invariant",
+      "mr2": {
+        "lettuce": {
+          "fill_color": {
+            "red": "invariant"
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "04172714",
+    {
+      "hflip": "invariant",
+      "vflip": "unsafe",
+      "grayscale": "invariant",
+      "mr2": {
+        "lady": {
+          "fill_color": {
+            "red": "invariant"
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "04374500",
+    {
+      "hflip": "invariant",
+      "vflip": "invariant",
+      "grayscale": "invariant",
+      "mr2": {
+        "person": {
+          "fill_color": {
+            "red": "invariant"
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "05526290",
+    {
+      "hflip": {
+        "equivariant": {
+          "yes": "no",
+          "no": "unchecked"
+        }
+      },
+      "vflip": "invariant",
+      "grayscale": "invariant",
+      "mr2": {
+        "coffee cup": {
+          "fill_color": {
+            "red": "invariant"
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "10298739",
+    {
+      "hflip": {
+        "equivariant": {
+          "yes": "no",
+          "no": "unchecked"
+        }
+      },
+      "vflip": "invariant",
+      "grayscale": "invariant",
+      "mr2": {
+        "man": {
+          "fill_color": {
+            "red": "invariant"
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "16281883",
+    {
+      "hflip": {
+        "equivariant": {
+          "yes": "no",
+          "no": "unchecked"
+        }
+      },
+      "vflip": "invariant",
+      "grayscale": "invariant",
+      "mr2": {
+        "woman": {
+          "fill_color": {
+            "red": "invariant"
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "10777062",
+    {
+      "hflip": "unsafe",
+      "vflip": "invariant",
+      "grayscale": "invariant",
+      "mr2": {
+        "man": {
+          "fill_color": {
+            "red": "invariant"
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "19625223",
+    {
+      "hflip": "unsafe",
+      "vflip": "invariant",
+      "grayscale": "unsafe",
+      "mr2": {
+        "black cow": {
+          "fill_color": {
+            "red": "unsafe"
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "16766062",
+    {
+      "hflip": "invariant",
+      "vflip": "invariant",
+      "grayscale": "unsafe",
+      "mr2": {
+        "vehicle": {
+          "fill_color": {
+            "red": "unsafe"
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "001052765",
+    {
+      "hflip": "invariant",
+      "vflip": "invariant",
+      "grayscale": "invariant",
+      "mr2": {
+        "birds": {
+          "fill_color": {
+            "red": "invariant"
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "19621572",
+    {
+      "hflip": "invariant",
+      "vflip": "invariant",
+      "grayscale": "unsafe",
+      "mr2": {
+        "sweater": {
+          "fill_color": {
+            "red": "unsafe"
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "111014995",
+    {
+      "hflip": "invariant",
+      "vflip": "invariant",
+      "grayscale": "unsafe",
+      "mr2": {
+        "napkin": {
+          "fill_color": {
+            "red": "unsafe"
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "16809139",
+    {
+      "hflip": "invariant",
+      "vflip": "invariant",
+      "grayscale": "unsafe",
+      "mr2": {
+        "shoes": {
+          "fill_color": {
+            "red": "unsafe"
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "00401547",
+    {
+      "hflip": "invariant",
+      "vflip": "invariant",
+      "grayscale": "unsafe",
+      "mr2": {
+        "gloves": {
+          "fill_color": {
+            "red": "unsafe"
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "02161069",
+    {
+      "hflip": "invariant",
+      "vflip": "invariant",
+      "grayscale": {
+        "equivariant": {
+          "yes": "no",
+          "no": "no"
+        }
+      },
+      "mr2": {
+        "train": {
+          "fill_color": {
+            "red": {
+              "equivariant": {
+                "yes": "yes",
+                "no": "yes"
+              }
+            }
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "07447021",
+    {
+      "hflip": "invariant",
+      "vflip": "invariant",
+      "grayscale": {
+        "equivariant": {
+          "yes": "no",
+          "no": "no"
+        }
+      },
+      "mr2": {
+        "scarf": {
+          "fill_color": {
+            "red": {
+              "equivariant": {
+                "yes": "no",
+                "no": "no"
+              }
+            }
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "06385807",
+    {
+      "hflip": "invariant",
+      "vflip": "invariant",
+      "grayscale": {
+        "equivariant": {
+          "yes": "no",
+          "no": "no"
+        }
+      },
+      "mr2": {
+        "cap": {
+          "fill_color": {
+            "red": {
+              "equivariant": {
+                "yes": "no",
+                "no": "no"
+              }
+            }
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "08290591",
+    {
+      "hflip": "invariant",
+      "vflip": "invariant",
+      "grayscale": "unsafe",
+      "mr2": {
+        "ladder": {
+          "fill_color": {
+            "red": {
+              "equivariant": {
+                "yes": "no",
+                "no": "no"
+              }
+            }
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "01859377",
+    {
+      "hflip": "invariant",
+      "vflip": "invariant",
+      "grayscale": {
+        "equivariant": {
+          "yes": "no",
+          "no": "no"
+        }
+      },
+      "mr2": {
+        "towel": {
+          "fill_color": {
+            "red": "unsafe"
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "06580965",
+    {
+      "hflip": "invariant",
+      "vflip": "invariant",
+      "grayscale": "unsafe",
+      "mr2": {
+        "hair": {
+          "fill_color": {
+            "red": "unsafe"
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "02106555",
+    {
+      "hflip": "invariant",
+      "vflip": "invariant",
+      "grayscale": "unsafe",
+      "mr2": {
+        "pine tree": {
+          "fill_color": {
+            "red": "unsafe"
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "02197674",
+    {
+      "hflip": "invariant",
+      "vflip": "invariant",
+      "grayscale": "unsafe",
+      "mr2": {
+        "umbrella": {
+          "fill_color": {
+            "red": "unsafe"
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "12951309",
+    {
+      "hflip": "invariant",
+      "vflip": "invariant",
+      "grayscale": "unsafe",
+      "mr2": {
+        "hair": {
+          "fill_color": {
+            "red": "unsafe"
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "01516264",
+    {
+      "hflip": "invariant",
+      "vflip": "invariant",
+      "grayscale": "unsafe",
+      "mr2": {
+        "chain": {
+          "fill_color": {
+            "red": "unsafe"
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "1165054",
+    {
+      "hflip": "invariant",
+      "vflip": "invariant",
+      "grayscale": "unsafe",
+      "mr2": {
+        "water hose": {
+          "fill_color": {
+            "red": "unsafe"
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "17965688",
+    {
+      "hflip": "unsafe",
+      "vflip": "invariant",
+      "grayscale": "unsafe",
+      "mr2": {
+        "snowboard": {
+          "fill_color": {
+            "red": "unsafe"
+          },
+          "occlude_bbox": "unsafe"
+        }
+      }
+    }
+  ],
+  [
+    "18153368",
+    {
+      "hflip": "invariant",
+      "vflip": "invariant",
+      "grayscale": "invariant",
+      "mr2": null
+    }
+  ]
+]

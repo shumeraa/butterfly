@@ -5,7 +5,6 @@ import json
 import sys
 import random
 from pathlib import Path
-import traceback
 
 if __package__ in (None, ""):
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -109,143 +108,37 @@ def append_custom_unit_tests(dataset_data: list, tests_by_question_id: dict) -> 
             added += 1
     return added
 
-# The new branch format exports test manifests. Its image operations are still
-# placeholders upstream; this helper does not materialize those image paths.
-def create_test_manifest(json_string: str, img: str, out: str, out_json: str) -> dict:
-    Path(out_json).parent.mkdir(parents=True, exist_ok=True)
-    try:
-        obj = json.loads(json_string) # obj is a list
-        root_out_dir = Path(out)
-        img_Path = Path(img)
-        res = dict() # questionID: list of tests
-        for q in obj:
-            # q is a list
-            question_id = q[0]
-            llm_output = q[1]
-
-            with Image.open(img) as source:
-                image = ImageOps.exif_transpose(source)
-                for transformation_name, effect in llm_output.items():
-                    # if the transformation is unsafe, skip this transformation
-                    if effect == 'unsafe' or not effect: # not effect checks for empty mr2 dict or null
-                        continue
-                    # mr2 transformation
-                    if transformation_name == 'mr2':
-                        # for each item
-                        for item_name, d in effect.items():
-                            # apply the transformations
-                            # do fill_color first
-                            for color, color_effect in d['fill_color'].items():
-                                # skip if transformation is unsafe
-                                if color_effect == 'unsafe' or not color_effect: # not color_effect checks for nulls
-                                    continue
-
-                                # do and save transformation
-                                # result = mask_objects(image, item_name, color)
-                                save_path = root_out_dir / f'{img_Path.stem}_{item_name}_{color}{img_Path.suffix}'
-                                # result.save(save_path)
-
-                                # figure out correct answer
-                                if color_effect == 'invariant':
-                                    # leave correct answer as blank, to be filled in later?
-                                    correct_answer = ''
-                                else:
-                                    # pass through the mapping, "create" correct answer later?
-                                    correct_answer = color_effect['equivariant']
-
-                                # create unit test
-                                unit_test_dict = {
-                                    'description': f'{item_name} turned {color}',
-                                    'image_paths': [str(save_path)],
-                                    'answer': correct_answer
-                                }
-
-                                # add unit test to list, do be saved to json later
-                                if question_id in res:
-                                    res[question_id].append(unit_test_dict)
-                                else:
-                                    res[question_id] = [unit_test_dict]
-
-                            # then do occlude bounding box
-                            if d['occlude_bbox'] != 'unsafe':
-                                bbox_effect = d['occlude_bbox']
-                                # do and save transformation
-                                # result = something
-                                save_path = root_out_dir / f'{img_Path.stem}_{item_name}_occlude_bbox{img_Path.suffix}'
-                                # result.save(save_path)
-                            
-                                # figure out correct answer
-                                if bbox_effect == 'invariant':
-                                    # leave correct answer as blank, to be filled in later?
-                                    correct_answer = ''
-                                else:
-                                    # pass through the mapping, "create" correct answer later?
-                                    correct_answer = bbox_effect['equivariant']
-
-                                # create unit test dict
-                                unit_test_dict = {
-                                    'description': f'{item_name}, occluded bounding box',
-                                    'image_paths': [str(save_path)],
-                                    'answer': correct_answer
-                                }
-                                # add unit test to list, do be saved to json later
-                                if question_id in res:
-                                    res[question_id].append(unit_test_dict)
-                                else:
-                                    res[question_id] = [unit_test_dict]
-
-
-                    # mr1 transformation
-                    else:
-                        # apply transformation
-                        if transformation_name == 'hflip':
-                            # result = flip(image, 'left')
-                            pass
-                        elif transformation_name == 'vflip':
-                            # result = flip(image, 'up')
-                            pass
-                        elif transformation_name == 'grayscale':
-                            # result = color_filter(image, 'grayscale')
-                            pass
-                        # save transformed image
-                        save_path = root_out_dir / f'{img_Path.stem}_{transformation_name}{img_Path.suffix}'
-                        # result.save(save_path)
-
-                        # figure out correct answer
-                        if effect == 'invariant':
-                            # leave correct answer as blank, to be filled in later?
-                            correct_answer = ''
-                        else:
-                            # pass through the mapping, "create" correct answer later?
-                            correct_answer = effect['equivariant']
-
-                        # create unit test dict
-                        unit_test_dict = {
-                            'description': transformation_name,
-                            'image_paths': [str(save_path)],
-                            'answer': correct_answer
-                        }
-                        # add unit test to list, do be saved to json later
-                        if question_id in res:
-                            res[question_id].append(unit_test_dict)
-                        else:
-                            res[question_id] = [unit_test_dict]
-        with open(out_json, "w", encoding='utf-8') as f:
-            json.dump(res, f, indent=2)
-        return res
-    except Exception:
-        traceback.print_exc()
-        raise
+def create_test_manifest(json_string: str, img: str, out: str, out_json: str, *,
+                         num_tests: int = 3, seed: int = 42, dummy_images: bool = False) -> dict:
+    """Select label-driven tests and save transformed images, or explicit dummy paths."""
+    from apply_transformations.labels import tests_from_labels, select_label_tests
+    candidates = tests_from_labels(json.loads(json_string))
+    result = {}
+    with Image.open(img) as image:
+        image.verify()
+    for question_id, tests in candidates.items():
+        selected = select_label_tests(tests, question_id=question_id,
+                                      max_tests=num_tests, seed=seed)
+        if dummy_images:
+            result[question_id] = [{**test, 'image_paths': [str(Path(img))]} for test in selected]
+        else:
+            from apply_transformations.materialize import materialize_selected_tests
+            folder = hashlib.sha256(question_id.encode()).hexdigest()
+            result[question_id] = materialize_selected_tests(img, selected, Path(out) / folder, seed=seed)
+    destination = Path(out_json)
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    destination.write_text(json.dumps(result, indent=2) + '\n', encoding='utf-8')
+    return result
 
 
 def apply_transformations(j: str, img: str, out: str, out_json: str, *,
-                          num_tests: int = 2, seed: int = 0) -> dict:
+                          num_tests: int = 3, seed: int = 0) -> dict:
     """Materialize predictions for a source image, keyed by question ID."""
     predictions = json.loads(j)
     # Preserve the new branch's [question_id, effects] manifest format alongside
     # the existing materialized {question_id, parsed} format used by our tests.
     if predictions and isinstance(predictions[0], list):
-        return create_test_manifest(j, img, out, out_json)
+        return create_test_manifest(j, img, out, out_json, num_tests=num_tests, seed=seed)
     result = {}
     for prediction in predictions:
         question_id = str(prediction['question_id'])
@@ -268,7 +161,7 @@ if __name__ == '__main__':
     parser.add_argument('image', type=Path)
     parser.add_argument('output_dir', type=Path)
     parser.add_argument('output_json', type=Path)
-    parser.add_argument('--num-tests', type=int, default=2)
+    parser.add_argument('--num-tests', type=int, default=3)
     parser.add_argument('--seed', type=int, default=0)
     args = parser.parse_args()
     apply_transformations(args.predictions.read_text(encoding='utf-8'), args.image,
