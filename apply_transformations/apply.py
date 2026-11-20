@@ -127,7 +127,7 @@ def create_test_manifest(json_string: str, img: str, out: str, out_json: str) ->
                 image = ImageOps.exif_transpose(source)
                 for transformation_name, effect in llm_output.items():
                     # if the transformation is unsafe, skip this transformation
-                    if effect == 'unsafe' or not effect: # not effect checks for empty mr2 dict
+                    if effect == 'unsafe' or not effect: # not effect checks for empty mr2 dict or null
                         continue
                     # mr2 transformation
                     if transformation_name == 'mr2':
@@ -137,7 +137,7 @@ def create_test_manifest(json_string: str, img: str, out: str, out_json: str) ->
                             # do fill_color first
                             for color, color_effect in d['fill_color'].items():
                                 # skip if transformation is unsafe
-                                if color_effect == 'unsafe':
+                                if color_effect == 'unsafe' or not color_effect: # not color_effect checks for nulls
                                     continue
 
                                 # do and save transformation
