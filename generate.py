@@ -5,38 +5,51 @@
  For full license text, see the LICENSE file in the repo root or https://opensource.org/licenses/BSD-3-Clause
 """
 import argparse
-from transformers import AutoTokenizer
-import torch
-from tqdm import tqdm
+# Resolve custom-test JSON paths before they enter suite configuration and caching.
+from pathlib import Path
 import gc
 import os
 import copy
-import ray
 import pickle
 import json
 import random
 from omegaconf import OmegaConf
 from PIL import Image
 from collections import defaultdict, Counter
-from utils import (load_config,
-                    get_base_prompt,
-                    get_visual_program_prompt,
-                    extract_python_code,
-                    get_visual_program_correction_prompt,
-                    get_visual_program_error_correction_prompt,
-                    set_seed,
-                    get_fixed_code,
-                    initialize_image_generator,
-                    engine_execution,
-                    code_execution,
-                    unit_test_score, 
-                    SynonymChecker,
-                    get_penalty
-                    )
-from my_datasets import get_dataset_class
-from unit_test_generation.processing import extract_unit_tests, get_unit_test_prompt, get_grounded_diffusion_prompt
-from unit_test_generation.unit_test_sampling import TextSampler
-from accuracy_fns import get_accuracy_fn
+import sys
+
+# Opt in before importing production model dependencies. Dummy mode still uses
+# this script's real cache loading, baseline pass, dispatcher, and scoring loops.
+DUMMY_EXECUTION = '--dummy_execution' in sys.argv
+if DUMMY_EXECUTION:
+    from scripts.dummy_runtime import (
+        load_config, extract_python_code, set_seed, get_fixed_code,
+        engine_execution, code_execution, get_penalty,
+        get_dataset_class, get_accuracy_fn,
+    )
+    def tqdm(items):
+        return items
+else:
+    from transformers import AutoTokenizer
+    import torch
+    import ray
+    from tqdm import tqdm
+    from utils import (
+        load_config, get_base_prompt, get_visual_program_prompt, extract_python_code,
+        get_visual_program_correction_prompt, get_visual_program_error_correction_prompt,
+        set_seed, get_fixed_code, initialize_image_generator, engine_execution,
+        code_execution, unit_test_score, SynonymChecker, get_penalty,
+    )
+    from my_datasets import get_dataset_class
+    from unit_test_generation.processing import extract_unit_tests, get_unit_test_prompt, get_grounded_diffusion_prompt
+    from unit_test_generation.unit_test_sampling import TextSampler
+# Shared suite selection, validation, cache invalidation, and ViUniT setup checks.
+from unit_test_generation.suites import build_suite, invalidate_suite_cache, suite_settings, uses_viunit
+from unit_test_generation.metamorphic.baselines import (
+    collect_baselines, instrument_tests, failed_baseline_test, answer_options, score_expected,
+)
+if not DUMMY_EXECUTION:
+    from accuracy_fns import get_accuracy_fn
 from functools import partial
 
 
@@ -125,12 +138,64 @@ parser.add_argument(
 )
 
 
+# Optional pre-generated metamorphic tests, keyed by question ID. The dispatcher
+# loads these alongside ViUniT tests or alone, according to the selected suite mode.
+parser.add_argument(
+    '--custom_unit_tests_path',
+    type=str,
+    default='',
+    help='JSON mapping question IDs to custom tests for the shared suite dispatcher. '
+         'Image paths are relative to the working directory or absolute.'
+)
+
+parser.add_argument(
+    '--dummy_execution', action='store_true',
+    help='Offline cached-workflow fixtures: literal programs only, no model dependencies.'
+)
 args = parser.parse_args()
 
 ## CONFIG SETUP ##
 this_config = load_config(
     args.base_path, args.config_path, args.config_options)
 
+suite_settings(this_config)  # Validate the suite before loading models.
+if args.dummy_execution:
+    if (this_config['unit_test_suite']['mode'] != 'metamorphic'
+            or this_config['unit_test_generation']['use_program']
+            or not this_config['do_unit_test']
+            or this_config['execution']['feedback_max_iters'] != 1
+            or this_config['execution']['synonym_checker']
+            or this_config.get('run_fixed_code', False)
+            or this_config['execution']['use_fixed_code_when_low_confidence']):
+        parser.error('Dummy mode requires metamorphic-only, shared tests, one iteration, '
+                     'and no synonym checker or fixed-code fallback')
+# Translate the CLI shortcut into the same configuration used by YAML-based runs.
+if args.custom_unit_tests_path:
+    # Custom tests are shared per question, so testing must be enabled and
+    # program-conditioned generation must be disabled.
+    if not this_config['do_unit_test']:
+        parser.error('--custom_unit_tests_path requires do_unit_test=True')
+    if this_config['unit_test_generation']['use_program']:
+        parser.error('--custom_unit_tests_path requires unit_test_generation.use_program=False')
+    # Force execution and scoring to include the supplied suite rather than
+    # reusing results from an earlier set of tests.
+    if not args.execute_unit_tests or not args.recompute_unit_tests:
+        parser.error('Custom tests require --execute_unit_tests 1 --recompute_unit_tests 1 '
+                     'so results include the supplied tests')
+    suite = this_config['unit_test_suite']
+    # Pre-generated tests and LLM predictions are alternative input sources.
+    if suite['metamorphic'].get('predictions_path'):
+        parser.error('Choose --custom_unit_tests_path or metamorphic.predictions_path')
+    # Store an absolute path so the dispatcher can load and fingerprint the JSON.
+    suite['metamorphic']['tests_path'] = str(Path(args.custom_unit_tests_path).resolve())
+    # Adding custom tests to the default ViUniT mode produces a hybrid suite.
+    # Explicit metamorphic/hybrid selections retain their configured behavior.
+    if suite['mode'] == 'viunit':
+        suite['mode'] = 'hybrid'
+    # Revalidate after the CLI has changed the effective suite configuration.
+    suite_settings(this_config)
+
+baseline_enabled = this_config['execution'].get('metamorphic_baselines', False)
 set_seed(this_config['seed'])
 
 ## TASK SETUP ## 
@@ -193,6 +258,11 @@ if this_config.get('run_fixed_code', False):
      for i, d in enumerate(dataset.data):
         d['generated_code'] = {0: [fixed_code.format(d['question'])]}
 
+# Fail before any generation if the offline fixture is missing its program cache.
+if args.dummy_execution and (args.regenerate_programs or not all(
+        record.get('generated_code', {}).get(0) for record in dataset.data)):
+    parser.error('Dummy mode requires iteration-0 cached programs via --code_path, --data_path, or --reload 1')
+
 ## LOAD CACHED UNIT_TESTS ## 
 if this_config['do_unit_test'] and args.unit_test_path:
     print("Loading unit tests...")
@@ -203,6 +273,11 @@ if this_config['do_unit_test'] and args.unit_test_path:
     unit_test_data = pickle.load(open(args.unit_test_path, 'rb'))
     for i, d in enumerate(dataset.data):
         dataset.data[i]['unit_tests'] = unit_test_data[i]['unit_tests']
+        # Restore the suite fingerprint and aligned source labels when present.
+        # Older caches lack these fields and will be rebuilt by validation below.
+        for field in ('unit_test_suite_key', 'unit_test_metadata'):
+            if field in unit_test_data[i]:
+                dataset.data[i][field] = unit_test_data[i][field]
         if args.load_selected:
             dataset.data[i]['selected_unit_tests'] = unit_test_data[i]['selected_unit_tests']
             if args.load_images:
@@ -210,8 +285,13 @@ if this_config['do_unit_test'] and args.unit_test_path:
         if not args.recompute_unit_tests or not args.execute_unit_tests:
             dataset.data[i]['unit_test_results'] = unit_test_data[i]['unit_test_results']
           
-num_gpus = torch.cuda.device_count()                       
-num_cpus = torch.cuda.device_count() * 8
+num_gpus = 0 if DUMMY_EXECUTION else torch.cuda.device_count()
+num_cpus = num_gpus * 8
+
+# Discard incompatible tests and feedback before cached scores can influence
+# program generation. Generated programs themselves remain available.
+if this_config['do_unit_test']:
+    invalidate_suite_cache(dataset, this_config)
 
 ## SETUP ENGINES ##
 if this_config['llm_engine'] == 'vllm':
@@ -220,7 +300,9 @@ else:
     engine_path = 'accelerate launch llm_generation_engines/hf_engine.py'
       
 ## SETUP PROMPTS and TOKENIZERS ##
-if this_config['do_unit_test']:
+# Only ViUniT/hybrid suites need caption-generation prompts and tokenizers;
+# metamorphic-only suites load or transform the original images instead.
+if this_config['do_unit_test'] and uses_viunit(this_config):
     # unit test generation
     unit_test_system_prompt = open(
         this_config['unit_test_generation']['generation']['prompt_file']).read()
@@ -245,22 +327,23 @@ if this_config['do_unit_test']:
         else:
             lm_grounded_diffusion_tokenizer = None
 
-correction_prompt = open(
-    this_config['visual_program_generator']['generation']['correction_prompt_file']).read()
-with open(os.path.join(this_config['output_dir'], 'correction_prompt.txt'), 'w') as f:
-    f.write(correction_prompt)
-
-base_prompt = get_base_prompt(this_config['visual_program_generator']['generation']['prompt_file'],
-                              this_config['visual_program_generator']['generation']['in_context_examples_file'],
-                              this_config['visual_program_generator']['generation']['num_in_context_examples']
-                              )
-with open(os.path.join(this_config['output_dir'], 'base_prompt.txt'), 'w') as f:
-    f.write(base_prompt)
-if 'gp4' not in this_config['visual_program_generator']['model_name'].lower():
-    program_tokenizer = AutoTokenizer.from_pretrained(
-        this_config['visual_program_generator']['model_name'], trust_remote_code=True)
+if DUMMY_EXECUTION:
+    correction_prompt = base_prompt = ''
 else:
-    program_tokenizer = None
+    correction_prompt = open(
+        this_config['visual_program_generator']['generation']['correction_prompt_file']).read()
+    with open(os.path.join(this_config['output_dir'], 'correction_prompt.txt'), 'w') as f:
+        f.write(correction_prompt)
+
+    base_prompt = get_base_prompt(this_config['visual_program_generator']['generation']['prompt_file'],
+                                  this_config['visual_program_generator']['generation']['in_context_examples_file'],
+                                  this_config['visual_program_generator']['generation']['num_in_context_examples']
+                                  )
+    with open(os.path.join(this_config['output_dir'], 'base_prompt.txt'), 'w') as f:
+        f.write(base_prompt)
+
+# Load a tokenizer only if a new program actually needs to be generated.
+program_tokenizer = None
 
 start_iter = 0
 if len(dataset.data) > 0 and 'generated_code' in dataset.data[0] and not args.regenerate_programs:
@@ -274,6 +357,11 @@ for iter in range(start_iter, this_config['execution']['feedback_max_iters']):
         print('Visual programs already generated..')
     else:
         print("Generating visual programs....")
+        if DUMMY_EXECUTION:
+            parser.error('Dummy mode cannot generate programs; provide the cached fixture')
+        if program_tokenizer is None and 'gpt4' not in this_config['visual_program_generator']['model_name'].lower():
+            program_tokenizer = AutoTokenizer.from_pretrained(
+                this_config['visual_program_generator']['model_name'], trust_remote_code=True)
         if iter == 0:
             formatted_inputs = {
                 'text': get_visual_program_prompt(
@@ -310,6 +398,8 @@ for iter in range(start_iter, this_config['execution']['feedback_max_iters']):
                                 d['selected_unit_tests'], dict) else d['selected_unit_tests']
                             if this_config['unit_test_generation']['use_program']:
                                 input_selected_unit_tests = input_selected_unit_tests[j]
+                            if baseline_enabled:
+                                input_selected_unit_tests = d['candidate_unit_tests'][iter-1][j]
                             max_code = code
                         else:
                             break
@@ -383,212 +473,239 @@ for iter in range(start_iter, this_config['execution']['feedback_max_iters']):
             dataset.data[i]['code_prompt'][iter] = index2input[dataset.data[i]['index']]
             dataset.data[i]['generated_code'][iter] = index2out[dataset.data[i]['index']]  
         pickle.dump(dataset.data, open(save_file, 'wb'))
+
     
-    
+    # Optionally run each candidate on its original image before creating tests.
+    # Rules/images stay shared; the dictionary holds each candidate's own answer.
+    original_answers = {}
+    if this_config['do_unit_test'] and baseline_enabled:
+        original_answers = collect_baselines(
+            dataset, iter, this_config, code_execution, extract_python_code,
+        )
+        with open(save_file, 'wb') as baseline_file:
+            pickle.dump(dataset.data, baseline_file)
+
     if this_config['do_unit_test']:
-        ### Generate candidate unit tests ###
-        if this_config['unit_test_generation']['use_program'] and \
-            ('unit_tests' not in dataset.data[0] or \
-                not any([iter in dataset.data[idx]['unit_tests'] for idx in range(len(dataset))])):
-                formatted_inputs = {'text': [], 'index': []}
-                for i, d in enumerate(dataset):
-                    if iter in d['generated_code']:
-                        formatted_inputs['text'].extend(
-                            get_unit_test_prompt([d['text']]* len(d['generated_code'][iter]),
-                                                    unit_test_system_prompt,
-                                                    unit_test_in_context_examples, 
-                                                    this_config['unit_test_generation']['model_name'], 
-                                                    unit_test_tokenizer, 
-                                                    program=[extract_python_code(p) for p in d['generated_code'][iter]]
-                                                    )
-                            )
-                        formatted_inputs['index'].extend([f"{d['index']}-{c}" for c in range(len(d['generated_code'][iter]))])
+        # Wrap the existing batched caption -> sampling -> image pipeline as a
+        # provider. The dispatcher calls it only when ViUniT tests are needed
+        # and temporarily applies viunit_count without changing later settings.
+        # The closure retains the current iteration for the legacy program path.
+        def build_viunit_suite():
+            ### Generate candidate unit tests ###
+            if this_config['unit_test_generation']['use_program'] and \
+                ('unit_tests' not in dataset.data[0] or \
+                    not any([iter in dataset.data[idx]['unit_tests'] for idx in range(len(dataset))])):
+                    formatted_inputs = {'text': [], 'index': []}
+                    for i, d in enumerate(dataset):
+                        if iter in d['generated_code']:
+                            formatted_inputs['text'].extend(
+                                get_unit_test_prompt([d['text']]* len(d['generated_code'][iter]),
+                                                        unit_test_system_prompt,
+                                                        unit_test_in_context_examples,
+                                                        this_config['unit_test_generation']['model_name'],
+                                                        unit_test_tokenizer,
+                                                        program=[extract_python_code(p) for p in d['generated_code'][iter]]
+                                                        )
+                                )
+                            formatted_inputs['index'].extend([f"{d['index']}-{c}" for c in range(len(d['generated_code'][iter]))])
+                    if len(formatted_inputs['text']) == 0:
+                        exit(0)
+                    index2out = engine_execution(formatted_inputs, this_config, 'unit_test_generation', engine_path=engine_path)
+                    index2input = {i:t for i,t in zip(formatted_inputs['index'], formatted_inputs['text'])}
+                    for i in range(len(dataset.data)):
+                        if iter in dataset.data[i]['generated_code']:
+                            idx = dataset.data[i]['index']
+                            if 'unit_tests' not in dataset.data[i]:
+                                dataset.data[i]['unit_tests'] = {}
+                            if 'unit_test_prompt' not in dataset.data[i]:
+                                dataset.data[i]['unit_test_prompt'] = {}
+                            dataset.data[i]['unit_test_prompt'][iter] = index2input[f'{idx}-{c}']
+                            dataset.data[i]['unit_tests'][iter] = [
+                                extract_unit_tests(
+                                    index2out[f'{idx}-{c}']) for c in range(len(dataset.data[i]['generated_code'][iter]))
+                                ]
+                    pickle.dump(dataset.data, open(save_file, 'wb'))
+            elif 'unit_tests' not in dataset.data[0] and \
+                not this_config['unit_test_generation']['use_program']:
+                print("Generating unit tests...")
+                formatted_inputs = {
+                    'text': get_unit_test_prompt(
+                        [b_['text'] for b_ in dataset],
+                        unit_test_system_prompt,
+                        unit_test_in_context_examples,
+                        this_config['unit_test_generation']['model_name'],
+                        unit_test_tokenizer
+                        ),
+                    'index': [b_['index'] for b_ in dataset]}
                 if len(formatted_inputs['text']) == 0:
                     exit(0)
                 index2out = engine_execution(formatted_inputs, this_config, 'unit_test_generation', engine_path=engine_path)
                 index2input = {i:t for i,t in zip(formatted_inputs['index'], formatted_inputs['text'])}
                 for i in range(len(dataset.data)):
-                    if iter in dataset.data[i]['generated_code']:
-                        idx = dataset.data[i]['index']
-                        if 'unit_tests' not in dataset.data[i]:
-                            dataset.data[i]['unit_tests'] = {}
-                        if 'unit_test_prompt' not in dataset.data[i]:
-                            dataset.data[i]['unit_test_prompt'] = {}
-                        dataset.data[i]['unit_test_prompt'][iter] = index2input[f'{idx}-{c}']
-                        dataset.data[i]['unit_tests'][iter] = [
-                            extract_unit_tests(
-                                index2out[f'{idx}-{c}']) for c in range(len(dataset.data[i]['generated_code'][iter]))
-                            ]
+                    idx = dataset.data[i]['index']
+                    dataset.data[i]['unit_test_prompt'] = index2input[idx]
+                    dataset.data[i]['unit_tests'] = extract_unit_tests(
+                        index2out[idx])
                 pickle.dump(dataset.data, open(save_file, 'wb'))
-        elif 'unit_tests' not in dataset.data[0] and \
-            not this_config['unit_test_generation']['use_program']: 
-            print("Generating unit tests...")
-            formatted_inputs = {
-                'text': get_unit_test_prompt(
-                    [b_['text'] for b_ in dataset], 
-                    unit_test_system_prompt,
-                    unit_test_in_context_examples, 
-                    this_config['unit_test_generation']['model_name'], 
-                    unit_test_tokenizer
-                    ),
-                'index': [b_['index'] for b_ in dataset]}
-            if len(formatted_inputs['text']) == 0:
-                exit(0)
-            index2out = engine_execution(formatted_inputs, this_config, 'unit_test_generation', engine_path=engine_path)
-            index2input = {i:t for i,t in zip(formatted_inputs['index'], formatted_inputs['text'])}
-            for i in range(len(dataset.data)):
-                idx = dataset.data[i]['index']
-                dataset.data[i]['unit_test_prompt'] = index2input[idx]
-                dataset.data[i]['unit_tests'] = extract_unit_tests(
-                    index2out[idx])
-            pickle.dump(dataset.data, open(save_file, 'wb'))
-        else:
-            print("Unit tests already generated...")
-        
-        ### Sample unit tests ###
-        if this_config['unit_test_generation']['use_program'] and \
-            ('selected_unit_tests' not in dataset.data[0] or \
-                not any([iter in dataset.data[idx]['selected_unit_tests'] for idx in range(len(dataset))])):
-            print("Sampling unit tests....")
-            text_sampler = TextSampler(
-                model_name = this_config['unit_test_sampling']['model_name'],
-                sampling_strategy=this_config['unit_test_sampling']['strategy'],
-                filter_long_answers=this_config['unit_test_sampling']['filter_long_answers']
-                )
-            for i in tqdm(range(len(dataset.data))):
-                if 'selected_unit_tests' not in dataset.data[i]:
-                        dataset.data[i]['selected_unit_tests'] = {}
-                if iter in dataset.data[i]['unit_tests']:
-                    dataset.data[i]['selected_unit_tests'][iter] = []
-                    for code_index, code in enumerate(dataset.data[i]['generated_code'][iter]):
-                        dataset.data[i]['selected_unit_tests'][iter].append(text_sampler.sample(
-                                                dataset.data[i]['unit_tests'][iter][code_index], 
-                                                num_samples=this_config['unit_test_sampling']['num_unit_tests'],
-                                                ))
-            pickle.dump(dataset.data, open(save_file, 'wb'))
-            text_sampler.clear_sampler()
-            del text_sampler
-            gc.collect()
-            torch.cuda.empty_cache()
-        elif 'selected_unit_tests' not in dataset.data[0] and \
-            not this_config['unit_test_generation']['use_program']:
-            print("Sampling unit tests....")
-            text_sampler = TextSampler(
-                model_name = this_config['unit_test_sampling']['model_name'],
-                sampling_strategy=this_config['unit_test_sampling']['strategy'],
-                filter_long_answers=this_config['unit_test_sampling']['filter_long_answers']
-                )
-            for i in tqdm(range(len(dataset.data))):
-                dataset.data[i]['selected_unit_tests'] = text_sampler.sample(
-                                        dataset.data[i]['unit_tests'], 
-                                        num_samples=this_config['unit_test_sampling']['num_unit_tests'],
-                                        )
-            pickle.dump(dataset.data, open(save_file, 'wb'))
-            text_sampler.clear_sampler()
-            del text_sampler
-            gc.collect()
-            torch.cuda.empty_cache()
-        else:
-            print("Unit tests already sampled...")
-        
-        ## Generate images for unit tests ##
-        if this_config['unit_test_generation']['use_program']  and ('unit_test_images' not in dataset.data[0] or not any([iter in dataset.data[idx]['unit_test_images'] for idx in range(len(dataset))])):
-            print("Sampling images with program...")
-            image_retriever = initialize_image_generator(this_config)
-            queries, idx2lengths = [], {}
-            for d in dataset.data:
-                if iter in d['selected_unit_tests']:
-                    idx2lengths[d['index']] = [len(u) for u in d['selected_unit_tests'][iter]]
-                    for code_ut in d['selected_unit_tests'][iter]:
-                        queries.extend([uu[0] for uu in code_ut])
-            
-            if this_config['image_generation']['image_source'] == 'diffusion' and any([k in this_config['image_generation']['diffusion_model_name'].lower() for k in ['lmd', 'gligen']]):
-                formatted_inputs = {
-                    'text': get_grounded_diffusion_prompt(
-                        queries ,
-                        lm_grounded_diffusion_system_prompt,
-                        lm_grounded_diffusion_in_context_prompt, 
-                        this_config['unit_test_generation']['model_name'], 
-                        lm_grounded_diffusion_tokenizer) ,
-                    'index': list(range(len(queries)))}
-                index2out = engine_execution(formatted_inputs, 'image_generation')
-                llm_response = [index2out[i] for i in range(len(queries))]
-                images = []
-                image_batch_size = this_config['image_generation']['image_batch_size']*torch.cuda.device_count()
-                if this_config['image_generation']['distributed']:
-                    diffuser_input_queries = queries
-                    diffuser_llm_response = llm_response
-                    images = image_retriever.batch_fetch_image(diffuser_input_queries, diffuser_llm_response)
-                else:
-                    for i in tqdm(range(0, len(queries), image_batch_size)):
-                        images.extend(image_retriever.batch_fetch_image(queries[i:i+image_batch_size], llm_response[i:i+image_batch_size]))
             else:
-                if this_config['image_generation']['distributed']:
-                    diffuser_input_queries = queries
-                    images = image_retriever.batch_fetch_image(diffuser_input_queries)
-                else:
+                print("Unit tests already generated...")
+
+            ### Sample unit tests ###
+            if this_config['unit_test_generation']['use_program'] and \
+                ('selected_unit_tests' not in dataset.data[0] or \
+                    not any([iter in dataset.data[idx]['selected_unit_tests'] for idx in range(len(dataset))])):
+                print("Sampling unit tests....")
+                text_sampler = TextSampler(
+                    model_name = this_config['unit_test_sampling']['model_name'],
+                    sampling_strategy=this_config['unit_test_sampling']['strategy'],
+                    filter_long_answers=this_config['unit_test_sampling']['filter_long_answers']
+                    )
+                for i in tqdm(range(len(dataset.data))):
+                    if 'selected_unit_tests' not in dataset.data[i]:
+                            dataset.data[i]['selected_unit_tests'] = {}
+                    if iter in dataset.data[i]['unit_tests']:
+                        dataset.data[i]['selected_unit_tests'][iter] = []
+                        for code_index, code in enumerate(dataset.data[i]['generated_code'][iter]):
+                            dataset.data[i]['selected_unit_tests'][iter].append(text_sampler.sample(
+                                                    dataset.data[i]['unit_tests'][iter][code_index],
+                                                    num_samples=this_config['unit_test_sampling']['num_unit_tests'],
+                                                    ))
+                pickle.dump(dataset.data, open(save_file, 'wb'))
+                text_sampler.clear_sampler()
+                del text_sampler
+                gc.collect()
+                torch.cuda.empty_cache()
+            elif 'selected_unit_tests' not in dataset.data[0] and \
+                not this_config['unit_test_generation']['use_program']:
+                print("Sampling unit tests....")
+                text_sampler = TextSampler(
+                    model_name = this_config['unit_test_sampling']['model_name'],
+                    sampling_strategy=this_config['unit_test_sampling']['strategy'],
+                    filter_long_answers=this_config['unit_test_sampling']['filter_long_answers']
+                    )
+                for i in tqdm(range(len(dataset.data))):
+                    dataset.data[i]['selected_unit_tests'] = text_sampler.sample(
+                                            dataset.data[i]['unit_tests'],
+                                            num_samples=this_config['unit_test_sampling']['num_unit_tests'],
+                                            )
+                pickle.dump(dataset.data, open(save_file, 'wb'))
+                text_sampler.clear_sampler()
+                del text_sampler
+                gc.collect()
+                torch.cuda.empty_cache()
+            else:
+                print("Unit tests already sampled...")
+
+            ## Generate images for unit tests ##
+            if this_config['unit_test_generation']['use_program']  and ('unit_test_images' not in dataset.data[0] or not any([iter in dataset.data[idx]['unit_test_images'] for idx in range(len(dataset))])):
+                print("Sampling images with program...")
+                image_retriever = initialize_image_generator(this_config)
+                queries, idx2lengths = [], {}
+                for d in dataset.data:
+                    if iter in d['selected_unit_tests']:
+                        idx2lengths[d['index']] = [len(u) for u in d['selected_unit_tests'][iter]]
+                        for code_ut in d['selected_unit_tests'][iter]:
+                            queries.extend([uu[0] for uu in code_ut])
+
+                if this_config['image_generation']['image_source'] == 'diffusion' and any([k in this_config['image_generation']['diffusion_model_name'].lower() for k in ['lmd', 'gligen']]):
+                    formatted_inputs = {
+                        'text': get_grounded_diffusion_prompt(
+                            queries ,
+                            lm_grounded_diffusion_system_prompt,
+                            lm_grounded_diffusion_in_context_prompt,
+                            this_config['unit_test_generation']['model_name'],
+                            lm_grounded_diffusion_tokenizer) ,
+                        'index': list(range(len(queries)))}
+                    index2out = engine_execution(formatted_inputs, 'image_generation')
+                    llm_response = [index2out[i] for i in range(len(queries))]
                     images = []
                     image_batch_size = this_config['image_generation']['image_batch_size']*torch.cuda.device_count()
-                    for i in tqdm(range(0, len(queries), image_batch_size)):
-                        images.extend(image_retriever.batch_fetch_image(queries[i:i+image_batch_size]))
-            image_retriever.clear_retriever()
-            gc.collect()
-            torch.cuda.empty_cache()
-                
-            start = 0
-            for idx,d in enumerate(dataset.data):
-                if iter in d['selected_unit_tests']:
-                    if 'unit_test_images' not in d:
-                        dataset.data[idx]['unit_test_images'] = {}
-                    dataset.data[idx]['unit_test_images'][iter] = []
-                    for j in range(len(idx2lengths[d['index']])): # code index
-                            dataset.data[idx]['unit_test_images'][iter].append(images[start:start+idx2lengths[d['index']][j]])
-                            start += idx2lengths[d['index']][j]      
-        elif 'unit_test_images' not in dataset.data[0] and not this_config['unit_test_generation']['use_program']:
-            print("Sampling images...")
-            image_retriever = initialize_image_generator(this_config)
-            queries = [u[0] for d in dataset.data for u in d['selected_unit_tests']]
-            if this_config['image_generation']['image_source'] == 'diffusion' and any([k in this_config['image_generation']['diffusion_model_name'].lower() for k in ['lmd', 'gligen']]):
-                formatted_inputs = {
-                    'text': get_grounded_diffusion_prompt(
-                        queries ,
-                        lm_grounded_diffusion_system_prompt,
-                        lm_grounded_diffusion_in_context_prompt, 
-                        this_config['unit_test_generation']['model_name'], 
-                        lm_grounded_diffusion_tokenizer) ,
-                    'index': list(range(len(queries)))}
-                index2out = engine_execution(formatted_inputs, this_config, 'image_generation',engine_path=engine_path)
-                llm_response = [index2out[i] for i in range(len(queries))]
-                images = []
-                image_batch_size = this_config['image_generation']['image_batch_size']*torch.cuda.device_count()
-                if this_config['image_generation']['distributed']:
-                    diffuser_input_queries = queries
-                    diffuser_llm_response = llm_response
-                    images = image_retriever.batch_fetch_image(diffuser_input_queries, diffuser_llm_response)
+                    if this_config['image_generation']['distributed']:
+                        diffuser_input_queries = queries
+                        diffuser_llm_response = llm_response
+                        images = image_retriever.batch_fetch_image(diffuser_input_queries, diffuser_llm_response)
+                    else:
+                        for i in tqdm(range(0, len(queries), image_batch_size)):
+                            images.extend(image_retriever.batch_fetch_image(queries[i:i+image_batch_size], llm_response[i:i+image_batch_size]))
                 else:
-                    for i in tqdm(range(0, len(queries), image_batch_size)):
-                        images.extend(image_retriever.batch_fetch_image(queries[i:i+image_batch_size], llm_response[i:i+image_batch_size]))
-            else:
-                if this_config['image_generation']['distributed']:
-                    diffuser_input_queries = queries
-                    images = image_retriever.batch_fetch_image(diffuser_input_queries)
-                else:
+                    if this_config['image_generation']['distributed']:
+                        diffuser_input_queries = queries
+                        images = image_retriever.batch_fetch_image(diffuser_input_queries)
+                    else:
+                        images = []
+                        image_batch_size = this_config['image_generation']['image_batch_size']*torch.cuda.device_count()
+                        for i in tqdm(range(0, len(queries), image_batch_size)):
+                            images.extend(image_retriever.batch_fetch_image(queries[i:i+image_batch_size]))
+                image_retriever.clear_retriever()
+                gc.collect()
+                torch.cuda.empty_cache()
+
+                start = 0
+                for idx,d in enumerate(dataset.data):
+                    if iter in d['selected_unit_tests']:
+                        if 'unit_test_images' not in d:
+                            dataset.data[idx]['unit_test_images'] = {}
+                        dataset.data[idx]['unit_test_images'][iter] = []
+                        for j in range(len(idx2lengths[d['index']])): # code index
+                                dataset.data[idx]['unit_test_images'][iter].append(images[start:start+idx2lengths[d['index']][j]])
+                                start += idx2lengths[d['index']][j]
+            elif 'unit_test_images' not in dataset.data[0] and not this_config['unit_test_generation']['use_program']:
+                print("Sampling images...")
+                image_retriever = initialize_image_generator(this_config)
+                queries = [u[0] for d in dataset.data for u in d['selected_unit_tests']]
+                if this_config['image_generation']['image_source'] == 'diffusion' and any([k in this_config['image_generation']['diffusion_model_name'].lower() for k in ['lmd', 'gligen']]):
+                    formatted_inputs = {
+                        'text': get_grounded_diffusion_prompt(
+                            queries ,
+                            lm_grounded_diffusion_system_prompt,
+                            lm_grounded_diffusion_in_context_prompt,
+                            this_config['unit_test_generation']['model_name'],
+                            lm_grounded_diffusion_tokenizer) ,
+                        'index': list(range(len(queries)))}
+                    index2out = engine_execution(formatted_inputs, this_config, 'image_generation',engine_path=engine_path)
+                    llm_response = [index2out[i] for i in range(len(queries))]
                     images = []
                     image_batch_size = this_config['image_generation']['image_batch_size']*torch.cuda.device_count()
-                    for i in tqdm(range(0, len(queries), image_batch_size)):
-                        images.extend(image_retriever.batch_fetch_image(queries[i:i+image_batch_size]))
-            image_retriever.clear_retriever()
-            gc.collect()
-            torch.cuda.empty_cache()
-            start = 0
-            lengths = [len(d['selected_unit_tests']) for d in dataset.data]
-            for idx in range(len(lengths)):
-                dataset.data[idx]['unit_test_images'] = images[start:start+lengths[idx]]
-                start += lengths[idx]
-            pickle.dump(dataset.data, open(save_file, 'wb'))  
+                    if this_config['image_generation']['distributed']:
+                        diffuser_input_queries = queries
+                        diffuser_llm_response = llm_response
+                        images = image_retriever.batch_fetch_image(diffuser_input_queries, diffuser_llm_response)
+                    else:
+                        for i in tqdm(range(0, len(queries), image_batch_size)):
+                            images.extend(image_retriever.batch_fetch_image(queries[i:i+image_batch_size], llm_response[i:i+image_batch_size]))
+                else:
+                    if this_config['image_generation']['distributed']:
+                        diffuser_input_queries = queries
+                        images = image_retriever.batch_fetch_image(diffuser_input_queries)
+                    else:
+                        images = []
+                        image_batch_size = this_config['image_generation']['image_batch_size']*torch.cuda.device_count()
+                        for i in tqdm(range(0, len(queries), image_batch_size)):
+                            images.extend(image_retriever.batch_fetch_image(queries[i:i+image_batch_size]))
+                image_retriever.clear_retriever()
+                gc.collect()
+                torch.cuda.empty_cache()
+                start = 0
+                lengths = [len(d['selected_unit_tests']) for d in dataset.data]
+                for idx in range(len(lengths)):
+                    dataset.data[idx]['unit_test_images'] = images[start:start+lengths[idx]]
+                    start += lengths[idx]
+                pickle.dump(dataset.data, open(save_file, 'wb'))
+            else:
+                print("Images already sampled...")
+
+
+        # Preserve iteration/program-specific ViUniT suites on the legacy path.
+        if this_config['unit_test_generation']['use_program']:
+            build_viunit_suite()
         else:
-            print("Images already sampled...")
-            
+            # Build or reuse a per-question ViUniT, metamorphic, or hybrid suite.
+            # The dispatcher aligns descriptions/answers, image groups, and source
+            # metadata so the existing executor can score every suite type.
+            build_suite(dataset, this_config, build_viunit_suite)
+        # Persist the completed suite, including its metadata and cache fingerprint.
+        pickle.dump(dataset.data, open(save_file, 'wb'))
+
         if this_config['execution']['synonym_checker']:
             checker = SynonymChecker()
         if len(dataset.data) > 0 and 'unit_test_results' in dataset.data[0] and \
@@ -610,8 +727,16 @@ for iter in range(start_iter, this_config['execution']['feedback_max_iters']):
                     if this_config['unit_test_generation']['use_program']:
                         unit_tests = unit_tests[iter][code_index]
                         images = dataset.data[idx]['unit_test_images'][iter][code_index]
+                    # Resolve only metamorphic rules against this candidate's baseline.
+                    unit_tests, baseline_errors = instrument_tests(
+                        dataset.data[idx], unit_tests, iter, code_index,
+                        baseline_enabled, original_answers,
+                    )
                     unit_test_results = []
                     for ut_index, ut in enumerate(unit_tests):
+                        if ut_index in baseline_errors:
+                            unit_test_results.append(failed_baseline_test(baseline_errors[ut_index]))
+                            continue
                         curr_unit_test = []
                         if isinstance(images[ut_index], tuple):
                             try:
@@ -628,14 +753,15 @@ for iter in range(start_iter, this_config['execution']['feedback_max_iters']):
                                 continue
                             
                             res = unit_test_pre[code_index]['results'][ut_index]['results'][im_idx]
+                            res['expected_answer'] = ut[1]
                             penalty = get_penalty(res['error'], this_config['execution']['error_penalty']['syntax'], this_config['execution']['error_penalty']['runtime'])
                             if res['error'] is not None:
                                 res['acc'] = -penalty
                             else:
                                 if this_config['execution']['synonym_checker']:
-                                    res['acc'] = checker.are_synonymous(res['output'], ut[1])
+                                    res['acc'] = score_expected(res['output'], ut[1], acc_fn, checker)
                                 else:
-                                    res['acc'] = acc_fn([res['output']], [ut[1]])
+                                    res['acc'] = score_expected(res['output'], ut[1], acc_fn)
                             curr_unit_test.append(res)
                         if len(curr_unit_test) == 0:
                             print(f"No images for unit test {dataset.data[idx]['index']}-{code_index}-{ut_index}")
@@ -664,11 +790,18 @@ for iter in range(start_iter, this_config['execution']['feedback_max_iters']):
                 if iter > 0 and iter not in dataset.data[idx]['generated_code']:
                     continue
                 for code_index, code in enumerate(dataset.data[idx]['generated_code'][iter]):
+                    # Shared suites already use the executor's flat test format;
+                    # only the legacy program-conditioned path needs indexing below.
                     unit_tests = dataset.data[idx]['selected_unit_tests']
                     images = dataset.data[idx]['unit_test_images']
                     if this_config['unit_test_generation']['use_program']:
                         unit_tests = unit_tests[iter][code_index]
                         images = dataset.data[idx]['unit_test_images'][iter][code_index]
+                    # Resolve only metamorphic rules against this candidate's baseline.
+                    unit_tests, baseline_errors = instrument_tests(
+                        dataset.data[idx], unit_tests, iter, code_index,
+                        baseline_enabled, original_answers,
+                    )
                     generated_code = extract_python_code(code)
                     if len(generated_code.split('def execute_command(image) -> str:\n')) > 1:
                         generated_code = generated_code.split('def execute_command(image) -> str:\n')[1]
@@ -676,6 +809,8 @@ for iter in range(start_iter, this_config['execution']['feedback_max_iters']):
                         generated_code = generated_code.split('def execute_command(image):\n')[1]
                     unit_test_results = []
                     for ut_index, ut in enumerate(unit_tests):
+                        if ut_index in baseline_errors:
+                            continue
                         curr_unit_test = []
                         if isinstance(images[ut_index], tuple):
                             try:
@@ -689,7 +824,7 @@ for iter in range(start_iter, this_config['execution']['feedback_max_iters']):
                                 continue
                             code_execution_data.append({'sample_id': f"{idx}_{code_index}_{ut_index}_{im_idx}", 
                                                         'answer': ut[1], 
-                                                        'possible_answers': [ut[1]], 
+                                                        'possible_answers': answer_options(ut[1]),
                                                         'query_type': 'image', 
                                                         'codes': generated_code,
                                                         'query': dataset.data[idx]['question'], 
@@ -697,7 +832,8 @@ for iter in range(start_iter, this_config['execution']['feedback_max_iters']):
                                                         })
             
 
-            code_execution_results = code_execution(code_execution_data, this_config, use_fixed_code=None)
+            code_execution_results = (code_execution(code_execution_data, this_config, use_fixed_code=None)
+                                      if code_execution_data else {})
             
             for idx in tqdm(range(0, len(dataset.data))):
                 if iter > 0 and iter not in dataset.data[idx]['generated_code']:
@@ -711,8 +847,16 @@ for iter in range(start_iter, this_config['execution']['feedback_max_iters']):
                     if this_config['unit_test_generation']['use_program']:
                         unit_tests = unit_tests[iter][code_index]
                         images = dataset.data[idx]['unit_test_images'][iter][code_index]
+                    # Resolve only metamorphic rules against this candidate's baseline.
+                    unit_tests, baseline_errors = instrument_tests(
+                        dataset.data[idx], unit_tests, iter, code_index,
+                        baseline_enabled, original_answers,
+                    )
                     unit_test_results = []
                     for ut_index, ut in enumerate(unit_tests):
+                        if ut_index in baseline_errors:
+                            unit_test_results.append(failed_baseline_test(baseline_errors[ut_index]))
+                            continue
                         curr_unit_test = []
                         if isinstance(images[ut_index], tuple):
                             try:
@@ -728,14 +872,15 @@ for iter in range(start_iter, this_config['execution']['feedback_max_iters']):
                                 continue
                             
                             res = code_execution_results[f"{idx}_{code_index}_{ut_index}_{im_idx}"]
+                            res['expected_answer'] = ut[1]
                             penalty = get_penalty(res['error'], this_config['execution']['error_penalty']['syntax'], this_config['execution']['error_penalty']['runtime'])
                             if res['error'] is not None:
                                 res['acc'] = -penalty
                             else:
                                 if this_config['execution']['synonym_checker']:
-                                    res['acc'] = checker.are_synonymous(res['output'], ut[1])
+                                    res['acc'] = score_expected(res['output'], ut[1], acc_fn, checker)
                                 else:
-                                    res['acc'] = acc_fn([res['output']], [ut[1]])
+                                    res['acc'] = score_expected(res['output'], ut[1], acc_fn)
                             curr_unit_test.append(res)
                         if len(curr_unit_test) == 0:
                             print(f"No images for unit test {dataset.data[idx]['index']}-{code_index}-{ut_index}")
@@ -928,3 +1073,6 @@ for iter in range(start_iter, this_config['execution']['feedback_max_iters']):
         print("Iteration accuracy: ", correct/len(dataset.data))
         log_file.write(f"Iteration accuracy: {correct/len(dataset.data)}\n")
 log_file.close()
+if DUMMY_EXECUTION:
+    from scripts.dummy_runtime import write_summary
+    write_summary(dataset.data, this_config)

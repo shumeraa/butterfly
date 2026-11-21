@@ -1,0 +1,29 @@
+# Merged with viunit_configs/base.yaml by generate.py/train.py.
+# Download originals with scripts/download_gqa_subset.py first, and configure
+# the inherited production model/execution environment before running.
+output_dir: ./output/gqa_metamorphic_mr1_only
+do_unit_test: true
+run_fixed_code: false
+
+data:
+  dataset_name: GQA
+  dataset_args:
+    annotation_file: ./output/gqa_subset/annotations.json
+    image_root: ./output/gqa_subset/images
+    num_samples: -1
+    sample_per_type: -1
+    sample_ids_file: null
+
+unit_test_generation:
+  use_program: false
+
+unit_test_suite:
+  mode: metamorphic
+  metamorphic_count: 3
+  metamorphic:
+    labels_path: ./examples/metamorphic/labels.json
+    mr2_enabled: false # Apply only labeled flips/grayscale; no detector or segmenter
+
+execution:
+  metamorphic_baselines: true
+  feedback_max_iters: 1

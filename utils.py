@@ -285,7 +285,7 @@ def get_visual_program_correction_prompt(question, correction_prompt, code, unit
             unit_test_outputs.append(f"{unit_test_result['output']}")
     unit_test_input = "\n".join([unit_test_template.replace("INDEX_LETTER", chr(ord('A')+i))
                                  .replace('INSERT_UNIT_TEST_HERE', unit_tests[i][0])
-                                 .replace('INSTERT_UNIT_TEST_ANSWER_HERE', unit_tests[i][1])
+                                 .replace('INSTERT_UNIT_TEST_ANSWER_HERE', str(unit_tests[i][1]))
                                  .replace('INSERT_UNIT_TEST_RESULT_HERE', unit_test_outputs[i]) for i in range(len(unit_tests))])
     correction_prompt = correction_prompt.replace('INSERT_QUERY_HERE', question).replace('INSERT_CODE_HERE', code).replace('INSERT_UNIT_TEST_OUTPUTS_HERE', unit_test_input)
     return correction_prompt

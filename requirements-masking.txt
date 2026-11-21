@@ -1,0 +1,4 @@
+-r requirements-transforms.txt
+torch>=2.2
+torchvision>=0.17
+transformers==4.57.1

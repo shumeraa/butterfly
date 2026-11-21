@@ -140,6 +140,7 @@ celerybeat.pid
 # Environments
 .env
 .venv
+.venv-dummy/
 env/
 venv/
 ENV/
@@ -232,3 +233,7 @@ my_datasets/annotation_files/GQA/balanced_train_annotation.json
 llm_experiments/.env
 llm_experiments/images
 llm_experiments/outputs
+
+# Legacy local smoke assets; new runs write generated inputs under output/.
+/fixtures/cached_workflow/dummy.jpg
+/fixtures/cached_workflow/cached_programs.p
