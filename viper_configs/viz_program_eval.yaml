@@ -1,0 +1,3 @@
+# XVLM's base_models package is not installed; verify_property/best_match use clip, so xvlm is unused.
+load_models:
+    xvlm: False
