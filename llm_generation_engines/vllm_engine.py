@@ -53,7 +53,7 @@ num_gpus = torch.cuda.device_count()
 num_cpus = torch.cuda.device_count() * 8
 
 RAY_STOP = ray.shutdown
-RAY_INIT = partial(ray.init, address='local', num_cpus=num_cpus, num_gpus=num_gpus, _temp_dir=os.path.join('/nlpgpu/data/artemisp/ray')) #f'ray start --head'
+RAY_INIT = partial(ray.init, address='local', num_cpus=num_cpus, num_gpus=num_gpus, _temp_dir=os.environ.get('RAY_TEMP_DIR', os.path.expanduser('~/ray'))) #f'ray start --head'
 
 ctx = RAY_INIT()
 
@@ -79,7 +79,6 @@ with ctx:
         max_tokens=generation_kwargs['max_new_tokens'],
         best_of=generation_kwargs['num_return_sequences'], 
         n=generation_kwargs['num_return_sequences'], 
-        use_beam_search=generation_kwargs['num_beams']>1,
         ) 
 
     print("Device count: ", torch.cuda.device_count())
@@ -106,7 +105,7 @@ with ctx:
                             dtype=torch.float16 if half else torch.float32, 
                             max_num_seqs=128, 
                             enable_lora=enable_lora,
-                            distributed_executor_backend='ray',
+                            distributed_executor_backend='ray' if tensor_parallel_size > 1 else None,
                             enforce_eager=True,
                             # max_parallel_loading_workers=4
                             )

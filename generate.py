@@ -887,6 +887,8 @@ for iter in range(start_iter, this_config['execution']['feedback_max_iters']):
             code_execution_results = code_execution(code_execution_data, this_config, use_fixed_code=True)
             for sample_id, res in code_execution_results.items():
                 idx, code_idx = sample_id.split('_')
+                # executor does not score outputs; later code reads res['acc']
+                res['acc'] = acc_fn([res['output']], [dataset.data[int(idx)]['answer']]) if res['error'] is None else 0
                 reformatted_execution_results[int(idx)].append(res)
                 if 'code_outputs' not in dataset.data[int(idx)]:
                     dataset.data[int(idx)]['code_outputs'] = {}
