@@ -116,13 +116,27 @@ def mask_objects(image, word, fill='white', *, segmenter=None):
     return Image.fromarray(pixels)
 
 
-def fill_objects(image, word, color, *, segmenter=None):
+def _tint(pixels, mask, rgb, strength):
+    """Shift masked pixels to rgb's hue and toward its saturation, keeping brightness."""
+    hsv = np.array(Image.fromarray(np.ascontiguousarray(pixels[:, :, :3])).convert('HSV')).astype(float)
+    target = np.array(Image.new('RGB', (1, 1), rgb).convert('HSV').getpixel((0, 0)), dtype=float)
+    hsv[mask, 0] = target[0]
+    hsv[mask, 1] = hsv[mask, 1] * (1 - strength) + target[1] * strength
+    tinted = np.array(Image.fromarray(hsv.round().astype(np.uint8), 'HSV').convert('RGB'))
+    pixels[mask, :3] = tinted[mask]
+
+
+def fill_objects(image, word, color, *, segmenter=None, strength=1.0):
     """Fill the matching segmentation mask with a color, preserving alpha.
 
     Raise if no target is found instead of recording an unchanged custom test.
-    All objects matched by the supplied phrase are filled.
+    All objects matched by the supplied phrase are filled. strength=1 replaces
+    every masked pixel with the color; 0<strength<1 instead tints the object
+    (target hue, saturation moved toward the color's), keeping its shading.
     """
     _word(word)
+    if not 0 < strength <= 1:
+        raise ValueError('strength must be in (0, 1]')
     rgb = Image.new('RGB', (1, 1), color).getpixel((0, 0))
     source = _prepare_image(image)
     backend = segmenter if segmenter is not None else _default_segmenter()
@@ -130,7 +144,10 @@ def fill_objects(image, word, color, *, segmenter=None):
     if not mask.any():
         raise ValueError(f'No object matched {word!r} for color fill')
     pixels = np.array(source)
-    pixels[mask, :3] = rgb
+    if strength == 1:
+        pixels[mask, :3] = rgb
+    else:
+        _tint(pixels, mask, rgb, strength)
     return Image.fromarray(pixels)
 
 

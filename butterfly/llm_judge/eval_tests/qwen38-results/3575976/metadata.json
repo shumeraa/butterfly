@@ -1,0 +1,15 @@
+{
+  "model": "Qwen/Qwen3.8-27B",
+  "requested_revision": "main",
+  "python": "3.11.18",
+  "torch": "2.14.0+cu130",
+  "vllm": "0.33.0",
+  "cuda": "13.0",
+  "visible_gpus": null,
+  "tensor_parallel_size": 2,
+  "dtype": "bfloat16",
+  "max_model_len": 2048,
+  "max_new_tokens": 128,
+  "gpu_memory_utilization": 0.9,
+  "thinking": false
+}

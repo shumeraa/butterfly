@@ -1,0 +1,750 @@
+{
+  "sample_sha256": "4d616411da7f9015545fd6094fb08659537e56067ad89fd1171d4cb1ac65e63a",
+  "sample_ids": [
+    "02851313",
+    "18641068",
+    "00389698",
+    "17461097",
+    "06190513",
+    "06948617",
+    "04861245",
+    "0727477",
+    "02735536",
+    "18896070",
+    "02774547",
+    "17397283",
+    "1022959",
+    "14570761",
+    "00915726",
+    "00965304",
+    "03483966",
+    "08149156",
+    "081030136",
+    "19396655",
+    "01239286",
+    "18237208",
+    "05895740",
+    "15825167",
+    "14138674",
+    "1573678",
+    "15959781",
+    "17600401",
+    "06406082",
+    "10486181",
+    "06895859",
+    "143713",
+    "00102967",
+    "05830069",
+    "10933477",
+    "18934744",
+    "10303729",
+    "1250760",
+    "03441731",
+    "04547661",
+    "083394",
+    "19730729",
+    "02442155",
+    "02667802",
+    "02848417",
+    "11214625",
+    "1023022",
+    "10763852",
+    "061007486",
+    "16421629",
+    "01584282",
+    "19916849",
+    "13382026",
+    "15586521",
+    "03942861",
+    "12612525",
+    "02969620",
+    "10529344",
+    "15958332",
+    "16123751",
+    "0794921",
+    "13179160",
+    "01715216",
+    "02674412",
+    "0564311",
+    "16148286",
+    "03939025",
+    "16608050",
+    "021028697",
+    "05947079",
+    "02914718",
+    "09904958",
+    "06323112",
+    "09971443",
+    "10741474",
+    "191005839",
+    "06101628",
+    "13643847",
+    "05476530",
+    "08584866",
+    "06146293",
+    "16466752",
+    "13521887",
+    "13636544",
+    "02301837",
+    "15975683",
+    "05749775",
+    "18636988",
+    "06491223",
+    "09300546",
+    "12526294",
+    "15880558",
+    "07603265",
+    "18224761",
+    "08339212",
+    "12284280",
+    "02151434",
+    "08166307",
+    "00963237",
+    "08903561",
+    "07925264",
+    "11678115",
+    "01841896",
+    "07317368",
+    "18986411",
+    "19613091",
+    "08940196",
+    "16269802",
+    "07707660",
+    "17810908",
+    "13462848",
+    "19468179",
+    "05166167",
+    "14985794",
+    "02595972",
+    "07293079",
+    "08873671",
+    "09495255",
+    "1463279",
+    "18719752",
+    "12189759",
+    "1665130",
+    "1055286",
+    "11476642",
+    "04128402",
+    "06618367",
+    "133024",
+    "13708168",
+    "02327148",
+    "18535342",
+    "01235977",
+    "17933898",
+    "031040578",
+    "04172714",
+    "14739979",
+    "196960",
+    "13953994",
+    "16312545",
+    "12577102",
+    "17964576",
+    "02849126",
+    "13884592",
+    "09125688",
+    "12916412",
+    "12567906",
+    "13755871",
+    "06322927",
+    "12962045",
+    "0045208",
+    "0331298",
+    "08428882",
+    "09832280",
+    "06620778",
+    "1014540",
+    "04780644",
+    "12334145",
+    "00183252",
+    "14480962",
+    "08819706",
+    "1592059",
+    "05241731",
+    "17344038",
+    "03204000",
+    "18946878",
+    "08173484",
+    "14255029",
+    "16791583",
+    "19191797",
+    "03204066",
+    "03683712",
+    "041029029",
+    "06592255",
+    "07600375",
+    "11160465",
+    "07268300",
+    "10801440",
+    "00684396",
+    "03408271",
+    "07447021",
+    "18925102",
+    "06122979",
+    "0752",
+    "01889076",
+    "06409938",
+    "02408903",
+    "15994502",
+    "02149824",
+    "1964286",
+    "11119332",
+    "19106542",
+    "01516264",
+    "18605435",
+    "05134826",
+    "18555056",
+    "03813835",
+    "16534162",
+    "11498858",
+    "18950867",
+    "05313924",
+    "08967641",
+    "16518466",
+    "18139735"
+  ],
+  "model_identifier": "Qwen/Qwen3.8-27B",
+  "prompt_version": "gqa-question-only-v1",
+  "prompt_templates": {
+    "call1": "Question: {question}\n\nCan the answer only be one of two things? This includes yes/no, a choice written in the question (\"red or green\", \"an apple or a banana\"), and left/right or top/bottom.\n\nExamples:\nQuestion: Is the bowl to the right of the green apple?\nBINARY\n\nQuestion: What color is the apple?\nOPEN\n\nReply with one word: BINARY or OPEN.",
+    "BINARY": "Question: {question}\n\nAnalyze this visual question using only its wording, not an image or answer.\n\n1. TOPIC: This question has a yes/no or two-choice answer. What does it check? Pick one:\nPOSITION: where something is (left/right, above/below, on, in front of)\nCOLOR: the color of something\nMATERIAL: what something is made of, its pattern, or its surface (shiny, wet)\nEXISTS: whether something is there at all\nIDENTITY: what kind of thing something is\nACTION: what someone is doing, holding, wearing, or eating\nSCENE: the weather, the place, or the time of day\nOTHER: none of these\n\n2. OBJECTS: List objects in the order they first appear.\n- Keep identifying descriptions (\"green apple\", \"man on the left\").\n- Exclude properties the question asks about rather than uses to identify an object.\n- Exclude pronouns and generic words like image, picture, photo.\n- Do not list alternatives in a final \"X or Y?\" clause as objects.\n- Use an empty list if none exist.\n- For each object, include `id_features`: `COLOR` if its description uses color to identify it, MATERIAL if its description uses material, texture, pattern, or surface appearance. Otherwise use an empty list. Do not infer unmentioned properties.\n\n3. QUESTION_FLAGS: List all applicable features of the question wording:\nLR: Left/right spatial references.\nUD: Up/down spatial references.\nSUPPORT: Support, containment, or physical orientation (on, under, inside, sitting, hanging, lying).\nTEXT: Readable text, letters, numbers, signs, or logos.\nBODY: Left/right body parts.\nCOLORW: Color words or references to color.\nMATW: Material, texture, pattern, or surface properties.\nEXISTW: Asks whether something exists or is present.\nCATW: References a category, group, or collection of objects.\nCOMPARE: Compares properties of multiple objects.\nACTW: Actions or interactions (wearing, holding, eating, riding).\nAND: Requires multiple conditions to both be true.\n\nExamples:\nQuestion: Is the bowl to the right of the green apple?\n{\"topic\":\"POSITION\",\"objects\":[{\"name\":\"bowl\",\"id_features\":[]},{\"name\":\"green apple\",\"id_features\":[\"COLOR\"]}],\"question_flags\":[\"LR\",\"COLORW\"]}\n\nQuestion: Is the man holding a blue umbrella?\n{\"topic\":\"ACTION\",\"objects\":[{\"name\":\"man\",\"id_features\":[]},{\"name\":\"blue umbrella\",\"id_features\":[\"COLOR\"]}],\"question_flags\":[\"ACTW\",\"COLORW\"]}\n\nReturn ONLY valid JSON with keys \"topic\", \"objects\", and \"question_flags\". No explanation.",
+    "OPEN": "Question: {question}\n\nAnalyze this visual question using only its wording, not an image or answer.\n\n1. TOPIC: What kind of word is the answer? Pick one:\nCOLOR: a color (\"red\")\nMATERIAL: a material or pattern (\"wood\", \"striped\")\nOBJECT: the name of a thing or person (\"umbrella\", \"man\")\nACTION: an activity (\"playing\", \"sitting\")\nPOSITION: a side or place in the image (\"left\", \"top\")\nSCENE: weather or a place (\"sunny\", \"kitchen\")\nOTHER: none of these\n\n2. OBJECTS: List objects in the order they first appear.\n- Keep identifying descriptions (\"green apple\", \"man on the left\").\n- Exclude properties the question asks about rather than uses to identify an object.\n- Exclude pronouns and generic words like image, picture, photo.\n- Do not list alternatives in a final \"X or Y?\" clause as objects.\n- Use an empty list if none exist.\n- For each object, include `id_features`: `COLOR` if its description uses color to identify it, MATERIAL if its description uses material, texture, pattern, or surface appearance. Otherwise use an empty list. Do not infer unmentioned properties.\n\n3. QUESTION_FLAGS: List all applicable features of the question wording:\nLR: Left/right spatial references.\nUD: Up/down spatial references.\nSUPPORT: Support, containment, or physical orientation (on, under, inside, sitting, hanging, lying).\nTEXT: Readable text, letters, numbers, signs, or logos.\nBODY: Left/right body parts.\nCOLORW: Color words or references to color.\nMATW: Material, texture, pattern, or surface properties.\nEXISTW: Asks whether something exists or is present.\nCATW: References a category, group, or collection of objects.\nCOMPARE: Compares properties of multiple objects.\nACTW: Actions or interactions (wearing, holding, eating, riding).\nAND: Requires multiple conditions to both be true.\n\nExamples:\nQuestion: What color is the apple?\n{\"topic\":\"COLOR\",\"objects\":[{\"name\":\"apple\",\"id_features\":[]}],\"question_flags\":[\"COLORW\"]}\n\nQuestion: What is the small girl wearing?\n{\"topic\":\"OBJECT\",\"objects\":[{\"name\":\"small girl\",\"id_features\":[]}],\"question_flags\":[\"ACTW\"]}\n\nReturn ONLY valid JSON with keys \"topic\", \"objects\", and \"question_flags\". No explanation."
+  },
+  "settings": {
+    "model": "Qwen/Qwen3.8-27B",
+    "seed": 42,
+    "dtype": "bfloat16",
+    "tensor_parallel_size": 2,
+    "max_model_len": 4096,
+    "gpu_memory_utilization": 0.9,
+    "call1_max_tokens": 256,
+    "call2_max_tokens": 1024,
+    "temperature": 0.0,
+    "prompt_mode": "chat",
+    "disable_thinking": false
+  },
+  "dataset_selection": {
+    "dataset": "/work/11808/shumera/ls6/butterfly_shared_resources/datasets/gqa/questions/val_balanced_questions.json",
+    "dataset_sha256": "2f675643c0cfffe0485dbae0c0c0dfc16b547443309a98544502bc1ae87c0779",
+    "seed": 42,
+    "type_counts": {
+      "activity": 692,
+      "activityChoose": 53,
+      "activityWho": 761,
+      "category": 1196,
+      "categoryAttr": 779,
+      "categoryRelO": 2579,
+      "categoryRelOChoose": 427,
+      "categoryRelS": 12033,
+      "categoryThat": 4117,
+      "categoryThatChoose": 534,
+      "categoryThis": 332,
+      "categoryThisChoose": 186,
+      "chooseAttr": 3677,
+      "company": 10,
+      "companyVerify": 1,
+      "comparativeChoose": 226,
+      "diffAnimals": 108,
+      "diffAnimalsC": 88,
+      "dir": 23,
+      "directOf": 4418,
+      "directWhich": 3908,
+      "exist": 791,
+      "existAnd": 1551,
+      "existAndC": 1395,
+      "existAttr": 199,
+      "existAttrC": 183,
+      "existAttrNot": 210,
+      "existAttrNotC": 175,
+      "existAttrOr": 1189,
+      "existAttrOrC": 1125,
+      "existC": 791,
+      "existMaterial": 19,
+      "existMaterialC": 21,
+      "existMaterialNot": 28,
+      "existMaterialNotC": 31,
+      "existOr": 3109,
+      "existOrC": 3026,
+      "existRelS": 3809,
+      "existRelSC": 2742,
+      "existRelSRC": 1118,
+      "existThat": 201,
+      "existThatC": 202,
+      "existThatNot": 15,
+      "existThatNotC": 13,
+      "existThatOr": 591,
+      "existThatOrC": 529,
+      "how": 1159,
+      "locationChoose": 352,
+      "locationVerify": 265,
+      "locationVerifyC": 325,
+      "material": 1386,
+      "materialChoose": 373,
+      "materialVerify": 128,
+      "materialVerifyC": 122,
+      "objThisChoose": 711,
+      "place": 2302,
+      "placeChoose": 173,
+      "placeVerify": 81,
+      "placeVerifyC": 69,
+      "positionChoose": 4357,
+      "positionQuery": 6502,
+      "positionVerify": 1438,
+      "positionVerifyC": 1440,
+      "relChooser": 5327,
+      "relO": 11993,
+      "relS": 13268,
+      "relVerify": 3885,
+      "relVerifyCo": 3046,
+      "relVerifyCop": 6,
+      "relVerifyCr": 996,
+      "sameAnimals": 79,
+      "sameAnimalsC": 78,
+      "sameGender": 59,
+      "sameGenderC": 57,
+      "sameMaterialRelate": 51,
+      "sameRelate": 331,
+      "state": 17,
+      "stateChoose": 2,
+      "twoCommon": 690,
+      "twoDifferent": 622,
+      "twoDifferentC": 632,
+      "twoSame": 584,
+      "twoSameC": 666,
+      "twoSameMaterial": 107,
+      "twoSameMaterialC": 161,
+      "typeChoose": 26,
+      "typeVerify": 6,
+      "typeVerifyC": 4,
+      "verifyAttr": 901,
+      "verifyAttrAnd": 152,
+      "verifyAttrC": 933,
+      "verifyAttrCThis": 92,
+      "verifyAttrK": 1427,
+      "verifyAttrKC": 1460,
+      "verifyAttrThis": 101,
+      "verifyAttrs": 1741,
+      "verifyAttrsC": 1670,
+      "verifyMaterialAnd": 18,
+      "weather": 310,
+      "weatherChoose": 31,
+      "weatherVerify": 64,
+      "weatherVerifyC": 75
+    },
+    "sample_size": 202,
+    "skipped_types": {
+      "companyVerify": 1
+    },
+    "selected_ids": {
+      "activity": [
+        "02851313",
+        "18641068"
+      ],
+      "activityChoose": [
+        "00389698",
+        "17461097"
+      ],
+      "activityWho": [
+        "06190513",
+        "06948617"
+      ],
+      "category": [
+        "04861245",
+        "0727477"
+      ],
+      "categoryAttr": [
+        "02735536",
+        "18896070"
+      ],
+      "categoryRelO": [
+        "02774547",
+        "17397283"
+      ],
+      "categoryRelOChoose": [
+        "1022959",
+        "14570761"
+      ],
+      "categoryRelS": [
+        "00915726",
+        "00965304"
+      ],
+      "categoryThat": [
+        "03483966",
+        "08149156"
+      ],
+      "categoryThatChoose": [
+        "081030136",
+        "19396655"
+      ],
+      "categoryThis": [
+        "01239286",
+        "18237208"
+      ],
+      "categoryThisChoose": [
+        "05895740",
+        "15825167"
+      ],
+      "chooseAttr": [
+        "14138674",
+        "1573678"
+      ],
+      "company": [
+        "15959781",
+        "17600401"
+      ],
+      "companyVerify": [],
+      "comparativeChoose": [
+        "06406082",
+        "10486181"
+      ],
+      "diffAnimals": [
+        "06895859",
+        "143713"
+      ],
+      "diffAnimalsC": [
+        "00102967",
+        "05830069"
+      ],
+      "dir": [
+        "10933477",
+        "18934744"
+      ],
+      "directOf": [
+        "10303729",
+        "1250760"
+      ],
+      "directWhich": [
+        "03441731",
+        "04547661"
+      ],
+      "exist": [
+        "083394",
+        "19730729"
+      ],
+      "existAnd": [
+        "02442155",
+        "02667802"
+      ],
+      "existAndC": [
+        "02848417",
+        "11214625"
+      ],
+      "existAttr": [
+        "1023022",
+        "10763852"
+      ],
+      "existAttrC": [
+        "061007486",
+        "16421629"
+      ],
+      "existAttrNot": [
+        "01584282",
+        "19916849"
+      ],
+      "existAttrNotC": [
+        "13382026",
+        "15586521"
+      ],
+      "existAttrOr": [
+        "03942861",
+        "12612525"
+      ],
+      "existAttrOrC": [
+        "02969620",
+        "10529344"
+      ],
+      "existC": [
+        "15958332",
+        "16123751"
+      ],
+      "existMaterial": [
+        "0794921",
+        "13179160"
+      ],
+      "existMaterialC": [
+        "01715216",
+        "02674412"
+      ],
+      "existMaterialNot": [
+        "0564311",
+        "16148286"
+      ],
+      "existMaterialNotC": [
+        "03939025",
+        "16608050"
+      ],
+      "existOr": [
+        "021028697",
+        "05947079"
+      ],
+      "existOrC": [
+        "02914718",
+        "09904958"
+      ],
+      "existRelS": [
+        "06323112",
+        "09971443"
+      ],
+      "existRelSC": [
+        "10741474",
+        "191005839"
+      ],
+      "existRelSRC": [
+        "06101628",
+        "13643847"
+      ],
+      "existThat": [
+        "05476530",
+        "08584866"
+      ],
+      "existThatC": [
+        "06146293",
+        "16466752"
+      ],
+      "existThatNot": [
+        "13521887",
+        "13636544"
+      ],
+      "existThatNotC": [
+        "02301837",
+        "15975683"
+      ],
+      "existThatOr": [
+        "05749775",
+        "18636988"
+      ],
+      "existThatOrC": [
+        "06491223",
+        "09300546"
+      ],
+      "how": [
+        "12526294",
+        "15880558"
+      ],
+      "locationChoose": [
+        "07603265",
+        "18224761"
+      ],
+      "locationVerify": [
+        "08339212",
+        "12284280"
+      ],
+      "locationVerifyC": [
+        "02151434",
+        "08166307"
+      ],
+      "material": [
+        "00963237",
+        "08903561"
+      ],
+      "materialChoose": [
+        "07925264",
+        "11678115"
+      ],
+      "materialVerify": [
+        "01841896",
+        "07317368"
+      ],
+      "materialVerifyC": [
+        "18986411",
+        "19613091"
+      ],
+      "objThisChoose": [
+        "08940196",
+        "16269802"
+      ],
+      "place": [
+        "07707660",
+        "17810908"
+      ],
+      "placeChoose": [
+        "13462848",
+        "19468179"
+      ],
+      "placeVerify": [
+        "05166167",
+        "14985794"
+      ],
+      "placeVerifyC": [
+        "02595972",
+        "07293079"
+      ],
+      "positionChoose": [
+        "08873671",
+        "09495255"
+      ],
+      "positionQuery": [
+        "1463279",
+        "18719752"
+      ],
+      "positionVerify": [
+        "12189759",
+        "1665130"
+      ],
+      "positionVerifyC": [
+        "1055286",
+        "11476642"
+      ],
+      "relChooser": [
+        "04128402",
+        "06618367"
+      ],
+      "relO": [
+        "133024",
+        "13708168"
+      ],
+      "relS": [
+        "02327148",
+        "18535342"
+      ],
+      "relVerify": [
+        "01235977",
+        "17933898"
+      ],
+      "relVerifyCo": [
+        "031040578",
+        "04172714"
+      ],
+      "relVerifyCop": [
+        "14739979",
+        "196960"
+      ],
+      "relVerifyCr": [
+        "13953994",
+        "16312545"
+      ],
+      "sameAnimals": [
+        "12577102",
+        "17964576"
+      ],
+      "sameAnimalsC": [
+        "02849126",
+        "13884592"
+      ],
+      "sameGender": [
+        "09125688",
+        "12916412"
+      ],
+      "sameGenderC": [
+        "12567906",
+        "13755871"
+      ],
+      "sameMaterialRelate": [
+        "06322927",
+        "12962045"
+      ],
+      "sameRelate": [
+        "0045208",
+        "0331298"
+      ],
+      "state": [
+        "08428882",
+        "09832280"
+      ],
+      "stateChoose": [
+        "06620778",
+        "1014540"
+      ],
+      "twoCommon": [
+        "04780644",
+        "12334145"
+      ],
+      "twoDifferent": [
+        "00183252",
+        "14480962"
+      ],
+      "twoDifferentC": [
+        "08819706",
+        "1592059"
+      ],
+      "twoSame": [
+        "05241731",
+        "17344038"
+      ],
+      "twoSameC": [
+        "03204000",
+        "18946878"
+      ],
+      "twoSameMaterial": [
+        "08173484",
+        "14255029"
+      ],
+      "twoSameMaterialC": [
+        "16791583",
+        "19191797"
+      ],
+      "typeChoose": [
+        "03204066",
+        "03683712"
+      ],
+      "typeVerify": [
+        "041029029",
+        "06592255"
+      ],
+      "typeVerifyC": [
+        "07600375",
+        "11160465"
+      ],
+      "verifyAttr": [
+        "07268300",
+        "10801440"
+      ],
+      "verifyAttrAnd": [
+        "00684396",
+        "03408271"
+      ],
+      "verifyAttrC": [
+        "07447021",
+        "18925102"
+      ],
+      "verifyAttrCThis": [
+        "06122979",
+        "0752"
+      ],
+      "verifyAttrK": [
+        "01889076",
+        "06409938"
+      ],
+      "verifyAttrKC": [
+        "02408903",
+        "15994502"
+      ],
+      "verifyAttrThis": [
+        "02149824",
+        "1964286"
+      ],
+      "verifyAttrs": [
+        "11119332",
+        "19106542"
+      ],
+      "verifyAttrsC": [
+        "01516264",
+        "18605435"
+      ],
+      "verifyMaterialAnd": [
+        "05134826",
+        "18555056"
+      ],
+      "weather": [
+        "03813835",
+        "16534162"
+      ],
+      "weatherChoose": [
+        "11498858",
+        "18950867"
+      ],
+      "weatherVerify": [
+        "05313924",
+        "08967641"
+      ],
+      "weatherVerifyC": [
+        "16518466",
+        "18139735"
+      ]
+    },
+    "sample_sha256": "4d616411da7f9015545fd6094fb08659537e56067ad89fd1171d4cb1ac65e63a"
+  },
+  "questions_file": "/work/11808/shumera/ls6/projects/butterfly/experiment/questions.jsonl",
+  "timestamp": "2026-11-13T19:09:58.828510+00:00"
+}

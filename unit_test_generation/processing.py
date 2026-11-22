@@ -20,6 +20,8 @@ def extract_unit_tests(text):
         tests_raw = test_text.split("\n")
         tests_raw = list(set([t for t in tests_raw if 'Answer:' in t and ('Image Caption:' in t or 'Google Search Query:' in t)]))
         tests_raw = [t.strip() for t in tests_raw]
+        if not tests_raw:  # no parseable test lines in this generation
+            continue
         if 'Google Search Query:' in tests_raw[0]:
             tests.extend([(l.split('Google Search Query: ')[1].split('Answer:')[0].strip(), l.split('Answer: ')[-1].strip()) for l in tests_raw])
         else:

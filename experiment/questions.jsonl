@@ -1,0 +1,200 @@
+{"id": "18641068", "detailed_type": "activity", "question": "What is the duck to the left of the other duck doing?"}
+{"id": "02754884", "detailed_type": "activityWho", "question": "Who is sitting?"}
+{"id": "00963262", "detailed_type": "category", "question": "Which kind of furniture is it?"}
+{"id": "08921701", "detailed_type": "category", "question": "What appliance is shown in the photograph?"}
+{"id": "06434297", "detailed_type": "categoryAttr", "question": "What is the blue item of furniture?"}
+{"id": "03128994", "detailed_type": "categoryRelO", "question": "What are the animals that the man is in front of?"}
+{"id": "04273667", "detailed_type": "categoryRelO", "question": "Which kind of animal is the man playing with?"}
+{"id": "06934981", "detailed_type": "categoryRelO", "question": "What is the vehicle that the man that is walking is walking by called?"}
+{"id": "17397283", "detailed_type": "categoryRelO", "question": "What is the piece of furniture that the phone is on?"}
+{"id": "01944818", "detailed_type": "categoryRelOChoose", "question": "What is the girl using, a camera or a television?"}
+{"id": "00803824", "detailed_type": "categoryRelS", "question": "What kind of vehicle is in front of the house?"}
+{"id": "00915726", "detailed_type": "categoryRelS", "question": "How is the vehicle that is to the left of the man called?"}
+{"id": "00965304", "detailed_type": "categoryRelS", "question": "What kind of device is on the appliance that looks black?"}
+{"id": "02698632", "detailed_type": "categoryRelS", "question": "What is the fruit that is on the shelf that is to the right of the container called?"}
+{"id": "05643244", "detailed_type": "categoryRelS", "question": "Which kind of food is in the container?"}
+{"id": "06111168", "detailed_type": "categoryRelS", "question": "What fruit is inside the blue bowl?"}
+{"id": "06156121", "detailed_type": "categoryRelS", "question": "What is the piece of furniture that is to the left of the bag that is above the floor?"}
+{"id": "06423860", "detailed_type": "categoryRelS", "question": "What kind of food is to the right of the knife?"}
+{"id": "11534718", "detailed_type": "categoryRelS", "question": "What is the animal that is looking at her?"}
+{"id": "11576796", "detailed_type": "categoryRelS", "question": "What type of furniture is to the right of the table?"}
+{"id": "13727152", "detailed_type": "categoryRelS", "question": "What is the piece of furniture that is to the left of the towel?"}
+{"id": "14933834", "detailed_type": "categoryRelS", "question": "Which kind of food is in the bowl?"}
+{"id": "15492227", "detailed_type": "categoryRelS", "question": "What device is on the white wall?"}
+{"id": "16240016", "detailed_type": "categoryRelS", "question": "Which kind of baked good is on the table?"}
+{"id": "16654520", "detailed_type": "categoryRelS", "question": "What kind of furniture is to the right of the ottoman?"}
+{"id": "17878016", "detailed_type": "categoryRelS", "question": "What type of vegetable is to the left of the towel in the image?"}
+{"id": "19209426", "detailed_type": "categoryRelS", "question": "What is the food to the right of the man that is standing on the floor?"}
+{"id": "19540145", "detailed_type": "categoryRelS", "question": "Which kind of baked good is to the left of the tray?"}
+{"id": "00293632", "detailed_type": "categoryThat", "question": "What device is massive?"}
+{"id": "061022771", "detailed_type": "categoryThat", "question": "What appliance is black?"}
+{"id": "10646843", "detailed_type": "categoryThat", "question": "Which kind of food is not cut?"}
+{"id": "13151299", "detailed_type": "categoryThat", "question": "What animal is black?"}
+{"id": "16415588", "detailed_type": "categoryThat", "question": "What kind of vehicle is black?"}
+{"id": "17694378", "detailed_type": "categoryThat", "question": "What kind of furniture is made of wood?"}
+{"id": "10106025", "detailed_type": "categoryThatChoose", "question": "What type of furniture is not wooden, the sofa or the entertainment center?"}
+{"id": "04784943", "detailed_type": "categoryThis", "question": "What is the name of this vegetable?"}
+{"id": "02132942", "detailed_type": "chooseAttr", "question": "Is the bench small or large?"}
+{"id": "02301645", "detailed_type": "chooseAttr", "question": "Is this planter full or empty?"}
+{"id": "04642586", "detailed_type": "chooseAttr", "question": "Is the life vest black or orange?"}
+{"id": "07557134", "detailed_type": "chooseAttr", "question": "What color is the hair that is not long, black or white?"}
+{"id": "0847539", "detailed_type": "chooseAttr", "question": "Is the ladder blue or white?"}
+{"id": "16811715", "detailed_type": "chooseAttr", "question": "Is the sky clear or foggy?"}
+{"id": "01666311", "detailed_type": "directOf", "question": "What is the color of the cup?"}
+{"id": "03609513", "detailed_type": "directOf", "question": "What is the color of the uniform that wears an outfit?"}
+{"id": "09740850", "detailed_type": "directOf", "question": "What color is the fruit on the left of the image?"}
+{"id": "1262920", "detailed_type": "directOf", "question": "What is the color of the tie?"}
+{"id": "13202507", "detailed_type": "directOf", "question": "What is the color of the sticker?"}
+{"id": "16933964", "detailed_type": "directOf", "question": "What is the color of the bag on the right side of the picture?"}
+{"id": "19880565", "detailed_type": "directOf", "question": "What color is the statue in front of the fountain?"}
+{"id": "01819592", "detailed_type": "directWhich", "question": "Which color does the cow have?"}
+{"id": "02806504", "detailed_type": "directWhich", "question": "What color is the jacket?"}
+{"id": "06271489", "detailed_type": "directWhich", "question": "What color is the necktie?"}
+{"id": "07755285", "detailed_type": "directWhich", "question": "Which color does the tank top the woman is wearing have?"}
+{"id": "11341403", "detailed_type": "directWhich", "question": "Which color is the curtain which is to the left of the other curtain?"}
+{"id": "1927106", "detailed_type": "directWhich", "question": "Which color is the liquid in the wine glass?"}
+{"id": "16404972", "detailed_type": "exist", "question": "Do you see women there?"}
+{"id": "09270633", "detailed_type": "existAnd", "question": "Do you see both a banana and an orange?"}
+{"id": "16148859", "detailed_type": "existAnd", "question": "Are there both bears and hearts in this scene?"}
+{"id": "05522218", "detailed_type": "existAndC", "question": "Are there both a rhino and a cow in this photo?"}
+{"id": "17205878", "detailed_type": "existAndC", "question": "Are there both a cat and a pillow in this picture?"}
+{"id": "01423136", "detailed_type": "existAttrOr", "question": "Is there a red can or racket?"}
+{"id": "02381156", "detailed_type": "existAttrOr", "question": "Are there either green sandals or umbrellas?"}
+{"id": "08286", "detailed_type": "existAttrOrC", "question": "Is there any brown table or nightstand?"}
+{"id": "10452282", "detailed_type": "existAttrOrC", "question": "Are there any white dolls or teddy bears?"}
+{"id": "02307883", "detailed_type": "existC", "question": "Is there a television in the photograph?"}
+{"id": "0263146", "detailed_type": "existOr", "question": "Is there either a horse or a dog in the photograph?"}
+{"id": "05947079", "detailed_type": "existOr", "question": "Are there cages or snowboards in the photo?"}
+{"id": "07152375", "detailed_type": "existOr", "question": "Are there children or helmets in this image?"}
+{"id": "09810617", "detailed_type": "existOr", "question": "Do you see either a fence or a helmet there?"}
+{"id": "11942352", "detailed_type": "existOr", "question": "Do you see any zebras or giraffes?"}
+{"id": "04336361", "detailed_type": "existOrC", "question": "Are there any shampoos or baseballs in this picture?"}
+{"id": "09277136", "detailed_type": "existOrC", "question": "Are there any breads or containers?"}
+{"id": "09555497", "detailed_type": "existOrC", "question": "Are there either men or women in this photo?"}
+{"id": "09700691", "detailed_type": "existOrC", "question": "Are there either any tissue boxes or sugar packets in this picture?"}
+{"id": "17206054", "detailed_type": "existOrC", "question": "Are there dogs or bears in this scene?"}
+{"id": "04897342", "detailed_type": "existRelS", "question": "Do you see any mugs to the right of the plate that the pastry is on?"}
+{"id": "06123202", "detailed_type": "existRelS", "question": "Are there mirrors to the left of the white lamp?"}
+{"id": "14143626", "detailed_type": "existRelS", "question": "Do you see any bottles to the left of the yellow plate?"}
+{"id": "14555564", "detailed_type": "existRelS", "question": "Is there any banana to the left of the woman that wears sandals?"}
+{"id": "14856333", "detailed_type": "existRelS", "question": "Do you see any fences to the left of the skis that are to the left of the person?"}
+{"id": "15311089", "detailed_type": "existRelS", "question": "Is there a chair to the right of the controller on the left side of the image?"}
+{"id": "02307891", "detailed_type": "existRelSC", "question": "Are there phones near the wire?"}
+{"id": "05199541", "detailed_type": "existRelSC", "question": "Do you see glasses to the left of the device that looks gray?"}
+{"id": "18192052", "detailed_type": "existRelSC", "question": "Are there curtains to the right of the glasses?"}
+{"id": "1896656", "detailed_type": "existRelSC", "question": "Are there motorcycles in the parking lot below the building?"}
+{"id": "09187778", "detailed_type": "existRelSRC", "question": "Do you see skateboards to the left of the boy that is wearing a shirt?"}
+{"id": "19535771", "detailed_type": "existRelSRC", "question": "Do you see boys to the left of the woman that is wearing a garment?"}
+{"id": "05527580", "detailed_type": "existThatOr", "question": "Are there doors or windows that are closed?"}
+{"id": "17853007", "detailed_type": "existThatOrC", "question": "Is there any horse or sheep that is not gray?"}
+{"id": "0878247", "detailed_type": "how", "question": "How long is the shirt?"}
+{"id": "12526294", "detailed_type": "how", "question": "How long is the hair of the man?"}
+{"id": "18224761", "detailed_type": "locationChoose", "question": "Is it an indoors or outdoors scene?"}
+{"id": "17867588", "detailed_type": "locationVerifyC", "question": "Is it outdoors?"}
+{"id": "06451624", "detailed_type": "material", "question": "What is the gate made of?"}
+{"id": "09245286", "detailed_type": "material", "question": "What is the fence made of?"}
+{"id": "01889074", "detailed_type": "materialChoose", "question": "Is the container to the left of the plate made of stainless steel or glass?"}
+{"id": "06589230", "detailed_type": "objThisChoose", "question": "Is this a train or a truck?"}
+{"id": "0127234", "detailed_type": "place", "question": "Where is it?"}
+{"id": "09530356", "detailed_type": "place", "question": "Which place is it?"}
+{"id": "11138705", "detailed_type": "place", "question": "Which place is it?"}
+{"id": "13964105", "detailed_type": "place", "question": "Which place is it?"}
+{"id": "02490189", "detailed_type": "positionChoose", "question": "On which side is the fence, the right or the left?"}
+{"id": "07642345", "detailed_type": "positionChoose", "question": "Is the chair on the right side or on the left of the picture?"}
+{"id": "07676742", "detailed_type": "positionChoose", "question": "Is the man on the left side or on the right?"}
+{"id": "11517436", "detailed_type": "positionChoose", "question": "In which part of the picture is the phone, the bottom or the top?"}
+{"id": "14532302", "detailed_type": "positionChoose", "question": "Is the lady on the left or on the right side of the picture?"}
+{"id": "17184712", "detailed_type": "positionChoose", "question": "Where in the image is the couch, in the top or in the bottom?"}
+{"id": "18802371", "detailed_type": "positionChoose", "question": "Is the telephone in the top or in the bottom part of the picture?"}
+{"id": "03738771", "detailed_type": "positionQuery", "question": "Which part of the image are the people in?"}
+{"id": "03823936", "detailed_type": "positionQuery", "question": "Which side are the spectators on?"}
+{"id": "06459438", "detailed_type": "positionQuery", "question": "On which side of the photo is the woman?"}
+{"id": "06792734", "detailed_type": "positionQuery", "question": "On which side of the image is the bright rug?"}
+{"id": "06846243", "detailed_type": "positionQuery", "question": "On which side of the photo is the lady?"}
+{"id": "13529780", "detailed_type": "positionQuery", "question": "On which side of the image is the white cheese?"}
+{"id": "141031470", "detailed_type": "positionQuery", "question": "On which side of the image is the white towel?"}
+{"id": "1463279", "detailed_type": "positionQuery", "question": "On which side of the picture is the happy person?"}
+{"id": "18660334", "detailed_type": "positionQuery", "question": "On which side of the image is the white toothpaste?"}
+{"id": "18719752", "detailed_type": "positionQuery", "question": "On which side is the man?"}
+{"id": "12189759", "detailed_type": "positionVerify", "question": "Is the fence on the right of the photo?"}
+{"id": "1665130", "detailed_type": "positionVerify", "question": "Is the towel on the left?"}
+{"id": "1055286", "detailed_type": "positionVerifyC", "question": "Is the bike on the right side?"}
+{"id": "11476642", "detailed_type": "positionVerifyC", "question": "Is the knife in the bottom part?"}
+{"id": "01583530", "detailed_type": "relChooser", "question": "Is the woman to the left or to the right of the man the skateboard is to the right of?"}
+{"id": "02752291", "detailed_type": "relChooser", "question": "Is the green book to the left or to the right of the bookshelf that is on the right side?"}
+{"id": "03297708", "detailed_type": "relChooser", "question": "Is the orange couch to the left or to the right of the table the dresser is to the left of?"}
+{"id": "04128402", "detailed_type": "relChooser", "question": "Is the green car to the right or to the left of the person that is on the right side of the picture?"}
+{"id": "04583976", "detailed_type": "relChooser", "question": "Is the plastic bottle to the left or to the right of the wine in the bottom of the image?"}
+{"id": "06618367", "detailed_type": "relChooser", "question": "Is the pillow to the right or to the left of the teddy bear on the couch?"}
+{"id": "15159996", "detailed_type": "relChooser", "question": "Is the food to the left or to the right of the chair that is presented in this photograph?"}
+{"id": "1571782", "detailed_type": "relChooser", "question": "Is the paddle to the right or to the left of the man that is wearing a backpack?"}
+{"id": "00390706", "detailed_type": "relO", "question": "Where is that tractor?"}
+{"id": "0185620", "detailed_type": "relO", "question": "What is the sticker on?"}
+{"id": "031057909", "detailed_type": "relO", "question": "What is that glass in front of?"}
+{"id": "04232668", "detailed_type": "relO", "question": "What is the net in front of?"}
+{"id": "06635743", "detailed_type": "relO", "question": "What does the guy wear?"}
+{"id": "10202341", "detailed_type": "relO", "question": "What is the girl in front of?"}
+{"id": "10306187", "detailed_type": "relO", "question": "What is the trunk reaching for?"}
+{"id": "1132099", "detailed_type": "relO", "question": "What's the bucket hanging on?"}
+{"id": "12605085", "detailed_type": "relO", "question": "What is the person on the motorcycle wearing?"}
+{"id": "14251605", "detailed_type": "relO", "question": "What's the person standing in?"}
+{"id": "14938920", "detailed_type": "relO", "question": "What are the letters on?"}
+{"id": "16160414", "detailed_type": "relO", "question": "What are the people on?"}
+{"id": "1616417", "detailed_type": "relO", "question": "What are the wires on?"}
+{"id": "16921947", "detailed_type": "relO", "question": "What is the television in?"}
+{"id": "18464194", "detailed_type": "relO", "question": "What is this man wearing?"}
+{"id": "18471305", "detailed_type": "relO", "question": "What does the dog cover?"}
+{"id": "18529910", "detailed_type": "relO", "question": "The plant is in what?"}
+{"id": "1969548", "detailed_type": "relO", "question": "What is the woman wearing?"}
+{"id": "00147588", "detailed_type": "relS", "question": "Who is wearing the bag?"}
+{"id": "02693762", "detailed_type": "relS", "question": "What animal is on the carpet?"}
+{"id": "02813108", "detailed_type": "relS", "question": "What is on the road?"}
+{"id": "03963670", "detailed_type": "relS", "question": "What animal is in front of the plants?"}
+{"id": "04462628", "detailed_type": "relS", "question": "Who is leaning on the wall made of metal?"}
+{"id": "06599103", "detailed_type": "relS", "question": "Who is wearing a glove?"}
+{"id": "06624681", "detailed_type": "relS", "question": "Who is wearing a tshirt?"}
+{"id": "0727721", "detailed_type": "relS", "question": "Who is wearing a glove?"}
+{"id": "08438457", "detailed_type": "relS", "question": "What animal is sitting on the chair?"}
+{"id": "10749446", "detailed_type": "relS", "question": "What animal is in front of the trees?"}
+{"id": "11260618", "detailed_type": "relS", "question": "What is in front of the black animal?"}
+{"id": "12432017", "detailed_type": "relS", "question": "Who is in front of the green trees?"}
+{"id": "1259983", "detailed_type": "relS", "question": "Who is wearing pants?"}
+{"id": "133023", "detailed_type": "relS", "question": "Who is holding the tongs on the right side?"}
+{"id": "15797498", "detailed_type": "relS", "question": "Who is wearing the helmet?"}
+{"id": "17587563", "detailed_type": "relS", "question": "What is on the white shelf?"}
+{"id": "17699646", "detailed_type": "relS", "question": "What's under the hurdle?"}
+{"id": "18433755", "detailed_type": "relS", "question": "What is wearing a shirt?"}
+{"id": "18659336", "detailed_type": "relS", "question": "What is in front of the buildings near the tree?"}
+{"id": "18885932", "detailed_type": "relS", "question": "What is holding the drink on the left side?"}
+{"id": "06143979", "detailed_type": "relVerify", "question": "Is the batter to the right of an umpire?"}
+{"id": "10513400", "detailed_type": "relVerify", "question": "Is the purse to the right of the cup that is to the right of the statue?"}
+{"id": "13152061", "detailed_type": "relVerify", "question": "Are the elephants that are walking walking in the ground?"}
+{"id": "13385225", "detailed_type": "relVerify", "question": "Is the red tomato on a plate?"}
+{"id": "17596723", "detailed_type": "relVerify", "question": "Are the bushes under the bridge?"}
+{"id": "18167301", "detailed_type": "relVerify", "question": "Is the lettuce on the bun?"}
+{"id": "04172714", "detailed_type": "relVerifyCo", "question": "Is the lady on the road carrying an umbrella?"}
+{"id": "04374500", "detailed_type": "relVerifyCo", "question": "Is the person in the snow wearing a bracelet?"}
+{"id": "05526290", "detailed_type": "relVerifyCo", "question": "Is the coffee cup to the left of a plate?"}
+{"id": "10298739", "detailed_type": "relVerifyCo", "question": "Is that man to the left of a boy?"}
+{"id": "16281883", "detailed_type": "relVerifyCo", "question": "Is the woman to the left of a boy?"}
+{"id": "10777062", "detailed_type": "relVerifyCr", "question": "Is the man to the left of the spectators that are on the left?"}
+{"id": "19625223", "detailed_type": "relVerifyCr", "question": "Is the black cow to the left of the fence that is to the right of the dog?"}
+{"id": "16766062", "detailed_type": "sameRelate", "question": "What vehicle has the same color as the belt?"}
+{"id": "001052765", "detailed_type": "twoCommon", "question": "What do the birds and the wires have in common?"}
+{"id": "19621572", "detailed_type": "twoDifferent", "question": "Is the color of the sweater different than the blanket?"}
+{"id": "111014995", "detailed_type": "twoDifferentC", "question": "Is the napkin different in color than the mug?"}
+{"id": "16809139", "detailed_type": "twoSame", "question": "Do the shoes and the knee pads of the man have the same color?"}
+{"id": "00401547", "detailed_type": "twoSameC", "question": "Are both the gloves and the goggles the same color?"}
+{"id": "02161069", "detailed_type": "verifyAttr", "question": "Do you think that train is red?"}
+{"id": "07447021", "detailed_type": "verifyAttrC", "question": "Is the scarf blue?"}
+{"id": "06385807", "detailed_type": "verifyAttrK", "question": "Does the cap look green?"}
+{"id": "08290591", "detailed_type": "verifyAttrK", "question": "Does the ladder look white?"}
+{"id": "01859377", "detailed_type": "verifyAttrKC", "question": "Does the towel look orange?"}
+{"id": "06580965", "detailed_type": "verifyAttrKC", "question": "Does the dark hair look long?"}
+{"id": "02106555", "detailed_type": "verifyAttrs", "question": "Is the pine tree green and tall?"}
+{"id": "02197674", "detailed_type": "verifyAttrs", "question": "Is the open umbrella pink and light?"}
+{"id": "12951309", "detailed_type": "verifyAttrs", "question": "Does that hair look short and brown?"}
+{"id": "01516264", "detailed_type": "verifyAttrsC", "question": "Is the chain both black and metallic?"}
+{"id": "1165054", "detailed_type": "verifyAttrsC", "question": "Is the water hose yellow and metallic?"}
+{"id": "17965688", "detailed_type": "verifyAttrsC", "question": "Does the snowboard which is to the left of the skis look black and short?"}
+{"id": "18153368", "detailed_type": "weather", "question": "How is the weather?"}

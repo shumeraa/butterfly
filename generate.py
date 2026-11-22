@@ -780,7 +780,7 @@ for iter in range(start_iter, this_config['execution']['feedback_max_iters']):
                     curr_ut_scores = [r['acc'] for r in unit_test_results]
                     dataset.data[idx]['unit_test_results'][iter].append({
                         'results': unit_test_results, 
-                        'acc': sum(curr_ut_scores)/len(unit_test_results)
+                        'acc': sum(curr_ut_scores)/len(unit_test_results) if len(unit_test_results) > 0 else 0.0
                         })
             pickle.dump(dataset.data, open(save_file, 'wb'))
         else:
@@ -899,7 +899,7 @@ for iter in range(start_iter, this_config['execution']['feedback_max_iters']):
                     curr_ut_scores = [r['acc'] for r in unit_test_results]
                     dataset.data[idx]['unit_test_results'][iter].append({
                         'results': unit_test_results, 
-                        'acc': sum(curr_ut_scores)/len(unit_test_results)
+                        'acc': sum(curr_ut_scores)/len(unit_test_results) if len(unit_test_results) > 0 else 0.0
                         })
             pickle.dump(dataset.data, open(save_file, 'wb'))
 

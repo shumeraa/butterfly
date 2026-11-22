@@ -71,7 +71,7 @@ def generate_tests(
         if str(question_id) not in by_question:
             raise ValueError(f'No transformation labels for question {question_id}')
         cases = select_label_tests(eligible_cases(by_question[str(question_id)]), question_id=question_id,
-                                   max_tests=min(3, num_tests), seed=seed)
+                                   max_tests=num_tests, seed=seed)  # was min(3, num_tests); budget comes from metamorphic_count
         input_kind = 'labels_path' if labels_path else 'predictions_path'
     elif tests_path:
         cases = eligible_cases(json.loads(Path(tests_path).read_text(encoding='utf-8'))[str(question_id)])[:num_tests]

@@ -35,7 +35,8 @@ def materialize_selected_tests(image_path, tests, output_dir, *, seed=42,
                     segmenter = _configured_segmenter(**dict(segmenter_config))
                 if operation == 'fill_color':
                     transformed = fill_objects(image, parameters['item'], parameters['color'],
-                                               segmenter=segmenter)
+                                               segmenter=segmenter,
+                                               strength=parameters.get('strength', 1.0))
                 else:
                     transformed = occlude_objects(image, parameters['item'],
                         fill=parameters.get('fill', 'white'), segmenter=segmenter)
