@@ -10,6 +10,7 @@ FLAGS = {
     'LR_ID', 'LR_ANSWER', 'LR_SIDE', 'LR_YN',
     'UD_ID', 'UD_ANSWER', 'UD_SIDE', 'UD_YN',
     'SUPPORT', 'GRAVITY', 'REF_SURFACE',
+    'FIXED_PAIR', 'FILL_SAFE',
     'TEXT', 'MATW', 'COMPARE', 'MULTI_CONDITION',
 }
 
