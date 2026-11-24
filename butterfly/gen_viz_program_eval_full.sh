@@ -19,7 +19,8 @@
 #   sbatch butterfly/gen_viz_program_eval_full.sh          # repeat until all chunks have DONE
 # Output: <DATA>/full/chunk_<k>/{dataset.jsonl,data.p,real_pass/data.p,DONE}
 
-DATA=/work/11808/shumera/ls6/butterfly_shared_resources/datasets/viz_program_eval
+DATA=${DATA:-/work/11808/shumera/ls6/butterfly_shared_resources/datasets/viz_program_eval}
+CFG_NAME=${CFG_NAME:-viz_program_eval_full}
 PROJECT=/work/11808/shumera/ls6/projects/butterfly   # Slurm runs a spool copy of this script
 LIMIT=$((2*3600)); MARGIN=240
 N_CHUNKS=${N_CHUNKS:-13}
@@ -28,7 +29,7 @@ START=$SECONDS
 source ~/.bashrc
 cd "$PROJECT"
 source "$PROJECT/butterfly/environment/activate.sh"
-ls "$PROJECT/viunit_configs/GQA/eval/viz_program_eval_full/chunk_0.yaml" >/dev/null \
+ls "$PROJECT/viunit_configs/GQA/eval/$CFG_NAME/chunk_0.yaml" >/dev/null \
   || { echo "Run butterfly/prep_viz_program_eval_full.py first" >&2; exit 1; }
 
 slowest=0
@@ -43,7 +44,7 @@ for k in $(seq 0 $((N_CHUNKS-1))); do
     t0=$SECONDS
     echo "=== chunk $k start, ${left}s left ==="
     timeout "$left" bash butterfly/viz_program_eval_stages.sh \
-        "viunit_configs/GQA/eval/viz_program_eval_full/chunk_$k.yaml" "$OUT" \
+        "viunit_configs/GQA/eval/$CFG_NAME/chunk_$k.yaml" "$OUT" \
         || { echo "chunk $k incomplete (rc=$?); resubmit to resume it"; break; }
     dur=$((SECONDS-t0)); [ "$dur" -gt "$slowest" ] && slowest=$dur
     echo "=== chunk $k done in ${dur}s ==="

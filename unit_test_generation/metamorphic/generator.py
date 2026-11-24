@@ -83,11 +83,23 @@ def generate_tests(
         # Old path-only records continue to refer to pre-created image files.
         operations = [case for case in cases if 'transformation' in case]
         if create_images and operations:
-            saved = iter(materialize_selected_tests(
-                original_image_path, operations, output_dir, seed=seed,
-                segmenter_config=config.get('segmenter', {}),
-            ))
-            cases = [next(saved) if 'transformation' in case else case for case in cases]
+            # Materialize each test separately so one unrenderable test (e.g. Grounding DINO finds
+            # no matching object) is dropped instead of failing the whole question/chunk.
+            rendered = []
+            for number, case in enumerate(cases):
+                if 'transformation' not in case:
+                    rendered.append(case)
+                    continue
+                try:
+                    rendered.append(materialize_selected_tests(
+                        original_image_path, [case], Path(output_dir) / f'test_{number}', seed=seed,
+                        segmenter_config=config.get('segmenter', {}))[0])
+                except ValueError as error:
+                    print(f'[metamorphic] question {question_id}: skipping test {case.get("description")!r}: {error}')
+            cases = rendered
+            if not cases:  # nothing renderable: neutral identity test (every program ties, as with no test)
+                cases = [{'description': 'unchanged image (no renderable transform)', 'answer': '',
+                          'image_paths': [str(original_image_path)]}]
         tests = []
         for case in cases:
             paths = case.get('image_paths', [str(original_image_path)] if not create_images else [])

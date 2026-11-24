@@ -57,10 +57,12 @@ class GroundedSAM:
         inputs = self.detector_processor(images=image, text=caption, return_tensors='pt').to(self.device)
         with torch.inference_mode():
             outputs = self.detector(**inputs)
-        detections = self.detector_processor.post_process_grounded_object_detection(
-            outputs, inputs.input_ids, threshold=self.box_threshold,
-            text_threshold=self.text_threshold, target_sizes=[(image.height, image.width)],
-        )[0]
+        post = self.detector_processor.post_process_grounded_object_detection
+        kwargs = dict(text_threshold=self.text_threshold, target_sizes=[(image.height, image.width)])
+        try:  # transformers >=4.51 names it `threshold`; older releases use `box_threshold`
+            detections = post(outputs, inputs.input_ids, threshold=self.box_threshold, **kwargs)[0]
+        except TypeError:
+            detections = post(outputs, inputs.input_ids, box_threshold=self.box_threshold, **kwargs)[0]
         boxes = detections['boxes'].detach().cpu().numpy()
         boxes[:, [0, 2]] = boxes[:, [0, 2]].clip(0, image.width)
         boxes[:, [1, 3]] = boxes[:, [1, 3]].clip(0, image.height)
