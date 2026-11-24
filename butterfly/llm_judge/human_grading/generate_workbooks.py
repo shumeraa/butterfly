@@ -30,20 +30,20 @@ ALLOWED_LABELS = 'equivariant,invariant,unsafe'
 # Human reviewers may choose any label, including equivariant, for every edit.
 SUMMARIZED_RULES = {
     'hflip': (
-        'Invariant: the question has no left/right wording, no left/right body parts, and no readable text.\n'
-        'Equivariant: the question asks which side something is on (answer must be left or right, e.g. '
-        '“Is X on the left or right?”), left/right is not used to identify an object, and there are no '
-        'body parts, readable text, or multiple and/or conditions. Answer: swap left and right.\n'
-        'Unsafe: everything else. This includes yes/no questions such as “Is X left of Y?” and any '
-        'question that uses left/right to pick out an object.'
+        'Invariant: no left/right dependency, including implicit side questions, left/right body parts, '
+        'or readable text.\n'
+        'Equivariant: a clear left/right choice (including “Which side of the photo?”) swaps if there '
+        'is no direction-based identification, body part, readable text, or compound condition. A plain '
+        'yes/no comparison of fixed referents or image halves swaps both ways on the usual two-side reading.\n'
+        'Unsafe: everything else, including an unclear axis, an indefinite or plural pair, or left/right '
+        'used to identify a referent.'
     ),
     'vflip': (
-        'Invariant: the question has no up/down wording (top, bottom, above, below), no support or '
-        'orientation words (on, under, inside, sitting, hanging, lying), and no readable text.\n'
-        'Equivariant: the question asks which side something is on (answer must be top or bottom), '
-        'up/down is not used to identify an object, and there is no support wording, readable text, or '
-        'multiple and/or conditions. Answer: swap top and bottom, above and below.\n'
-        'Unsafe: everything else, including yes/no questions such as “Is X above Y?”.'
+        'Invariant: no up/down dependency, support, posture, natural reference surface, or readable text.\n'
+        'Equivariant: an explicit top/bottom or above/below choice swaps if there is no up/down '
+        'identification, support, text, or compound condition. A plain yes/no comparison of fixed '
+        'referents or image halves swaps both ways on the usual two-side reading.\n'
+        'Unsafe: everything else, including unclear axes, boundary cases, or changing referents.'
     ),
     'grayscale': (
         'Invariant: the question contains no color or brightness wording (dark, bright, colorful).\n'
@@ -57,11 +57,13 @@ SUMMARIZED_RULES = {
     'fill_red': (
         'First pick one target object (see Target selection rule on the Quick guide); if there is none, '
         'there is no automatic label.\n'
-        'Invariant: the question has no color, material, texture, pattern, surface, or readable-text wording.\n'
-        'Equivariant: the target is clear, there is no comparison or multiple and/or conditions, and '
-        'the question is about the target’s color. “What color is X?” answers red. “Is X <color>?” '
-        'answers yes if the color is red, otherwise no. “Is X <color> or red?” answers red.\n'
-        'Unsafe: everything else.'
+        'Invariant: the evidence needed to identify the target and answer survives the opaque fill, '
+        'and the question has no color, material, texture, pattern, surface, or readable-text wording.\n'
+        'Equivariant: the target stays identifiable, there is no comparison or compound condition, and '
+        'the question asks its color. A direct color query or a choice including red can answer red. '
+        'A non-negated verification can answer yes for red or no for a clearly different color.\n'
+        'Unsafe: everything else, including when the fill can erase clothing, gaze, haze, or other '
+        'details needed to answer or select the target.'
     ),
     'occlude_bbox': (
         'Never invariant: the object is named in the question, so hiding it cannot be shown irrelevant.\n'
@@ -98,7 +100,8 @@ INSTRUCTIONS = [
      'The answer changes in a predictable way (including always becoming one fixed answer). '
      'Write the mapping in the next column.', 'FEF3C7'),
     ('unsafe',
-     'No reliable expectation: the answer could change unpredictably, or the question may become unanswerable.', 'FEE2E2'),
+     'Skip scoring: the answer could change unpredictably, or the question may become unanswerable. '
+     'An abstention costs coverage, not a failed test.', 'FEE2E2'),
     ('2. Mapping (equivariant only)',
      'If you chose equivariant, say how the answer changes. Imagine the question had every possible original answer, '
      'and write one line for each: original answer -> answer after the edit.\n\n'

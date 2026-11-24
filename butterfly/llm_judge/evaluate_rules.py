@@ -48,7 +48,23 @@ TEXT_WORDS = {'say', 'says', 'written', 'read', 'letters', 'number', 'word', 'si
               'text', 'label', 'brand', 'name'}
 COMPARE_WORDS = {'same', 'different', 'than', 'similar', 'compared', 'bigger', 'larger', 'smaller',
                  'taller', 'shorter', 'older', 'younger'}
-ON_SIDE = re.compile(r'\bon\s+(?:the\s+)?(?:left|right|top|bottom|side)\b')
+ON_SIDE = re.compile(r'\bon\s+(?:(?:the\s+)?(?:left|right|top|bottom|side)|(?:which|what)\s+side)\b')
+SIDE_QUESTION = re.compile(r'\b(?:which|what)\s+side\b(?!\s+dish\b)')
+IMAGE_PART_QUESTION = re.compile(
+    r'\b(?:which|what)\s+(?:part|area|region|section)\s+of\s+(?:the|this|that)\s+'
+    r'(?:image|picture|photo(?:graph)?|frame)\b'
+)
+EXISTENTIAL_PREFIX = re.compile(r'\s*(?:(?:is|are)\s+there|(?:do|can)\s+you\s+see)\b')
+YES_NO_PREFIX = re.compile(r'\s*(?:is|are|was|were|do|does|did|can|could|has|have|would|will)\b')
+LR_RELATION = re.compile(r'\b(?:left|right)\s+of\b')
+UD_RELATION = re.compile(r'\b(?:above|below|over|under|beneath|underneath)\b')
+FRAME_HALF = re.compile(
+    r'\b(?:on|in|at|to)\s+(?:the\s+)?(left|right|top|bottom)(?:\s+(?:side|part|half))?'
+    r'(?:\s+of\s+(?:the|this|that)\s+(?:image|picture|photo(?:graph)?|frame))?\s*[?.]?\s*$'
+)
+PAIR_UNCERTAINTY_WORDS = {'a', 'an', 'any', 'some', 'another', 'one', 'several', 'many',
+                          'multiple', 'each', 'every', 'all', 'other', 'or', 'aligned',
+                          'centered', 'centred', 'middle', 'center', 'centre', 'straddling'}
 
 
 def tokenize(question):
@@ -76,9 +92,10 @@ def ish_base(token):
 def derive_flags(question, prediction):
     """Merge the LLM flags with code-side flags (Part 2). Returns (flags set, derived dict)."""
     llm = set(prediction['flags'])
-    tokens = tokenize(question)
+    text = question.lower()
+    tokens = tokenize(text)
     words = set(tokens)
-    support_tokens = set(tokenize(ON_SIDE.sub(' ', question.lower())))
+    support_tokens = set(tokenize(ON_SIDE.sub(' ', text)))
 
     color_tokens = [t for t in tokens if t in COLOR_WORDS or ish_base(t)]
     ish = [t for t in tokens if ish_base(t)]
@@ -110,18 +127,38 @@ def derive_flags(question, prediction):
     }
     flags.update(name for name, on in code.items() if on)
 
-    # Direction veto, then subtype consistency.
-    for prefix, present in (('LR', lr_word), ('UD', ud_word)):
-        if not present:
-            flags -= {f'{prefix}_{s}' for s in ('ID', 'ANSWER', 'SIDE', 'YN')}
-        if f'{prefix}_SIDE' in flags:
-            flags.discard(f'{prefix}_YN')
+    # Keep semantic dependency flags even without a direction word. Only
+    # positive mapping subtypes need affirmative lexical/semantic support.
+    lr_choice = 'or' in words and {'left', 'right'} <= words
+    ud_choice = 'or' in words and ({'top', 'bottom'} <= words or {'above', 'below'} <= words)
+    side_question = bool(SIDE_QUESTION.search(text))
+    if side_question and not ud_choice:
+        flags.add('LR_ANSWER')  # Missing LR_SIDE must not silently become invariant.
+    if IMAGE_PART_QUESTION.search(text) and not (lr_choice or ud_choice):
+        flags.update(('LR_ANSWER', 'UD_ANSWER'))
+    implicit_lr = side_question and not ud_choice and not (flags & {'UD_ANSWER', 'UD_SIDE', 'UD_YN'})
+    if words & PAIR_UNCERTAINTY_WORDS or EXISTENTIAL_PREFIX.match(text):
+        flags.discard('FIXED_PAIR')
+    yes_no_form = bool(YES_NO_PREFIX.match(text))
+    frame_half = FRAME_HALF.search(text)
+    half = frame_half[1] if frame_half else None
+    for prefix, yn_supported, side_supported in (
+        ('LR', LR_RELATION.search(text) or half in {'left', 'right'}, lr_choice or implicit_lr),
+        ('UD', UD_RELATION.search(text) or half in {'top', 'bottom'}, ud_choice),
+    ):
+        side, yn = f'{prefix}_SIDE', f'{prefix}_YN'
+        if flags & {side, yn}:
             flags.add(f'{prefix}_ANSWER')
-        if f'{prefix}_YN' in flags:
-            flags.add(f'{prefix}_ANSWER')
+        if {side, yn} <= flags:
+            flags.difference_update((side, yn))
+        if not side_supported:
+            flags.discard(side)
+        if not (yes_no_form and yn_supported):
+            flags.discard(yn)
 
-    # Color form must agree with the number of color words in the question.
-    forms = {'COLOR_QUERY': len(color_tokens) == 0, 'COLOR_VERIFY': len(color_tokens) == 1,
+    # Check the color token count and reject a yes/no mapping for open questions.
+    forms = {'COLOR_QUERY': len(color_tokens) == 0,
+             'COLOR_VERIFY': yes_no_form and len(color_tokens) == 1,
              'COLOR_CHOOSE': len(color_tokens) >= 2}
     present = [f for f in forms if f in flags]
     for form in forms:
@@ -160,16 +197,15 @@ def judge(question, prediction):
         clear = not _id and not has('MULTI_CONDITION') and not any(has(b) for b in blockers)
         if side and clear:
             return equivariant(swap)
-        if yn and clear and not has('NEGATION'):
-            return equivariant({'yes': 'no', 'no': 'unchecked'})
-        return INVARIANT if invariant else UNSAFE
+        if yn and clear and has('FIXED_PAIR') and not has('NEGATION'):
+            # Best-effort assumption for clean binary sides: no means the opposite side.
+            return equivariant({'yes': 'no', 'no': 'yes'})
+        directional = _id or has(prefix + '_ANSWER') or has(prefix + '_WORD')
+        return INVARIANT if invariant and not directional else UNSAFE
 
-    # The direction veto already cleared every LR_*/UD_* flag when no direction word exists.
-    hflip = spatial('LR', ('BODY', 'TEXT'),
-                    not has('LR_WORD') and not has('BODY') and not has('TEXT'),
+    hflip = spatial('LR', ('BODY', 'TEXT'), not (f & {'BODY', 'TEXT'}),
                     {'left': 'right', 'right': 'left'})
-    vflip = spatial('UD', ('SUPPORT', 'TEXT'),
-                    not has('UD_WORD') and not any(has(x) for x in ('SUPPORT', 'GRAVITY', 'REF_SURFACE', 'TEXT')),
+    vflip = spatial('UD', ('SUPPORT', 'TEXT'), not (f & {'SUPPORT', 'GRAVITY', 'REF_SURFACE', 'TEXT'}),
                     {'top': 'bottom', 'bottom': 'top', 'above': 'below', 'below': 'above'})
 
     plain = not has('MULTI_CONDITION') and not has('COMPARE')
@@ -190,6 +226,8 @@ def judge(question, prediction):
     neg = has('NEGATION')
 
     def fill(color):
+        if not has('FILL_SAFE'):
+            return UNSAFE
         asks, near = d['ASKS'][color]
         if eq_gate and has('COLOR_QUERY'):
             return equivariant({'any': color})

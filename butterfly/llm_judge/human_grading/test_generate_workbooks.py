@@ -12,8 +12,10 @@ from generate_workbooks import generate, load_questions
 
 class WorkbookTests(unittest.TestCase):
     def test_example_split_and_grading_controls(self):
-        source = Path(__file__).parent / 'examples/sample_questions.jsonl'
         with tempfile.TemporaryDirectory() as directory:
+            source = Path(directory) / 'sample_questions.jsonl'
+            source.write_text(''.join(json.dumps({'id': f'{i:04d}', 'question': f'Question {i}?'}) + '\n'
+                                      for i in range(20)), encoding='utf-8')
             output = Path(directory) / 'assignments'
             manifest = generate(source, output, 4)
             ids = []
