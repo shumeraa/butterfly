@@ -15,7 +15,7 @@ ROOT_V2 = Path('/work/11808/shumera/ls6/butterfly_shared_resources/datasets/viz_
 # Env: SOURCES  colon-separated data roots, merged in order (default: the original 303 only)
 #      OUT      output dir (default <first source>/merged)
 #      DEDUPE   pair (default) | id | none. Later duplicates are dropped, so earlier sources win.
-#               id   = same questionId; pair = same questionId OR same (question text, answer)
+#               id   = same questionId; pair = same questionId OR same (imageId, question text, answer)
 #      ALLOW_PARTIAL=1  skip unfinished chunks (testing only)
 SOURCES = [Path(p) for p in os.environ.get('SOURCES', str(ROOT)).split(':')]
 OUT = Path(os.environ.get('OUT', SOURCES[0] / 'merged'))
@@ -46,13 +46,13 @@ for src in SOURCES:
         if q not in s_rows:
             continue
         r = s_rows[q]
-        pair = (r['question'].strip().lower(), str(r['answer']).strip().lower())
+        pair = (str(r['imageId']), r['question'].strip().lower(), str(r['answer']).strip().lower())
         why = None
         if DEDUPE != 'none':
             if q in rows:
                 why = 'questionId'
             elif DEDUPE == 'pair' and pair in seen_pairs:
-                why = f'same question+answer as {seen_pairs[pair]}'
+                why = f'same image+question+answer as {seen_pairs[pair]}'
         if why:
             dropped.append({'questionId': q, 'source': str(src), 'reason': why})
             continue
