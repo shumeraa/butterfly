@@ -9,7 +9,33 @@ import hashlib
 import io
 import json
 from pathlib import Path
+import os
 import sys
+
+# Prompt versions: the prompt, its flag vocabulary and its label rules travel together. The
+# default is the frozen v5 in versions/gqa-simple-v5; the top-level files are the newest version
+# (v7). Select with --prompt-version or $PROMPT_VERSION. Must happen before the imports below.
+DEFAULT_PROMPT_VERSION = 'gqa-simple-v5'
+LATEST_PROMPT_VERSION = 'gqa-simple-v7'
+_HERE = os.path.dirname(os.path.abspath(__file__))
+
+
+def _requested_version():
+    argv = sys.argv
+    for i, a in enumerate(argv):
+        if a == '--prompt-version' and i + 1 < len(argv):
+            return argv[i + 1]
+        if a.startswith('--prompt-version='):
+            return a.split('=', 1)[1]
+    return os.environ.get('PROMPT_VERSION') or DEFAULT_PROMPT_VERSION
+
+
+_VERSION = _requested_version()
+if _VERSION != LATEST_PROMPT_VERSION:
+    _vdir = os.path.join(_HERE, 'versions', _VERSION)
+    if not os.path.isdir(_vdir):
+        sys.exit(f'Unknown prompt version {_VERSION!r}; use {LATEST_PROMPT_VERSION} or a folder in versions/')
+    sys.path.insert(0, _vdir)
 
 from common import atomic_text, parse_response, read_jsonl, save_json, save_jsonl
 from evaluate_rules import build_labels, count_verdicts
@@ -252,6 +278,8 @@ def main():
     parser.add_argument('--batch-size', type=int, default=16,
                         help='Questions per vLLM batch (also max concurrent sequences); progress is checkpointed per batch')
     parser.add_argument('--temperature', type=float, default=0.0)
+    parser.add_argument('--prompt-version', default=_VERSION,
+                        help=f'default {DEFAULT_PROMPT_VERSION}; latest is {LATEST_PROMPT_VERSION}')
     parser.add_argument('--prompt-mode', choices=['chat', 'plain'], default='chat')
     thinking = parser.add_mutually_exclusive_group()
     thinking.add_argument('--disable-thinking', dest='disable_thinking', action='store_true', default=True,
@@ -259,6 +287,7 @@ def main():
     thinking.add_argument('--enable-thinking', dest='disable_thinking', action='store_false',
                           help='Use the tokenizer chat template default thinking behavior')
     args = parser.parse_args()
+    assert args.prompt_version == PROMPT_VERSION, (args.prompt_version, PROMPT_VERSION)
     if args.max_tokens <= 0 or args.batch_size <= 0:
         parser.error('--max-tokens and --batch-size must be positive')
     if args.recover_failures and not args.resume:
