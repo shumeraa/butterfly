@@ -76,7 +76,7 @@ class MaterializedTests(unittest.TestCase):
         original = np.asarray(source).copy()
         backend = Segmenter()
         mask = backend.segment(source, 'cup')
-        result = np.asarray(fill_objects(source, 'cup', 'red', segmenter=backend))
+        result = np.asarray(fill_objects(source, 'cup', 'red', segmenter=backend, strength=1.0))
         np.testing.assert_array_equal(result[mask, :3], np.tile([255, 0, 0], (2, 1)))
         np.testing.assert_array_equal(result[~mask], original[~mask])
         np.testing.assert_array_equal(result[:, :, 3], original[:, :, 3])

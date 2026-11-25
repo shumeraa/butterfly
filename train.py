@@ -37,7 +37,7 @@ from unit_test_generation.processing import extract_unit_tests, get_unit_test_pr
 from unit_test_generation.unit_test_sampling import TextSampler
 from unit_test_generation.suites import build_suite, invalidate_suite_cache, suite_settings, uses_viunit
 from unit_test_generation.metamorphic.baselines import (
-    collect_baselines, instrument_tests, failed_baseline_test, answer_options, score_expected,
+    collect_baselines, instrument_tests, baseline_error_result, mean_scored, answer_options, score_expected,
 )
 from accuracy_fns import get_accuracy_fn
 
@@ -485,7 +485,7 @@ for iter in range(start_iter, this_config['execution']['feedback_max_iters']):
                     unit_test_results = []
                     for ut_index, ut in enumerate(unit_tests):
                         if ut_index in baseline_errors:
-                            unit_test_results.append(failed_baseline_test(baseline_errors[ut_index]))
+                            unit_test_results.append(baseline_error_result(baseline_errors[ut_index]))
                             continue
                         curr_unit_test = []
                         if isinstance(images[ut_index], tuple):
@@ -530,7 +530,7 @@ for iter in range(start_iter, this_config['execution']['feedback_max_iters']):
                     curr_ut_scores = [r['acc'] for r in unit_test_results]
                     dataset.data[idx]['unit_test_results'][iter].append({
                         'results': unit_test_results, 
-                        'acc': sum(curr_ut_scores)/len(unit_test_results)
+                        'acc': mean_scored(unit_test_results)
                         })
             pickle.dump(dataset.data, open(save_file, 'wb'))
         else:
@@ -603,7 +603,7 @@ for iter in range(start_iter, this_config['execution']['feedback_max_iters']):
                     unit_test_results = []
                     for ut_index, ut in enumerate(unit_tests):
                         if ut_index in baseline_errors:
-                            unit_test_results.append(failed_baseline_test(baseline_errors[ut_index]))
+                            unit_test_results.append(baseline_error_result(baseline_errors[ut_index]))
                             continue
                         curr_unit_test = []
                         if isinstance(images[ut_index], tuple):
@@ -647,7 +647,7 @@ for iter in range(start_iter, this_config['execution']['feedback_max_iters']):
                     curr_ut_scores = [r['acc'] for r in unit_test_results]
                     dataset.data[idx]['unit_test_results'][iter].append({
                         'results': unit_test_results, 
-                        'acc': sum(curr_ut_scores)/len(unit_test_results)
+                        'acc': mean_scored(unit_test_results)
                         })
             pickle.dump(dataset.data, open(save_file, 'wb'))
 

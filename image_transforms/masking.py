@@ -82,7 +82,14 @@ class GroundedSAM:
         import torch
 
         image = image.convert('RGB')
-        boxes = self.detect_boxes(image, word)
+        return self.segment_boxes(image, self.detect_boxes(image, word))
+
+    def segment_boxes(self, image, boxes):
+        """Return boolean [N, H, W] SAM masks for the given [x0, y0, x1, y1] boxes."""
+        import torch
+
+        image = image.convert('RGB')
+        boxes = np.asarray(boxes, dtype=float).reshape(-1, 4)
         if len(boxes) == 0:
             return np.zeros((0, image.height, image.width), dtype=bool)
 
@@ -142,7 +149,10 @@ def _dilate_mask(mask, fraction):
     return np.asarray(grown) > 0
 
 
-def fill_objects(image, word, color, *, segmenter=None, strength=1.0, dilate=.01):
+DEFAULT_FILL_STRENGTH = 0.75   # gqa-simple-v5 was built with solid fill (strength=1.0); pass 1.0 to reproduce it
+
+
+def fill_objects(image, word, color, *, segmenter=None, strength=DEFAULT_FILL_STRENGTH, dilate=.01):
     """Fill the matching segmentation mask with a color, preserving alpha.
 
     Raise if no target is found instead of recording an unchanged custom test.
@@ -169,7 +179,26 @@ def fill_objects(image, word, color, *, segmenter=None, strength=1.0, dilate=.01
 
 
 def occlude_objects(image, word, fill='white', *, segmenter=None, dilate=.1, verify=True,
-                    verify_threshold=.2, max_rounds=2, max_area=.6):
+                    verify_threshold=.2, max_rounds=2, max_area=None, shape='box', fallback=None,
+                    mask_dilate=.01):
+    """occlude_objects_once, retried with the `fallback` shape if the first shape is rejected.
+
+    shape/fallback are 'box' (dilated detection boxes) or 'mask' (SAM masks of the boxes, much
+    tighter on thin or irregular objects such as fences and grass, so fewer tests hit max_area).
+    A missing object is never retried.
+    """
+    options = dict(segmenter=segmenter, dilate=dilate, verify=verify, verify_threshold=verify_threshold,
+                   max_rounds=max_rounds, max_area=max_area, mask_dilate=mask_dilate)
+    try:
+        return _occlude_once(image, word, fill, shape=shape, **options)
+    except ValueError as error:
+        if not fallback or fallback == shape or str(error).startswith('No object matched'):
+            raise
+        return _occlude_once(image, word, fill, shape=fallback, **options)
+
+
+def _occlude_once(image, word, fill, *, segmenter, dilate, verify, verify_threshold, max_rounds, max_area,
+                  shape, mask_dilate):
     """Fill each matching detection box (including its background) with a color.
 
     Custom backends without detection boxes may supply instance masks; their
@@ -179,7 +208,7 @@ def occlude_objects(image, word, fill='white', *, segmenter=None, dilate=.1, ver
     edges). With verify (needs a backend with detect_boxes), the edited image is searched again at
     the lower verify_threshold; detections outside the filled area are filled too, up to
     max_rounds times. If the object is still found, or the fills would cover more than max_area
-    of the image, ValueError is raised so no unreliable "object absent" test is recorded.
+    of the image (when max_area is set; off by default), ValueError is raised so no unreliable "object absent" test is recorded.
     """
     _word(word)
     rgb = Image.new('RGB', (1, 1), fill).getpixel((0, 0))
@@ -207,7 +236,18 @@ def occlude_objects(image, word, fill='white', *, segmenter=None, dilate=.1, ver
     pixels = np.array(source)
     filled = np.zeros((source.height, source.width), dtype=bool)
 
-    def paint(boxes):
+    if shape not in ('box', 'mask'):
+        raise ValueError("shape must be 'box' or 'mask'")
+    if shape == 'mask' and not callable(getattr(backend, 'segment_boxes', None)):
+        raise ValueError("shape='mask' needs a backend with segment_boxes")
+
+    def paint(boxes, current):
+        if shape == 'mask':
+            for mask in backend.segment_boxes(current, boxes):
+                region = _dilate_mask(mask, mask_dilate)
+                pixels[region, :3] = rgb
+                filled[region] = True
+            return
         for x0, y0, x1, y1 in boxes:
             x0, y0, x1, y1 = int(np.floor(x0)), int(np.floor(y0)), int(np.ceil(x1)), int(np.ceil(y1))
             gx, gy = int(round(dilate * (x1 - x0) / 2)), int(round(dilate * (y1 - y0) / 2))
@@ -218,14 +258,14 @@ def occlude_objects(image, word, fill='white', *, segmenter=None, dilate=.1, ver
             pixels[y0:y1, x0:x1, :3] = rgb
             filled[y0:y1, x0:x1] = True
 
-    paint(boxes)
+    paint(boxes, source.convert('RGB'))
     if verify and has_boxes:
         extra_args = {'threshold': verify_threshold} if isinstance(backend, GroundedSAM) else {}
         for round_ in range(max_rounds + 1):
-            if filled.mean() > max_area:
+            if max_area is not None and filled.mean() > max_area:
                 raise ValueError(f'Occluding {word!r} would cover over {max_area:.0%} of the image')
-            found = np.asarray(backend.detect_boxes(Image.fromarray(pixels).convert('RGB'), word,
-                                                    **extra_args), dtype=float).reshape(-1, 4)
+            edited = Image.fromarray(pixels).convert('RGB')
+            found = np.asarray(backend.detect_boxes(edited, word, **extra_args), dtype=float).reshape(-1, 4)
             outside = []
             for box in found:  # a box mostly on our own fill is the detector reacting to the edit
                 x0, y0 = max(0, int(box[0])), max(0, int(box[1]))
@@ -236,5 +276,5 @@ def occlude_objects(image, word, fill='white', *, segmenter=None, dilate=.1, ver
                 break
             if round_ == max_rounds:
                 raise ValueError(f'{word!r} still detected after occlusion; test is unreliable')
-            paint(np.asarray(outside))
+            paint(np.asarray(outside), edited)
     return Image.fromarray(pixels)

@@ -18,7 +18,46 @@ import sys
 from collections import Counter
 from pathlib import Path
 
+sys.path.insert(0, '/work/11808/shumera/ls6/projects/butterfly')
+from accuracy_fns import GQA_accuracy  # noqa: E402
+from unit_test_generation.metamorphic.baselines import SKIP, resolve_answer, score_expected  # noqa: E402
+
 merged, ev = Path(sys.argv[1]), Path(sys.argv[2])
+
+
+def program_scores(d, n):
+    """Per-program mean over scored tests, re-resolving rules with the current resolve_answer.
+
+    Skipped tests (`unchecked`, or a mapping with no key for the program's baseline answer) are left out of
+    the mean. A failed baseline counts as 0. A program with nothing scored takes the mean of the others
+    (all tied if none scored), so it neither wins nor loses by default.
+    """
+    results, meta, rules = d['unit_test_results'][0], d['unit_test_metadata'], d['selected_unit_tests']
+    base = d['original_program_outputs'][0]
+    out, n_skipped = [], 0
+    for p in range(n):
+        scores = []
+        for t, (_, rule) in enumerate(rules):
+            r = results[p]['results'][t]
+            if r.get('skipped'):                        # already skipped by the pipeline
+                n_skipped += 1
+                continue
+            if r.get('baseline_error') or r.get('failed'):
+                scores.append(0.0)
+                continue
+            if t >= len(meta) or meta[t].get('source') != 'metamorphic':
+                scores.append(r['acc'])
+                continue
+            expected = resolve_answer(rule, base[p]['output'])
+            if expected is SKIP:
+                n_skipped += 1
+                continue
+            sub = r['results'][0]
+            scores.append(0.0 if sub.get('error') else float(score_expected(sub['output'], expected, GQA_accuracy)))
+        out.append(st.mean(scores) if scores else None)
+    valid = [x for x in out if x is not None]
+    fill = st.mean(valid) if valid else 0.0
+    return [fill if x is None else x for x in out], n_skipped
 rows = [json.loads(l) for l in open(merged / 'dataset.jsonl')]
 by_q = {r['questionId']: r for r in rows}
 
@@ -42,10 +81,10 @@ for q, r in by_q.items():
     d = meta.get(q)
     if d is not None and d.get('unit_test_results', {}).get(0):
         res = d['unit_test_results'][0]
-        scores = [res[i]['acc'] for i in range(len(correct))]
+        scores, n_skipped = program_scores(d, len(correct))
         top = max(scores)
         sel = [i for i, s in enumerate(scores) if s == top]
-        row.update(has_tests=True, n_tests=len(d['selected_unit_tests']),
+        row.update(has_tests=True, n_tests=len(d['selected_unit_tests']), n_skipped=n_skipped,
                    transformations=[m.get('transformation') for m in d.get('unit_test_metadata', [])],
                    test_descriptions=[t[0] for t in d['selected_unit_tests']],
                    metamorphic_scores=scores, metamorphic_selected=sel)

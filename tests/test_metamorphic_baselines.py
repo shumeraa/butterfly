@@ -11,6 +11,7 @@ from types import SimpleNamespace
 
 from unit_test_generation.metamorphic.baselines import (
     collect_baselines, instrument_tests, resolve_answer, failed_baseline_test, answer_options, score_expected,
+    SKIP, baseline_error_result, is_skipped, mean_scored,
 )
 
 
@@ -31,7 +32,7 @@ class BaselineTests(unittest.TestCase):
     def test_answer_rules(self):
         self.assertEqual(resolve_answer('', 'left'), 'left')
         self.assertEqual(resolve_answer({'left': 'right'}, 'left'), 'right')
-        self.assertEqual(resolve_answer({'left': 'right'}, 'above'), 'above')
+        self.assertIs(resolve_answer({'left': 'right'}, 'above'), SKIP)   # no matching key: nothing to check
         self.assertEqual(resolve_answer({}, 'left'), 'left')
         self.assertEqual(resolve_answer({'any': 'red'}, 'left'), 'red')
         self.assertEqual(resolve_answer({'left': 'right', 'any': 'red'}, 'left'), 'right')
@@ -43,6 +44,37 @@ class BaselineTests(unittest.TestCase):
         self.assertEqual(resolve_answer('explicit', 'left'), 'explicit')
         with self.assertRaises(ValueError):
             resolve_answer({'left': 123}, 'left')
+
+    def test_unchecked_and_unmatched_rules_skip(self):
+        self.assertIs(resolve_answer({'yes': 'no', 'no': 'unchecked'}, 'no'), SKIP)
+        self.assertEqual(resolve_answer({'yes': 'no', 'no': 'unchecked'}, 'yes'), 'no')
+        self.assertIs(resolve_answer({'any': ['unchecked']}, 'x'), SKIP)
+        self.assertIs(resolve_answer('unchecked', 'x'), SKIP)
+        # yes/no baseline against a left/right rule says nothing about the flipped answer
+        self.assertIs(resolve_answer({'left': 'right', 'right': 'left'}, 'no'), SKIP)
+        self.assertIs(resolve_answer({'left': 'right', 'right': 'left'}, 'yes'), SKIP)
+
+    def test_baseline_answer_is_normalized_before_lookup(self):
+        rule = {'left': 'right', 'right': 'left'}
+        self.assertEqual(resolve_answer(rule, 'Left '), 'right')
+        self.assertEqual(resolve_answer(rule, 'left side'), 'right')
+        self.assertEqual(resolve_answer(rule, 'on the right'), 'left')
+        self.assertIs(resolve_answer(rule, 'left or right'), SKIP)   # ambiguous
+        self.assertIs(resolve_answer(rule, 'yes, the man is on the left.'), SKIP)   # too long to trust
+
+    def test_skipped_tests_are_excluded_from_the_mean(self):
+        record = dict(index=0, sample_id='q1', unit_test_metadata=[{'source': 'metamorphic'}] * 2)
+        tests = [('hflip', {'yes': 'no', 'no': 'unchecked'}), ('vflip', '')]
+        baseline = {('q1', 0, 0): dict(output='no', error=None), ('q1', 0, 1): dict(output='yes', error=None)}
+        _, skipped = instrument_tests(record, tests, 0, 0, True, baseline)
+        self.assertEqual(list(skipped), [0]); self.assertTrue(is_skipped(skipped[0]))
+        _, ran = instrument_tests(record, tests, 0, 1, True, baseline)
+        self.assertEqual(ran, {})
+        results = [baseline_error_result(skipped[0]), dict(acc=1.0, results=[])]
+        self.assertEqual(mean_scored(results), 1.0)
+        self.assertEqual(mean_scored([baseline_error_result(skipped[0])]), 0.0)   # nothing scored
+        failed = baseline_error_result('Baseline execution failed: x')
+        self.assertEqual(mean_scored([failed, dict(acc=1.0, results=[])]), 0.5)   # a failed baseline still counts
 
     def test_cache_and_candidate_identity(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -159,7 +191,8 @@ class BaselineTests(unittest.TestCase):
                 namespace = dict(dataset=dataset, this_config=config, iter=0, baseline_enabled=True,
                                  original_answers=shared, build_suite=build_suite, instrument_tests=instrument_tests,
                                  answer_options=answer_options, score_expected=score_expected,
-                                 failed_baseline_test=failed_baseline_test, copy=copy,
+                                 failed_baseline_test=failed_baseline_test, baseline_error_result=baseline_error_result,
+                                 mean_scored=mean_scored, copy=copy,
                                  pickle=SimpleNamespace(dump=lambda data, stream: stream.close()),
                                  open=open, save_file=str(Path(tmp) / 'data.p'),
                                  log_file=io.StringIO(), tqdm=lambda items: items,

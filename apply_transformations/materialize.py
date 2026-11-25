@@ -8,6 +8,7 @@ from functools import lru_cache
 from PIL import Image, ImageOps
 
 from image_transforms import apply_transform, fill_objects, occlude_objects, GroundedSAM
+from image_transforms.masking import DEFAULT_FILL_STRENGTH
 from unit_test_generation.metamorphic.baselines import validate_answer_rule
 
 
@@ -36,7 +37,7 @@ def materialize_selected_tests(image_path, tests, output_dir, *, seed=42,
                 if operation == 'fill_color':
                     transformed = fill_objects(image, parameters['item'], parameters['color'],
                                                segmenter=segmenter,
-                                               strength=parameters.get('strength', 1.0))
+                                               strength=parameters.get('strength', DEFAULT_FILL_STRENGTH))
                 else:
                     transformed = occlude_objects(image, parameters['item'],
                         fill=parameters.get('fill', 'white'), segmenter=segmenter)

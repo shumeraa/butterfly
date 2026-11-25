@@ -46,7 +46,7 @@ else:
 # Shared suite selection, validation, cache invalidation, and ViUniT setup checks.
 from unit_test_generation.suites import build_suite, invalidate_suite_cache, suite_settings, uses_viunit
 from unit_test_generation.metamorphic.baselines import (
-    collect_baselines, instrument_tests, failed_baseline_test, answer_options, score_expected,
+    collect_baselines, instrument_tests, baseline_error_result, mean_scored, answer_options, score_expected,
 )
 if not DUMMY_EXECUTION:
     from accuracy_fns import get_accuracy_fn
@@ -735,7 +735,7 @@ for iter in range(start_iter, this_config['execution']['feedback_max_iters']):
                     unit_test_results = []
                     for ut_index, ut in enumerate(unit_tests):
                         if ut_index in baseline_errors:
-                            unit_test_results.append(failed_baseline_test(baseline_errors[ut_index]))
+                            unit_test_results.append(baseline_error_result(baseline_errors[ut_index]))
                             continue
                         curr_unit_test = []
                         if isinstance(images[ut_index], tuple):
@@ -780,7 +780,7 @@ for iter in range(start_iter, this_config['execution']['feedback_max_iters']):
                     curr_ut_scores = [r['acc'] for r in unit_test_results]
                     dataset.data[idx]['unit_test_results'][iter].append({
                         'results': unit_test_results, 
-                        'acc': sum(curr_ut_scores)/len(unit_test_results) if len(unit_test_results) > 0 else 0.0
+                        'acc': mean_scored(unit_test_results)
                         })
             pickle.dump(dataset.data, open(save_file, 'wb'))
         else:
@@ -855,7 +855,7 @@ for iter in range(start_iter, this_config['execution']['feedback_max_iters']):
                     unit_test_results = []
                     for ut_index, ut in enumerate(unit_tests):
                         if ut_index in baseline_errors:
-                            unit_test_results.append(failed_baseline_test(baseline_errors[ut_index]))
+                            unit_test_results.append(baseline_error_result(baseline_errors[ut_index]))
                             continue
                         curr_unit_test = []
                         if isinstance(images[ut_index], tuple):
@@ -899,7 +899,7 @@ for iter in range(start_iter, this_config['execution']['feedback_max_iters']):
                     curr_ut_scores = [r['acc'] for r in unit_test_results]
                     dataset.data[idx]['unit_test_results'][iter].append({
                         'results': unit_test_results, 
-                        'acc': sum(curr_ut_scores)/len(unit_test_results) if len(unit_test_results) > 0 else 0.0
+                        'acc': mean_scored(unit_test_results)
                         })
             pickle.dump(dataset.data, open(save_file, 'wb'))
 
@@ -929,7 +929,12 @@ for iter in range(start_iter, this_config['execution']['feedback_max_iters']):
                                                 'image': dataset[idx]['image_path']
                                                 })
         if len(code_execution_data) > 0:
-            code_execution_results = code_execution(code_execution_data, this_config, use_fixed_code=fixed_code) 
+            # Real-image pass. By default a crashed program is retried with the simple_query fallback and the
+            # fallback's answer is recorded with error=None. `execution.real_pass_fixed_code: false` keeps the
+            # program's own failure (error set, output None), so correctness measures the generated program only.
+            code_execution_results = code_execution(
+                code_execution_data, this_config,
+                use_fixed_code=fixed_code if this_config['execution'].get('real_pass_fixed_code', True) else None)
         correct = 0
         for idx in tqdm(range(len(dataset))):
             dataset.data[idx]['max_accuracy_output'] = []

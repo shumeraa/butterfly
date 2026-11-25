@@ -28,7 +28,8 @@ for q, r in ds.items():
     n = len(r['real_correct'])
     c = cmp_[q]
     meta = c.get('metamorphic_scores') or [0.0] * n
-    outs = [o if o is not None else '__none__' for o in r['real_outputs']]
+    # a crashed program has no answer: it must not "agree" with other crashes, so each gets a unique key
+    outs = [o if e is None and o is not None else f'__err{i}' for i, (o, e) in enumerate(zip(r['real_outputs'], r['real_errors']))]
     cnt = Counter(outs)
     Q.append(dict(q=q, rc=[float(x) for x in r['real_correct']], vu=list(r['unit_test_scores']),
                   meta=list(meta), has=c['has_tests'], nmeta=c.get('n_tests', 0),
