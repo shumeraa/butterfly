@@ -1,6 +1,6 @@
 """Versioned, exact question-only prompt from SIMPLE_PROMPTS.md (Part 1)."""
 
-PROMPT_VERSION = "gqa-simple-v7"
+PROMPT_VERSION = "gqa-simple-v7.1"
 
 PROMPT = """Question: {question}
 
@@ -42,9 +42,6 @@ SUPPORT: A support or containment relation between two objects (on, under, insid
 GRAVITY: A posture, motion, or orientation of a single object that only makes sense when the image is upright: sitting, standing, lying, hanging, leaning, kneeling, falling, jumping, flying, floating, pouring, upside down.
 REF_SURFACE: The question mentions a natural reference surface or direction of the scene: sky, ground, floor, ceiling, roof, horizon, or a reflection. Set it even when that surface is the object being asked about.
 
-Fill color:
-FILL_SAFE: Set only if the target remains identifiable after its whole mask is replaced with a flat color and the answer has a reliable relationship for the fill. A direct color question about a stable target qualifies, as can position, size, or a simple relation to an untouched object. The mask preserves outline and location, not clothing, accessories, markings, face or gaze, texture, transparency, or haze inside it. Leave FILL_SAFE unset if such details can determine the answer or pick out its referent (clothing a person is wearing, the type of food, a happy face, a clear or foggy sky). The absence of an explicit color or material word is not enough. Do not add FILL_SAFE without a target.
-
 Other:
 TEXT: Readable text, letters, numbers, signs, logos, or an object that normally carries text (poster, license plate, book cover) when its text is relevant.
 MATW: Material, texture, pattern, or surface (wooden, striped, shiny).
@@ -53,13 +50,13 @@ MULTI_CONDITION: Several conditions joined by AND/OR, including "both"/"either" 
 
 Examples:
 Question: What color is the apple?
-{"target":"apple","flags":["COLOR_QUERY","FILL_SAFE"]}
+{"target":"apple","flags":["COLOR_QUERY"]}
 
 Question: Is the car red or blue?
-{"target":"car","flags":["COLOR_CHOOSE","FILL_SAFE"]}
+{"target":"car","flags":["COLOR_CHOOSE"]}
 
 Question: Is the shirt black?
-{"target":"shirt","flags":["COLOR_VERIFY","FILL_SAFE"]}
+{"target":"shirt","flags":["COLOR_VERIFY"]}
 
 Question: What animal is black?
 {"target":"black animal","flags":[]}
@@ -74,34 +71,34 @@ Question: Is the sky clear or foggy?
 {"target":"sky","flags":["REF_SURFACE"]}
 
 Question: What color is the cup on the left of the plate?
-{"target":"cup on the left of the plate","flags":["COLOR_QUERY","LR_ID","FILL_SAFE"]}
+{"target":"cup on the left of the plate","flags":["COLOR_QUERY","LR_ID"]}
 
 Question: Is there a cat in the image?
-{"target":"cat","flags":["FILL_SAFE"]}
+{"target":"cat","flags":[]}
 
 Question: Is the ball to the left or right of the box?
-{"target":"ball","flags":["LR_ANSWER","LR_SIDE","FILL_SAFE"]}
+{"target":"ball","flags":["LR_ANSWER","LR_SIDE"]}
 
 Question: On which side of the photo is the woman?
-{"target":"woman","flags":["LR_ANSWER","LR_SIDE","FILL_SAFE"]}
+{"target":"woman","flags":["LR_ANSWER","LR_SIDE"]}
 
 Question: Which part of the image are the people in?
-{"target":"people","flags":["LR_ANSWER","UD_ANSWER","FILL_SAFE"]}
+{"target":"people","flags":["LR_ANSWER","UD_ANSWER"]}
 
 Question: Is the ball to the left of the box?
-{"target":"ball","flags":["LR_ANSWER","LR_YN","FIXED_PAIR","FILL_SAFE"]}
+{"target":"ball","flags":["LR_ANSWER","LR_YN","FIXED_PAIR"]}
 
 Question: Are there mirrors to the left of the lamp?
 {"target":"mirrors to the left of the lamp","flags":["LR_ANSWER","LR_YN"]}
 
 Question: Is the ball above the box?
-{"target":"ball","flags":["UD_ANSWER","UD_YN","FIXED_PAIR","FILL_SAFE"]}
+{"target":"ball","flags":["UD_ANSWER","UD_YN","FIXED_PAIR"]}
 
 Question: Is the knife in the bottom part?
-{"target":"knife","flags":["UD_ANSWER","UD_YN","FIXED_PAIR","FILL_SAFE"]}
+{"target":"knife","flags":["UD_ANSWER","UD_YN","FIXED_PAIR"]}
 
 Question: Is the lamp on the top or bottom shelf?
-{"target":"lamp","flags":["UD_ANSWER","UD_SIDE","SUPPORT","FILL_SAFE"]}
+{"target":"lamp","flags":["UD_ANSWER","UD_SIDE","SUPPORT"]}
 
 Question: What is the girl to the left of the frisbee holding?
 {"target":"girl to the left of the frisbee","flags":["LR_ID"]}
@@ -113,10 +110,10 @@ Question: Is the bird sitting on the fence?
 {"target":"bird","flags":["SUPPORT","GRAVITY"]}
 
 Question: Is the man standing?
-{"target":"man","flags":["GRAVITY","FILL_SAFE"]}
+{"target":"man","flags":["GRAVITY"]}
 
 Question: What color is the sky?
-{"target":"sky","flags":["COLOR_QUERY","REF_SURFACE","FILL_SAFE"]}
+{"target":"sky","flags":["COLOR_QUERY","REF_SURFACE"]}
 
 Question: What does the sign say?
 {"target":"sign","flags":["TEXT"]}

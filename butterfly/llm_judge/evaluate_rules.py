@@ -226,8 +226,6 @@ def judge(question, prediction):
     neg = has('NEGATION')
 
     def fill(color):
-        if not has('FILL_SAFE'):
-            return UNSAFE
         asks, near = d['ASKS'][color]
         if eq_gate and has('COLOR_QUERY'):
             return equivariant({'any': color})

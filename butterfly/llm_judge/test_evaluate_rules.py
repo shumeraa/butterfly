@@ -82,29 +82,18 @@ class QuestionOnlyRulesTests(unittest.TestCase):
         self.assertEqual(result['hflip'], INVARIANT)
         self.assertEqual(result['vflip']['equivariant']['bottom'], 'top')
 
-    def test_fill_requires_affirmative_evidence(self):
-        for question, target in (
-            ('What is the woman wearing?', 'woman'),
-            ('Is the person wearing a bracelet?', 'person'),
-            ('Is the sky clear or foggy?', 'sky'),
-            ('What type of food is near the knife?', 'food'),
-        ):
-            with self.subTest(question=question):
-                self.assertEqual(self.fill(question, target), UNSAFE)
-        self.assertEqual(self.fill('What color is the apple?', 'apple', 'COLOR_QUERY'), UNSAFE)
-
     def test_reliable_fill_cases_remain_scorable(self):
-        self.assertEqual(self.fill('How large is the bench?', 'bench', 'FILL_SAFE'), INVARIANT)
-        self.assertEqual(self.fill('What color is the apple?', 'apple', 'COLOR_QUERY', 'FILL_SAFE'),
+        self.assertEqual(self.fill('How large is the bench?', 'bench'), INVARIANT)
+        self.assertEqual(self.fill('What color is the apple?', 'apple', 'COLOR_QUERY'),
                          {'equivariant': {'any': 'red'}})
-        self.assertEqual(self.fill('Is the car red?', 'car', 'COLOR_VERIFY', 'FILL_SAFE'),
+        self.assertEqual(self.fill('Is the car red?', 'car', 'COLOR_VERIFY'),
                          {'equivariant': {'yes': 'yes', 'no': 'yes'}})
-        self.assertEqual(self.fill('Is the bag pink?', 'bag', 'COLOR_VERIFY', 'FILL_SAFE'), UNSAFE)
+        self.assertEqual(self.fill('Is the bag pink?', 'bag', 'COLOR_VERIFY'), UNSAFE)
 
     def test_color_selector_does_not_get_a_yes_no_mapping(self):
-        self.assertEqual(self.fill('What animal is black?', 'black animal', 'COLOR_VERIFY', 'FILL_SAFE'), UNSAFE)
+        self.assertEqual(self.fill('What animal is black?', 'black animal', 'COLOR_VERIFY'), UNSAFE)
 
-    def test_fill_guard_does_not_change_plain_occlusion(self):
+    def test_plain_existence_occlusion(self):
         result = self.verdicts('Is there a cat in the image?', 'cat')
         self.assertEqual(result['mr2']['cat']['occlude_bbox'], {'equivariant': {'any': 'no'}})
 

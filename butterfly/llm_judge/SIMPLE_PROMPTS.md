@@ -1,4 +1,4 @@
-# GQA metamorphic relations: question-only rules (v7)
+# GQA metamorphic relations: question-only rules (v7.1)
 
 One LLM call per question returns a small JSON object, `{"target": ..., "flags": [...]}`. Code adds its own lexicon-based flags, then computes all verdicts and expected answers deterministically and writes one JSON record per question (Part 6). There is no second answer-rule model call: expected answers are encoded in the Equivariant cells of the tables.
 
@@ -58,9 +58,6 @@ SUPPORT: A support or containment relation between two objects (on, under, insid
 GRAVITY: A posture, motion, or orientation of a single object that only makes sense when the image is upright: sitting, standing, lying, hanging, leaning, kneeling, falling, jumping, flying, floating, pouring, upside down.
 REF_SURFACE: The question mentions a natural reference surface or direction of the scene: sky, ground, floor, ceiling, roof, horizon, or a reflection. Set it even when that surface is the object being asked about.
 
-Fill color:
-FILL_SAFE: Set only if the target remains identifiable after its whole mask is replaced with a flat color and the answer has a reliable relationship for the fill. A direct color question about a stable target qualifies, as can position, size, or a simple relation to an untouched object. The mask preserves outline and location, not clothing, accessories, markings, face or gaze, texture, transparency, or haze inside it. Leave FILL_SAFE unset if such details can determine the answer or pick out its referent (clothing a person is wearing, the type of food, a happy face, a clear or foggy sky). The absence of an explicit color or material word is not enough. Do not add FILL_SAFE without a target.
-
 Other:
 TEXT: Readable text, letters, numbers, signs, logos, or an object that normally carries text (poster, license plate, book cover) when its text is relevant.
 MATW: Material, texture, pattern, or surface (wooden, striped, shiny).
@@ -69,13 +66,13 @@ MULTI_CONDITION: Several conditions joined by AND/OR, including "both"/"either" 
 
 Examples:
 Question: What color is the apple?
-{"target":"apple","flags":["COLOR_QUERY","FILL_SAFE"]}
+{"target":"apple","flags":["COLOR_QUERY"]}
 
 Question: Is the car red or blue?
-{"target":"car","flags":["COLOR_CHOOSE","FILL_SAFE"]}
+{"target":"car","flags":["COLOR_CHOOSE"]}
 
 Question: Is the shirt black?
-{"target":"shirt","flags":["COLOR_VERIFY","FILL_SAFE"]}
+{"target":"shirt","flags":["COLOR_VERIFY"]}
 
 Question: What animal is black?
 {"target":"black animal","flags":[]}
@@ -90,34 +87,34 @@ Question: Is the sky clear or foggy?
 {"target":"sky","flags":["REF_SURFACE"]}
 
 Question: What color is the cup on the left of the plate?
-{"target":"cup on the left of the plate","flags":["COLOR_QUERY","LR_ID","FILL_SAFE"]}
+{"target":"cup on the left of the plate","flags":["COLOR_QUERY","LR_ID"]}
 
 Question: Is there a cat in the image?
-{"target":"cat","flags":["FILL_SAFE"]}
+{"target":"cat","flags":[]}
 
 Question: Is the ball to the left or right of the box?
-{"target":"ball","flags":["LR_ANSWER","LR_SIDE","FILL_SAFE"]}
+{"target":"ball","flags":["LR_ANSWER","LR_SIDE"]}
 
 Question: On which side of the photo is the woman?
-{"target":"woman","flags":["LR_ANSWER","LR_SIDE","FILL_SAFE"]}
+{"target":"woman","flags":["LR_ANSWER","LR_SIDE"]}
 
 Question: Which part of the image are the people in?
-{"target":"people","flags":["LR_ANSWER","UD_ANSWER","FILL_SAFE"]}
+{"target":"people","flags":["LR_ANSWER","UD_ANSWER"]}
 
 Question: Is the ball to the left of the box?
-{"target":"ball","flags":["LR_ANSWER","LR_YN","FIXED_PAIR","FILL_SAFE"]}
+{"target":"ball","flags":["LR_ANSWER","LR_YN","FIXED_PAIR"]}
 
 Question: Are there mirrors to the left of the lamp?
 {"target":"mirrors to the left of the lamp","flags":["LR_ANSWER","LR_YN"]}
 
 Question: Is the ball above the box?
-{"target":"ball","flags":["UD_ANSWER","UD_YN","FIXED_PAIR","FILL_SAFE"]}
+{"target":"ball","flags":["UD_ANSWER","UD_YN","FIXED_PAIR"]}
 
 Question: Is the knife in the bottom part?
-{"target":"knife","flags":["UD_ANSWER","UD_YN","FIXED_PAIR","FILL_SAFE"]}
+{"target":"knife","flags":["UD_ANSWER","UD_YN","FIXED_PAIR"]}
 
 Question: Is the lamp on the top or bottom shelf?
-{"target":"lamp","flags":["UD_ANSWER","UD_SIDE","SUPPORT","FILL_SAFE"]}
+{"target":"lamp","flags":["UD_ANSWER","UD_SIDE","SUPPORT"]}
 
 Question: What is the girl to the left of the frisbee holding?
 {"target":"girl to the left of the frisbee","flags":["LR_ID"]}
@@ -129,10 +126,10 @@ Question: Is the bird sitting on the fence?
 {"target":"bird","flags":["SUPPORT","GRAVITY"]}
 
 Question: Is the man standing?
-{"target":"man","flags":["GRAVITY","FILL_SAFE"]}
+{"target":"man","flags":["GRAVITY"]}
 
 Question: What color is the sky?
-{"target":"sky","flags":["COLOR_QUERY","REF_SURFACE","FILL_SAFE"]}
+{"target":"sky","flags":["COLOR_QUERY","REF_SURFACE"]}
 
 Question: What does the sign say?
 {"target":"sign","flags":["TEXT"]}
@@ -203,7 +200,7 @@ Before matching `SUPPORT`, remove frame-position phrases like "on the left / rig
 | Code-only flags | `COLORW` (any color or brightness word), `NEGATION`, `LR_WORD`, `UD_WORD`, `BODY` (body word and `LR_WORD`). |
 | Direction dependency | Keep semantic `_ID` and `_ANSWER` flags even if the corresponding axis word is absent. "Which side?" (without explicit vertical choices) blocks horizontal invariance; open "Which part of the image?" without a direction choice blocks invariance on both axes. |
 | Subtype consistency | `_SIDE` and `_YN` imply `_ANSWER`, but conflicting subtypes on an axis are discarded. `_SIDE` needs supported axis choices or, for `LR_SIDE` only, an implicit lateral "which side" question without a vertical answer cue. `_YN` needs a yes/no form and a relation or frame-half phrase on its axis. |
-| Positive guards | `FIXED_PAIR` must come from the LLM and is vetoed by open-ended or indefinite wording (e.g. `a`, `an`, `any`, `some`, `or`, `every`, or an existential prefix) and boundary or alignment cues (e.g. `centered`, `aligned`, `middle`). `FILL_SAFE` must come from the LLM. |
+| Positive guards | `FIXED_PAIR` must come from the LLM and is vetoed by open-ended or indefinite wording (e.g. `a`, `an`, `any`, `some`, `or`, `every`, or an existential prefix) and boundary or alignment cues (e.g. `centered`, `aligned`, `middle`). |
 | Color consistency | `COLOR_QUERY` needs 0 color tokens, `COLOR_VERIFY` exactly 1 and a yes/no form, `COLOR_CHOOSE` 2 or more; otherwise the flag is dropped. More than one `COLOR_*` flag drops all of them. |
 
 ## Derived values
@@ -243,7 +240,7 @@ If `target = null`, MR2 has no row.
 | Transformation | Invariant | Equivariant | Unsafe | In English |
 | --- | --- | --- | --- | --- |
 | **Occlude bbox** (opaque black box) | Never (the target is named in the question, so hiding it cannot be shown irrelevant from the question alone) | `EQ_GATE ∧ EXIST` → no | Anything else (this includes every color question: the object is hidden, not recolored, so the visible color is not a reliable answer) | **I:** never.<br>**E:** a plain "is there X" question about one object, with no and/or and no negation (answer is `no`).<br>**U:** everything else, including every color question. |
-| **Fill color** (mask only; shown for red, one row per color in `FILL_COLORS`) | `target ≠ null ∧ FILL_SAFE ∧ ¬COLORW ∧ ¬MATW ∧ ¬TEXT` | `EQ_GATE ∧ FILL_SAFE` plus one of:<br>`COLOR_QUERY` → red<br>`COLOR_VERIFY ∧ ASKS_RED ∧ ¬NEGATION` → yes<br>`COLOR_VERIFY ∧ ¬ASKS_RED ∧ ¬ASKS_RED_NEAR ∧ ¬NEGATION` → no<br>`COLOR_CHOOSE ∧ ASKS_RED` → red | Anything else | **I:** a specified target, affirmative evidence the answer survives the opaque fill, and no color, material, or text wording.<br>**E:** the target remains identifiable and the question asks its color, verifies one non-negated clear color, or offers two colors including red, without comparisons or extra conditions.<br>**U:** everything else, including erased or unverified answer evidence. |
+| **Fill color** (mask only; shown for red, one row per color in `FILL_COLORS`) | `target ≠ null ∧ ¬COLORW ∧ ¬MATW ∧ ¬TEXT` | `EQ_GATE` plus one of:<br>`COLOR_QUERY` → red<br>`COLOR_VERIFY ∧ ASKS_RED ∧ ¬NEGATION` → yes<br>`COLOR_VERIFY ∧ ¬ASKS_RED ∧ ¬ASKS_RED_NEAR ∧ ¬NEGATION` → no<br>`COLOR_CHOOSE ∧ ASKS_RED` → red | Anything else | **I:** one target, and no color, material, or text word in the question.<br>**E:** one target with no comparison or extra conditions, and the question asks its color (red), asks if it is red (yes), asks if it is a clearly non-red color (no), or offers two colors including red (red). Verify questions must not be negated.<br>**U:** everything else. |
 
 ---
 
@@ -257,10 +254,10 @@ The model never writes a mapping. Code derives it from the verdict and flags, in
 | Horizontal flip, yes/no position | `LR_YN ∧ FIXED_PAIR ∧ ¬LR_ID ∧ ¬MULTI_CONDITION ∧ ¬NEGATION ∧ ¬BODY ∧ ¬TEXT` | Plain yes/no question about a fixed left/right comparison or image half. | `yes -> no`, `no -> yes` |
 | Vertical flip, top/bottom choice | `UD_SIDE ∧ ¬UD_ID ∧ ¬MULTI_CONDITION ∧ ¬SUPPORT ∧ ¬TEXT` | Asks top or bottom, with no up/down identification, support relation, text, or extra conditions. | `top -> bottom`, `bottom -> top`, `above -> below`, `below -> above` |
 | Vertical flip, yes/no position | `UD_YN ∧ FIXED_PAIR ∧ ¬UD_ID ∧ ¬MULTI_CONDITION ∧ ¬NEGATION ∧ ¬SUPPORT ∧ ¬TEXT` | Plain yes/no question about a fixed above/below comparison or image half. | `yes -> no`, `no -> yes` |
-| Fill color (red), "What color is X?" | `EQ_GATE ∧ FILL_SAFE ∧ COLOR_QUERY` | Asks the color of the single identifiable target, with no comparison or extra conditions. | `any -> red` |
-| Fill color (red), "Is X blue?" | `EQ_GATE ∧ FILL_SAFE ∧ COLOR_VERIFY ∧ ¬ASKS_RED ∧ ¬ASKS_RED_NEAR ∧ ¬NEGATION` | Asks if the target is a color that is not red or red-like, not negated. | `yes -> no`, `no -> no` |
-| Fill color (red), "Is X red?" | `EQ_GATE ∧ FILL_SAFE ∧ COLOR_VERIFY ∧ ASKS_RED ∧ ¬NEGATION` | Asks if the target is red, not negated. | `yes -> yes`, `no -> yes` |
-| Fill color (red), "Is X blue or red?" | `EQ_GATE ∧ FILL_SAFE ∧ COLOR_CHOOSE ∧ ASKS_RED` | Asks which of two colors the target is, and one of them is red. | `any -> red` |
+| Fill color (red), "What color is X?" | `EQ_GATE ∧ COLOR_QUERY` | Asks the color of the single target, with no comparison or extra conditions. | `any -> red` |
+| Fill color (red), "Is X blue?" | `EQ_GATE ∧ COLOR_VERIFY ∧ ¬ASKS_RED ∧ ¬ASKS_RED_NEAR ∧ ¬NEGATION` | Asks if the target is a color that is not red or red-like, not negated. | `yes -> no`, `no -> no` |
+| Fill color (red), "Is X red?" | `EQ_GATE ∧ COLOR_VERIFY ∧ ASKS_RED ∧ ¬NEGATION` | Asks if the target is red, not negated. | `yes -> yes`, `no -> yes` |
+| Fill color (red), "Is X blue or red?" | `EQ_GATE ∧ COLOR_CHOOSE ∧ ASKS_RED` | Asks which of two colors the target is, and one of them is red. | `any -> red` |
 | Occlude bbox, "Is there a cat?" | `EQ_GATE ∧ EXIST` | Plain "is there X" question about one object, with no and/or and no negation. | `any -> no` |
 | Grayscale, color query | `COLOR_QUERY ∧ ¬MULTI_CONDITION ∧ ¬COMPARE` | Asks the color of the target, with no other color words. | `any -> gray, black, white` |
 | Grayscale, "Is X red?" | `COLOR_VERIFY ∧ ¬ASKS_ACHROMATIC ∧ ¬ASKS_GRAY_NEAR ∧ ¬NEGATION ∧ ¬MULTI_CONDITION ∧ ¬COMPARE` | Asks if the target is a clearly chromatic color (not gray, black, white, or close to them), not negated. | `yes -> no`, `no -> no` |
@@ -340,7 +337,7 @@ The three records above come from "Is the bag red?", "Is the bag on the left or 
 - **Check order:** for each transformation, check Equivariant, then Invariant, then default to Unsafe. For flips, `TEXT` (and `BODY` for the horizontal flip) force Unsafe first.
 - **Yes/no swap cases:** score either original answer when the model's original answer matches gold. The swap is a best-effort assumption about ordinary non-tied comparisons, not an image-level proof. Skip legacy `unchecked` and absent mapping keys without a fallback. Report scored and skipped counts separately.
 - **Segmentation:** the singular head noun can retrieve mask candidates, but resolve the full identifying description before editing. Skip if the intended targets cannot be verified or the masks are missing/inadequate; otherwise a failed or misdirected edit can look like a model violation.
-- **Classifier quality:** measure precision of the I and E verdicts separately from coverage. Prioritize unsupported affirmative mappings or invariance, not conservative skips. Rerun classification with v7 before measuring coverage. Pre-v6 predictions lack `FIXED_PAIR` and `FILL_SAFE`; v6 did not use the yes/no subtypes for image-half questions.
+- **Classifier quality:** measure precision of the I and E verdicts separately from coverage. Prioritize unsupported affirmative mappings or invariance, not conservative skips. Rerun classification with the current prompt before measuring coverage. Pre-v6 predictions lack `FIXED_PAIR`; v6 did not use the yes/no subtypes for image-half questions.
 
 ---
 
